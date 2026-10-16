@@ -36,6 +36,10 @@ export interface CreateDraft {
   end?: Date
   allDay?: boolean
   collectionUrl?: string
+  /** Live title while the form is being filled (drives the preview chip in the grid). */
+  title?: string
+  /** Viewport point the popup is anchored to (the clicked slot). */
+  anchor?: Anchor
   /** When set, the popup edits this existing object instead of creating one. */
   edit?: Selection
 }
@@ -111,6 +115,10 @@ export const useUiStore = defineStore('ui', () => {
   function closeCreate() {
     createDraft.value = null
   }
+  /** Keeps the draft in step with the form so the grid can preview it. */
+  function updateDraft(patch: Partial<CreateDraft>) {
+    if (createDraft.value) createDraft.value = { ...createDraft.value, ...patch }
+  }
   function select(sel: Selection | null) {
     createDraft.value = null
     selection.value = sel
@@ -136,6 +144,7 @@ export const useUiStore = defineStore('ui', () => {
     toggleTasksPanel,
     openCreate,
     closeCreate,
+    updateDraft,
     select,
   }
 })

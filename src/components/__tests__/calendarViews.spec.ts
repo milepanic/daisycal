@@ -158,7 +158,7 @@ describe('MonthView', () => {
     await wed.find('button.text-gray-500').trigger('click')
     expect(wrapper.emitted('showMore')![0]![0]).toEqual(new Date(2026, 9, 14))
     await wrapper.find('[data-date="2026-10-20"]').trigger('click')
-    expect(wrapper.emitted('createAt')![0]).toEqual([
+    expect(wrapper.emitted('createAt')![0]!.slice(0, 3)).toEqual([
       new Date(2026, 9, 20),
       new Date(2026, 9, 21),
       true,

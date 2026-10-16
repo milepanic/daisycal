@@ -8,7 +8,7 @@ import { eachDay } from '@/lib/dates'
 import { useCalendarsStore } from '@/stores/calendars'
 import { useEventsStore } from '@/stores/events'
 import { useTasksStore } from '@/stores/tasks'
-import { useUiStore } from '@/stores/ui'
+import { type Anchor, useUiStore } from '@/stores/ui'
 import AgendaView from '@/components/calendar/AgendaView.vue'
 import EventPopover from '@/components/calendar/EventPopover.vue'
 import MonthView from '@/components/calendar/MonthView.vue'
@@ -73,9 +73,14 @@ function selectTask(task: Task) {
     edit: { objectUrl: task.objectUrl, recurrenceId: null },
   })
 }
-function createAt(start: Date, end: Date, allDay: boolean) {
-  ui.openCreate({ kind: 'event', start, end, allDay })
+function createAt(start: Date, end: Date, allDay: boolean, anchor: Anchor) {
+  ui.openCreate({ kind: 'event', start, end, allDay, anchor })
 }
+const draftColor = computed(() =>
+  ui.createDraft?.collectionUrl
+    ? calendars.colorFor(ui.createDraft.collectionUrl)
+    : (calendars.calendars[0]?.color ?? '#566c86'),
+)
 </script>
 
 <template>
@@ -106,6 +111,8 @@ function createAt(start: Date, end: Date, allDay: boolean) {
         :tasks="dueTasks"
         :color-for="colorFor"
         :selected-key="selectedKey"
+        :draft="ui.createDraft"
+        :draft-color="draftColor"
         @select-event="selectEvent"
         @select-task="selectTask"
         @create-at="createAt"

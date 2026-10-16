@@ -245,6 +245,27 @@ export const useTasksStore = defineStore('tasks', () => {
     return writeDocument(doc, toggleTaskIcs(copy, completed))
   }
 
+  /** Moves a task to another list: create there with the same UID, then delete here. */
+  async function moveTask(task: Task, target: Collection): Promise<Task> {
+    const doc = docs.value.get(task.objectUrl)
+    if (!doc) throw new NotFoundError(task.objectUrl)
+    if (doc.object.collectionUrl === target.url) return task
+    const client = auth.requireClient()
+    const saved = await client.createObject(target, doc.object.data, doc.uid)
+    const moved = toDoc(saved)
+    setDoc(moved)
+    dropDoc(doc.object.url)
+    try {
+      await client.deleteObject(doc.object)
+    } catch (err) {
+      if (!(err instanceof NotFoundError)) {
+        setDoc(doc)
+        throw err
+      }
+    }
+    return taskFromDocument(moved)
+  }
+
   async function deleteTask(task: Task): Promise<void> {
     const doc = docs.value.get(task.objectUrl)
     if (!doc) return
@@ -283,6 +304,7 @@ export const useTasksStore = defineStore('tasks', () => {
     createTask,
     updateTask,
     setCompleted,
+    moveTask,
     deleteTask,
     reset,
   }

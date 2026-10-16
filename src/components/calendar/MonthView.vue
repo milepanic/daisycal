@@ -5,6 +5,7 @@ import type { EventInstance, Task } from '@/api/ical'
 import { type DateRange, addDays, startOfDay } from '@/lib/dates'
 import { MONTHS_SHORT, WEEKDAYS_LONG } from '@/lib/format'
 import { buildMonthCells } from '@/lib/layout'
+import type { Anchor } from '@/stores/ui'
 import EventChip from './EventChip.vue'
 import TaskChip from './TaskChip.vue'
 
@@ -19,7 +20,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   selectEvent: [instance: EventInstance, el: HTMLElement]
   selectTask: [task: Task, el: HTMLElement]
-  createAt: [start: Date, end: Date, allDay: boolean]
+  createAt: [start: Date, end: Date, allDay: boolean, anchor: Anchor]
   showMore: [date: Date]
 }>()
 
@@ -33,6 +34,16 @@ const today = new Date()
 
 function eventKey(i: EventInstance) {
   return `${i.objectUrl}|${i.recurrenceId?.toString() ?? ''}`
+}
+
+function onCellClick(date: Date, e: MouseEvent) {
+  const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  emit('createAt', startOfDay(date), addDays(startOfDay(date), 1), true, {
+    x: r.left,
+    y: r.top,
+    width: r.width,
+    height: r.height,
+  })
 }
 </script>
 
@@ -60,7 +71,7 @@ function eventKey(i: EventInstance) {
           class="flex min-h-0 cursor-pointer flex-col border-t border-l border-gray-200 p-1"
           :class="cell.inMonth ? '' : 'bg-gray-50/60'"
           :data-date="cell.key"
-          @click="emit('createAt', startOfDay(cell.date), addDays(startOfDay(cell.date), 1), true)"
+          @click="onCellClick(cell.date, $event)"
         >
           <div class="flex h-7 items-center justify-center gap-x-1">
             <span v-if="cell.date.getDate() === 1" class="text-xs font-medium text-gray-500">{{

@@ -130,16 +130,16 @@ samo objekata (događaja i zadataka) unutar postojećih kolekcija.
 
 ## 8. Kreiranje i izmena događaja (`new-event.html`)
 
-- [ ] Create popup kao komponenta (otvaranje sa Create dugmeta i klikom na slot; zatvaranje X / Cancel / klik van / Esc)
-- [ ] Prekidač tipa Event / Task u popup-u (radio iz mockup-a)
-- [ ] Forma događaja: Title, Calendar, datum/vreme početka i kraja, All day, Repeat, Notification, Location, Description
-- [ ] Draft preview u mreži dok se popunjava forma (`#draft-event` / `#draft-task` iz mockup-a)
-- [ ] Validacija (kraj posle početka, obavezan naslov i kalendar)
-- [ ] Izmena postojećeg događaja (ista forma, popunjena iz objekta)
-- [ ] Brisanje sa potvrdom
-- [ ] Ponavljajući događaji: izbor obima izmene/brisanja – samo ova instanca (RECURRENCE-ID / EXDATE) ili ceo niz
-- [ ] Premeštanje događaja u drugi kalendar (PUT u novu kolekciju + DELETE iz stare)
-- [ ] Dijalog za `412` konflikt: „izmenjeno sa drugog uređaja" → osveži i ponovo primeni
+- [x] Create popup kao komponenta (otvaranje sa Create dugmeta i klikom na slot; zatvaranje X / Cancel / klik van / Esc)
+- [x] Prekidač tipa Event / Task u popup-u (radio iz mockup-a)
+- [x] Forma događaja: Title, Calendar, datum/vreme početka i kraja, All day, Repeat, Notification, Location, Description
+- [x] Draft preview u mreži dok se popunjava forma (`#draft-event` / `#draft-task` iz mockup-a)
+- [x] Validacija (kraj posle početka, obavezan naslov i kalendar)
+- [x] Izmena postojećeg događaja (ista forma, popunjena iz objekta)
+- [x] Brisanje sa potvrdom
+- [x] Ponavljajući događaji: izbor obima izmene/brisanja – samo ova instanca (RECURRENCE-ID / EXDATE) ili ceo niz
+- [x] Premeštanje događaja u drugi kalendar (PUT u novu kolekciju + DELETE iz stare)
+- [x] Dijalog za `412` konflikt: „izmenjeno sa drugog uređaja" → osveži i ponovo primeni
 - [ ] Drag-and-drop premeštanje i resize u mreži (opciono)
 
 ## 9. Tasks (`tasks.html`)

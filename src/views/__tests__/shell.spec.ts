@@ -111,9 +111,11 @@ describe('app shell', () => {
     await routeIs(() => expect(router.currentRoute.value.name).toBe('tasks'))
     expect(wrapper.find('main').text()).toContain('Send invoice')
 
-    // Keyboard: "c" opens create (task on the tasks page), Esc closes.
+    // Keyboard: "c" opens the create popup (task on the tasks page), Esc closes it.
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'c' }))
     expect(ui.createDraft?.kind).toBe('task')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="create-popup"]').attributes('aria-label')).toBe('New task')
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
     expect(ui.createDraft).toBeNull()
 

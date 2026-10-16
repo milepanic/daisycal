@@ -7,7 +7,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 import type { EventInstance, Task } from '@/api/ical'
 import { addDays, isSameDay, startOfDay, toDateKey } from '@/lib/dates'
-import { WEEKDAYS_LONG } from '@/lib/format'
+import { WEEKDAYS_LONG, formatTime } from '@/lib/format'
 import {
   DAY_PX,
   HOUR_PX,
@@ -17,6 +17,7 @@ import {
   minutesSinceMidnight,
   slotFromOffset,
 } from '@/lib/layout'
+import type { Anchor, CreateDraft } from '@/stores/ui'
 import EventChip from './EventChip.vue'
 import TaskChip from './TaskChip.vue'
 
@@ -28,11 +29,14 @@ const props = defineProps<{
   selectedKey?: string | null
   /** Hour the grid scrolls to on mount (the mockup starts at 07:00). */
   scrollToHour?: number
+  /** Event/task being created: previewed in the grid (mockup #draft-event / #draft-task). */
+  draft?: CreateDraft | null
+  draftColor?: string
 }>()
 const emit = defineEmits<{
   selectEvent: [instance: EventInstance, el: HTMLElement]
   selectTask: [task: Task, el: HTMLElement]
-  createAt: [start: Date, end: Date, allDay: boolean]
+  createAt: [start: Date, end: Date, allDay: boolean, anchor: Anchor]
 }>()
 
 const root = ref<HTMLElement | null>(null)
@@ -81,15 +85,32 @@ function eventKey(i: EventInstance) {
   return `${i.objectUrl}|${i.recurrenceId?.toString() ?? ''}`
 }
 
+function anchorAt(e: MouseEvent): Anchor {
+  const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  return { x: r.left, y: e.clientY, width: r.width, height: 0 }
+}
+
 function onColumnClick(day: Date, e: MouseEvent) {
   const el = e.currentTarget as HTMLElement
   const start = slotFromOffset(day, e.clientY - el.getBoundingClientRect().top)
-  emit('createAt', start, new Date(start.getTime() + 60 * 60_000), false)
+  emit('createAt', start, new Date(start.getTime() + 60 * 60_000), false, anchorAt(e))
 }
 
-function onAllDayClick(day: Date) {
+function onAllDayClick(day: Date, e: MouseEvent) {
   const start = startOfDay(day)
-  emit('createAt', start, addDays(start, 1), true)
+  emit('createAt', start, addDays(start, 1), true, anchorAt(e))
+}
+
+/** Where the draft chip goes in each column (null when it is not a timed draft on that day). */
+function draftPlacement(day: Date) {
+  const d = props.draft
+  if (!d?.start || !d.end || d.allDay || d.edit) return null
+  const dayStart = startOfDay(day)
+  const dayEnd = addDays(dayStart, 1)
+  if (!(d.start < dayEnd && d.end > dayStart)) return null
+  const top = (Math.max(d.start.getTime(), dayStart.getTime()) - dayStart.getTime()) / 60_000
+  const bottom = (Math.min(d.end.getTime(), dayEnd.getTime()) - dayStart.getTime()) / 60_000
+  return { top, height: Math.max(bottom - top, d.kind === 'task' ? 22 : 16) }
 }
 
 /** Tasks due at the same time share one row (mockup: "3 tasks at the same time, inline"). */
@@ -147,7 +168,7 @@ function taskRows(tasks: Task[]): { top: number; tasks: Task[] }[] {
                 gridColumn: `${days.findIndex((d) => isSameDay(d, c.day)) + 1}`,
                 gridRow: `1 / span ${allDayLanes}`,
               }"
-              @click="onAllDayClick(c.day)"
+              @click="onAllDayClick(c.day, $event)"
             ></div>
             <div
               v-for="p in allDayPlacements"
@@ -228,6 +249,37 @@ function taskRows(tasks: Task[]): { top: number; tasks: Task[] }[] {
               class="min-w-0 flex-1"
               @select="(task, el) => emit('selectTask', task, el)"
             />
+          </div>
+          <div
+            v-if="draftPlacement(c.day)"
+            class="pointer-events-none absolute inset-x-0.5 z-40 overflow-hidden rounded-lg text-xs ring-2 ring-white"
+            :class="
+              draft?.kind === 'task'
+                ? 'flex items-center gap-x-1.5 bg-gray-100 px-2'
+                : 'px-2 py-1 text-white'
+            "
+            :style="{
+              top: `${draftPlacement(c.day)!.top}px`,
+              height: `${draftPlacement(c.day)!.height}px`,
+              backgroundColor: draft?.kind === 'task' ? undefined : draftColor,
+            }"
+            data-testid="draft-chip"
+          >
+            <template v-if="draft?.kind === 'task'">
+              <span
+                class="size-3 shrink-0 rounded-sm"
+                :style="{ backgroundColor: (draftColor ?? '#7c3aed') + '33' }"
+              ></span>
+              <span class="truncate font-medium text-gray-800">{{
+                draft?.title || '(No title)'
+              }}</span>
+            </template>
+            <template v-else>
+              <p class="truncate font-semibold">{{ draft?.title || '(No title)' }}</p>
+              <p class="truncate text-[11px] text-white/80">
+                {{ formatTime(draft!.start!) }}–{{ formatTime(draft!.end!) }}
+              </p>
+            </template>
           </div>
           <div
             v-if="c.isToday"

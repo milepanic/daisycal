@@ -11,6 +11,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useCalendarsStore } from '@/stores/calendars'
 import { useSyncStore } from '@/stores/sync'
 import { useUiStore } from '@/stores/ui'
+import CreatePopup from '@/components/create/CreatePopup.vue'
 import AppSidebar from '@/components/sidebar/AppSidebar.vue'
 
 const auth = useAuthStore()
@@ -48,5 +49,6 @@ watch(
     <div class="flex min-w-0 flex-1 flex-col">
       <RouterView />
     </div>
+    <CreatePopup v-if="ui.createDraft" :key="ui.createDraft.edit?.objectUrl ?? 'new'" />
   </div>
 </template>
