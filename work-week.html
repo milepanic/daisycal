@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="en" class="h-full bg-zinc-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DaisyCal – Work week</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <link rel="stylesheet" href="style.css">
+  <style type="text/tailwindcss">
+    /* Accent color and calendar colors (from Radicale) */
+    @theme {
+      --color-accent: #e30000;
+
+      --color-cal-personal: #566c86;
+      --color-cal-apartment: #7c94b8;
+      --color-cal-birthdays: #2a4d88;
+      --color-cal-travel: #8094aa;
+      --color-cal-tasks: #2a4d88;
+      --color-cal-work: #225688;
+    }
+  </style>
+</head>
+<body class="h-full text-gray-900 antialiased">
+  <div class="flex h-screen gap-x-2 px-2 pb-2 [&:has(#sidebar-toggle:not(:checked))_#sidebar]:hidden">
+
+    <!-- Left sidebar (sits on the page background) -->
+    <aside id="sidebar" class="flex w-64 shrink-0 flex-col">
+      <!-- App navigation (tabs) -->
+      <nav class="grid h-14 shrink-0 grid-cols-2 items-center gap-x-1 px-2">
+        <a href="index.html" aria-current="page" class="flex items-center justify-center gap-x-2 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-gray-900">
+          <svg class="size-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/></svg>
+          Calendar
+        </a>
+        <a href="tasks.html" class="flex items-center justify-center gap-x-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-white/60 hover:text-gray-900">
+          <svg class="size-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+          Tasks
+        </a>
+      </nav>
+
+      <!-- Sidebar content -->
+      <div class="flex-1 overflow-y-auto px-2 pb-4">
+        <!-- Mini calendar: October 2026 -->
+        <div class="px-1">
+          <div class="mb-2 flex items-center justify-between">
+            <h2 class="text-sm font-semibold text-gray-900">October 2026</h2>
+            <div class="flex items-center gap-x-1">
+              <button type="button" class="rounded-lg p-1 text-gray-500 hover:bg-white/60 hover:text-gray-700">
+                <span class="sr-only">Previous month</span>
+                <svg class="size-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 18l-6-6 6-6"/></svg>
+              </button>
+              <button type="button" class="rounded-lg p-1 text-gray-500 hover:bg-white/60 hover:text-gray-700">
+                <span class="sr-only">Next month</span>
+                <svg class="size-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="grid grid-cols-7 text-center text-[11px] font-medium text-gray-500">
+            <div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div><div>S</div>
+          </div>
+          <div class="mt-2 grid grid-cols-7 gap-y-0.5 text-center text-xs font-semibold">
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-400 hover:bg-white/60"><time datetime="2026-09-28">28</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-400 hover:bg-white/60"><time datetime="2026-09-29">29</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-400 hover:bg-white/60"><time datetime="2026-09-30">30</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-700 hover:bg-white/60"><time datetime="2026-10-01">1</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-700 hover:bg-white/60"><time datetime="2026-10-02">2</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-700 hover:bg-white/60"><time datetime="2026-10-03">3</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-700 hover:bg-white/60"><time datetime="2026-10-04">4</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-700 hover:bg-white/60"><time datetime="2026-10-05">5</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-700 hover:bg-white/60"><time datetime="2026-10-06">6</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-700 hover:bg-white/60"><time datetime="2026-10-07">7</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-700 hover:bg-white/60"><time datetime="2026-10-08">8</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-full bg-accent text-white" aria-current="date"><time datetime="2026-10-09">9</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-700 hover:bg-white/60"><time datetime="2026-10-10">10</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-700 hover:bg-white/60"><time datetime="2026-10-11">11</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-700 hover:bg-white/60"><time datetime="2026-10-12">12</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-700 hover:bg-white/60"><time datetime="2026-10-13">13</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-700 hover:bg-white/60"><time datetime="2026-10-14">14</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-700 hover:bg-white/60"><time datetime="2026-10-15">15</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-700 hover:bg-white/60"><time datetime="2026-10-16">16</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-700 hover:bg-white/60"><time datetime="2026-10-17">17</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-700 hover:bg-white/60"><time datetime="2026-10-18">18</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-700 hover:bg-white/60"><time datetime="2026-10-19">19</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-700 hover:bg-white/60"><time datetime="2026-10-20">20</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-700 hover:bg-white/60"><time datetime="2026-10-21">21</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-700 hover:bg-white/60"><time datetime="2026-10-22">22</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-700 hover:bg-white/60"><time datetime="2026-10-23">23</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-700 hover:bg-white/60"><time datetime="2026-10-24">24</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-700 hover:bg-white/60"><time datetime="2026-10-25">25</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-700 hover:bg-white/60"><time datetime="2026-10-26">26</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-700 hover:bg-white/60"><time datetime="2026-10-27">27</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-700 hover:bg-white/60"><time datetime="2026-10-28">28</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-700 hover:bg-white/60"><time datetime="2026-10-29">29</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-700 hover:bg-white/60"><time datetime="2026-10-30">30</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-700 hover:bg-white/60"><time datetime="2026-10-31">31</time></button>
+            <button type="button" class="mx-auto flex size-7 items-center justify-center rounded-lg text-gray-400 hover:bg-white/60"><time datetime="2026-11-01">1</time></button>
+          </div>
+        </div>
+
+        <!-- My calendars -->
+        <details open class="group mt-6">
+          <summary class="flex cursor-pointer list-none items-center justify-between rounded-lg px-2 py-1.5 text-xs font-semibold tracking-wide text-gray-500 uppercase hover:bg-white/60 [&::-webkit-details-marker]:hidden">
+            My calendars
+            <svg class="size-4 text-gray-400 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></svg>
+          </summary>
+          <ul class="mt-1 space-y-0.5">
+            <li>
+              <label class="flex cursor-pointer items-center gap-x-3 rounded-lg px-2 py-1.5 text-sm text-gray-700 hover:bg-white/60">
+                <span class="grid size-4 shrink-0 place-items-center">
+                  <input type="checkbox" checked class="peer col-start-1 row-start-1 size-4 cursor-pointer appearance-none rounded-sm bg-white checked:bg-cal-personal">
+                  <svg class="pointer-events-none col-start-1 row-start-1 hidden size-3.5 text-white peer-checked:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 14 14" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5 5.75 10.25 11 4"/></svg>
+                </span>
+                Personal
+              </label>
+            </li>
+            <li>
+              <label class="flex cursor-pointer items-center gap-x-3 rounded-lg px-2 py-1.5 text-sm text-gray-700 hover:bg-white/60">
+                <span class="grid size-4 shrink-0 place-items-center">
+                  <input type="checkbox" checked class="peer col-start-1 row-start-1 size-4 cursor-pointer appearance-none rounded-sm bg-white checked:bg-cal-apartment">
+                  <svg class="pointer-events-none col-start-1 row-start-1 hidden size-3.5 text-white peer-checked:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 14 14" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5 5.75 10.25 11 4"/></svg>
+                </span>
+                Apartment
+              </label>
+            </li>
+            <li>
+              <label class="flex cursor-pointer items-center gap-x-3 rounded-lg px-2 py-1.5 text-sm text-gray-700 hover:bg-white/60">
+                <span class="grid size-4 shrink-0 place-items-center">
+                  <input type="checkbox" checked class="peer col-start-1 row-start-1 size-4 cursor-pointer appearance-none rounded-sm bg-white checked:bg-cal-birthdays">
+                  <svg class="pointer-events-none col-start-1 row-start-1 hidden size-3.5 text-white peer-checked:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 14 14" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5 5.75 10.25 11 4"/></svg>
+                </span>
+                Birthdays
+              </label>
+            </li>
+            <li>
+              <label class="flex cursor-pointer items-center gap-x-3 rounded-lg px-2 py-1.5 text-sm text-gray-700 hover:bg-white/60">
+                <span class="grid size-4 shrink-0 place-items-center">
+                  <input type="checkbox" checked class="peer col-start-1 row-start-1 size-4 cursor-pointer appearance-none rounded-sm bg-white checked:bg-cal-travel">
+                  <svg class="pointer-events-none col-start-1 row-start-1 hidden size-3.5 text-white peer-checked:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 14 14" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5 5.75 10.25 11 4"/></svg>
+                </span>
+                Events &amp; Travel
+              </label>
+            </li>
+            <li>
+              <label class="flex cursor-pointer items-center gap-x-3 rounded-lg px-2 py-1.5 text-sm text-gray-700 hover:bg-white/60">
+                <span class="grid size-4 shrink-0 place-items-center">
+                  <input type="checkbox" checked class="peer col-start-1 row-start-1 size-4 cursor-pointer appearance-none rounded-sm bg-white checked:bg-cal-tasks">
+                  <svg class="pointer-events-none col-start-1 row-start-1 hidden size-3.5 text-white peer-checked:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 14 14" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5 5.75 10.25 11 4"/></svg>
+                </span>
+                Tasks
+              </label>
+            </li>
+            <li>
+              <label class="flex cursor-pointer items-center gap-x-3 rounded-lg px-2 py-1.5 text-sm text-gray-700 hover:bg-white/60">
+                <span class="grid size-4 shrink-0 place-items-center">
+                  <input type="checkbox" checked class="peer col-start-1 row-start-1 size-4 cursor-pointer appearance-none rounded-sm bg-white checked:bg-cal-work">
+                  <svg class="pointer-events-none col-start-1 row-start-1 hidden size-3.5 text-white peer-checked:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 14 14" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5 5.75 10.25 11 4"/></svg>
+                </span>
+                Work
+              </label>
+            </li>
+          </ul>
+        </details>
+
+        <!-- Task lists -->
+        <details open class="group mt-6">
+          <summary class="flex cursor-pointer list-none items-center justify-between rounded-lg px-2 py-1.5 text-xs font-semibold tracking-wide text-gray-500 uppercase hover:bg-white/60 [&::-webkit-details-marker]:hidden">
+            Task lists
+            <svg class="size-4 text-gray-400 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></svg>
+          </summary>
+          <ul class="mt-1 space-y-0.5">
+            <li>
+              <label class="flex cursor-pointer items-center gap-x-3 rounded-lg px-2 py-1.5 text-sm text-gray-700 hover:bg-white/60">
+                <span class="grid size-4 shrink-0 place-items-center">
+                  <input type="checkbox" checked class="peer col-start-1 row-start-1 size-4 cursor-pointer appearance-none rounded-sm bg-white checked:bg-violet-600">
+                  <svg class="pointer-events-none col-start-1 row-start-1 hidden size-3.5 text-white peer-checked:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 14 14" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5 5.75 10.25 11 4"/></svg>
+                </span>
+                My tasks
+              </label>
+            </li>
+            <li>
+              <label class="flex cursor-pointer items-center gap-x-3 rounded-lg px-2 py-1.5 text-sm text-gray-700 hover:bg-white/60">
+                <span class="grid size-4 shrink-0 place-items-center">
+                  <input type="checkbox" checked class="peer col-start-1 row-start-1 size-4 cursor-pointer appearance-none rounded-sm bg-white checked:bg-sky-500">
+                  <svg class="pointer-events-none col-start-1 row-start-1 hidden size-3.5 text-white peer-checked:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 14 14" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5 5.75 10.25 11 4"/></svg>
+                </span>
+                Shopping
+              </label>
+            </li>
+          </ul>
+        </details>
+      </div>
+    </aside>
+
+    <!-- Right column: page header + cards -->
+    <div class="flex min-w-0 flex-1 flex-col [&:has(#tasks-toggle:not(:checked))_#tasks-panel]:hidden">
+        <!-- Page header (sits on the page background) -->
+        <header class="flex h-14 shrink-0 items-center gap-x-3">
+          <!-- Sidebar toggle (no JS: hidden checkbox + :has() on the page container) -->
+          <label title="Menu" class="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-gray-500 hover:bg-white/60 hover:text-gray-700 has-focus-visible:outline-2 has-focus-visible:outline-accent">
+            <input id="sidebar-toggle" type="checkbox" checked class="sr-only">
+            <span class="sr-only">Show sidebar</span>
+            <svg class="size-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
+          </label>
+
+
+          <div class="flex min-w-0 items-center gap-x-2">
+            <!-- Date navigation: previous / today / next -->
+            <div class="flex h-9 items-center rounded-lg bg-white/60 p-0.5">
+              <button type="button" class="flex h-full w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-white hover:text-gray-900">
+                <span class="sr-only">Previous week</span>
+                <svg class="size-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 18l-6-6 6-6"/></svg>
+              </button>
+              <button type="button" class="h-full rounded-lg px-2.5 text-sm font-semibold text-gray-900 hover:bg-white">Today</button>
+              <button type="button" class="flex h-full w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-white hover:text-gray-900">
+                <span class="sr-only">Next week</span>
+                <svg class="size-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg>
+              </button>
+            </div>
+
+            <h1 class="ml-1 truncate text-lg font-semibold text-gray-900">October 5 – 9, 2026</h1>
+          </div>
+
+          <div class="ml-auto flex shrink-0 items-center gap-x-2">
+            <button type="button" class="flex size-9 items-center justify-center rounded-lg text-gray-500 hover:bg-white/60 hover:text-gray-700">
+              <span class="sr-only">Search</span>
+              <svg class="size-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="M21 21l-4.3-4.3"/></svg>
+            </button>
+            <button type="button" class="flex size-9 items-center justify-center rounded-lg text-gray-500 hover:bg-white/60 hover:text-gray-700">
+              <span class="sr-only">Settings</span>
+              <svg class="size-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 0 1 1.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.559.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.894.149c-.424.07-.764.383-.929.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 0 1-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.398.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 0 1-.12-1.45l.527-.737c.25-.35.272-.806.108-1.204-.165-.397-.506-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.108-1.204l-.526-.738a1.125 1.125 0 0 1 .12-1.45l.773-.773a1.125 1.125 0 0 1 1.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
+            </button>
+
+            <!-- View switcher -->
+            <div class="flex h-9 rounded-lg bg-white/60 p-0.5">
+              <a href="agenda.html" class="flex items-center rounded-lg px-3 text-sm font-medium text-gray-600 hover:text-gray-900">Agenda</a>
+              <a href="day.html" class="flex items-center rounded-lg px-3 text-sm font-medium text-gray-600 hover:text-gray-900">Day</a>
+              <a href="work-week.html" aria-current="page" class="flex items-center rounded-lg bg-white px-3 text-sm font-medium whitespace-nowrap text-gray-900">Work week</a>
+              <a href="index.html" class="flex items-center rounded-lg px-3 text-sm font-medium text-gray-600 hover:text-gray-900">Week</a>
+              <a href="month.html" class="flex items-center rounded-lg px-3 text-sm font-medium text-gray-600 hover:text-gray-900">Month</a>
+            </div>
+
+            <!-- Tasks panel toggle (no JS: hidden checkbox + :has() on the column) -->
+            <label title="Tasks" class="flex size-9 cursor-pointer items-center justify-center rounded-lg text-gray-500 hover:bg-white/60 hover:text-gray-700 has-checked:bg-white has-checked:text-gray-900 has-focus-visible:outline-2 has-focus-visible:outline-accent">
+              <input id="tasks-toggle" type="checkbox" checked class="sr-only">
+              <span class="sr-only">Show tasks panel</span>
+              <svg class="size-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+            </label>
+
+            <button type="button" class="inline-flex h-9 items-center gap-x-1.5 rounded-lg bg-gray-900 px-3 text-sm font-semibold text-white hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900">
+              <svg class="-ml-0.5 size-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
+              Create
+            </button>
+
+          </div>
+        </header>
+
+      <div class="flex min-h-0 flex-1 gap-x-2">
+        <!-- Calendar card -->
+        <div class="flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl bg-white">
+          <!-- Main area: calendar -->
+          <main class="min-h-0 flex-1 overflow-auto px-2 pb-2">
+            <!-- Week view -->
+            <div id="calendar-view" class="min-w-[640px]">
+              <!-- Day headers + all-day events (sticky) -->
+              <div class="sticky top-0 z-20 border-b border-gray-200 bg-white pb-0.5">
+                <div class="grid grid-cols-[3.5rem_repeat(5,minmax(0,1fr))]">
+                  <div></div>
+                  <div class="flex flex-col items-center py-2">
+                    <span class="text-sm font-medium text-gray-500">Monday</span>
+                    <span class="mx-auto mt-1 flex size-8 items-center justify-center rounded-lg text-base font-semibold text-gray-900">5</span>
+                  </div>
+                  <div class="flex flex-col items-center py-2">
+                    <span class="text-sm font-medium text-gray-500">Tuesday</span>
+                    <span class="mx-auto mt-1 flex size-8 items-center justify-center rounded-lg text-base font-semibold text-gray-900">6</span>
+                  </div>
+                  <div class="flex flex-col items-center py-2">
+                    <span class="text-sm font-medium text-gray-500">Wednesday</span>
+                    <span class="mx-auto mt-1 flex size-8 items-center justify-center rounded-lg text-base font-semibold text-gray-900">7</span>
+                  </div>
+                  <div class="flex flex-col items-center py-2">
+                    <span class="text-sm font-medium text-gray-500">Thursday</span>
+                    <span class="mx-auto mt-1 flex size-8 items-center justify-center rounded-lg text-base font-semibold text-gray-900">8</span>
+                  </div>
+                  <div class="flex flex-col items-center py-2">
+                    <span class="text-sm font-medium text-accent">Friday</span>
+                    <span class="mx-auto mt-1 flex size-8 items-center justify-center rounded-full bg-accent text-base font-semibold text-white">9</span>
+                  </div>
+                </div>
+                <div class="grid grid-cols-[3.5rem_repeat(5,minmax(0,1fr))] mt-1 items-start">
+                  <span class="pr-2 text-right text-[11px] leading-6 text-gray-400">All day</span>
+                  <div class="min-h-6 space-y-0.5">
+                    <a href="#" class="block truncate rounded-lg px-2 py-0.5 text-xs font-semibold bg-cal-work hover:brightness-110 text-white">Release v2.0</a>
+                  </div>
+                  <div class="min-h-6 space-y-0.5">
+                    <a href="#" class="block truncate rounded-lg px-2 py-0.5 text-xs font-semibold bg-cal-birthdays hover:brightness-110 text-white">Ana's birthday</a>
+                  </div>
+                  <div class="min-h-6"></div>
+                  <div class="min-h-6"></div>
+                  <div class="min-h-6"></div>
+                </div>
+              </div>
+
+              <!-- Time grid -->
+              <div id="time-grid" class="grid h-[1440px] grid-cols-[3.5rem_repeat(5,minmax(0,1fr))]">
+                <div class="relative">
+                  <span class="absolute right-2 top-[60px] -translate-y-1/2 text-[11px] text-gray-400">01:00</span>
+                  <span class="absolute right-2 top-[120px] -translate-y-1/2 text-[11px] text-gray-400">02:00</span>
+                  <span class="absolute right-2 top-[180px] -translate-y-1/2 text-[11px] text-gray-400">03:00</span>
+                  <span class="absolute right-2 top-[240px] -translate-y-1/2 text-[11px] text-gray-400">04:00</span>
+                  <span class="absolute right-2 top-[300px] -translate-y-1/2 text-[11px] text-gray-400">05:00</span>
+                  <span class="absolute right-2 top-[360px] -translate-y-1/2 text-[11px] text-gray-400">06:00</span>
+                  <span class="absolute right-2 top-[420px] -translate-y-1/2 text-[11px] text-gray-400">07:00</span>
+                  <span class="absolute right-2 top-[480px] -translate-y-1/2 text-[11px] text-gray-400">08:00</span>
+                  <span class="absolute right-2 top-[540px] -translate-y-1/2 text-[11px] text-gray-400">09:00</span>
+                  <span class="absolute right-2 top-[600px] -translate-y-1/2 text-[11px] text-gray-400">10:00</span>
+                  <span class="absolute right-2 top-[660px] -translate-y-1/2 text-[11px] text-gray-400">11:00</span>
+                  <span class="absolute right-2 top-[720px] -translate-y-1/2 text-[11px] text-gray-400">12:00</span>
+                  <span class="absolute right-2 top-[780px] -translate-y-1/2 text-[11px] text-gray-400">13:00</span>
+                  <span class="absolute right-2 top-[840px] -translate-y-1/2 text-[11px] text-gray-400">14:00</span>
+                  <span class="absolute right-2 top-[900px] -translate-y-1/2 text-[11px] text-gray-400">15:00</span>
+                  <span class="absolute right-2 top-[960px] -translate-y-1/2 text-[11px] text-gray-400">16:00</span>
+                  <span class="absolute right-2 top-[1020px] -translate-y-1/2 text-[11px] text-gray-400">17:00</span>
+                  <span class="absolute right-2 top-[1080px] -translate-y-1/2 text-[11px] text-gray-400">18:00</span>
+                  <span class="absolute right-2 top-[1140px] -translate-y-1/2 text-[11px] text-gray-400">19:00</span>
+                  <span class="absolute right-2 top-[1200px] -translate-y-1/2 text-[11px] text-gray-400">20:00</span>
+                  <span class="absolute right-2 top-[1260px] -translate-y-1/2 text-[11px] text-gray-400">21:00</span>
+                  <span class="absolute right-2 top-[1320px] -translate-y-1/2 text-[11px] text-gray-400">22:00</span>
+                  <span class="absolute right-2 top-[1380px] -translate-y-1/2 text-[11px] text-gray-400">23:00</span>
+                </div>
+                  <!-- Mon 5 -->
+                  <div class="relative border-l border-gray-200 bg-[repeating-linear-gradient(to_bottom,var(--color-gray-200)_0_1px,transparent_1px_60px)]">
+                    <!-- Daily Standup (10 min, shown with a minimum height) -->
+                    <a href="#" class="absolute inset-x-0.5 top-[620px] @container z-10 flex h-4 items-center gap-x-1 overflow-hidden rounded-lg bg-cal-work px-1.5 text-[10px] leading-none hover:brightness-110">
+                      <span class="min-w-0 truncate font-semibold text-white">Daily Standup</span>
+                      <span class="ml-auto hidden shrink-0 text-[11px] text-white/80 @[8rem]:inline"><time datetime="2026-10-05T10:20">10:20</time>–<time datetime="2026-10-05T10:30">10:30</time></span>
+                    </a>
+                    <a href="#" class="absolute inset-x-0.5 top-[540px] h-[58px] overflow-hidden rounded-lg px-2 py-1 text-xs bg-cal-work hover:brightness-110">
+                      <p class="truncate font-semibold text-white">Weekly planning</p>
+                      <p class="truncate text-[11px] text-white/80"><time datetime="2026-10-05T09:00">09:00</time>–<time datetime="2026-10-05T10:00">10:00</time></p>
+                    </a>
+                    <a href="#" class="absolute inset-x-0.5 top-[750px] h-[58px] overflow-hidden rounded-lg px-2 py-1 text-xs bg-cal-personal hover:brightness-110">
+                      <p class="truncate font-semibold text-white">Lunch with Ana</p>
+                      <p class="truncate text-[11px] text-white/80"><time datetime="2026-10-05T12:30">12:30</time>–<time datetime="2026-10-05T13:30">13:30</time></p>
+                    </a>
+                    <a href="#" class="absolute inset-x-0.5 top-[1020px] flex h-[22px] items-center gap-x-1.5 overflow-hidden rounded-lg bg-gray-100 px-2 text-xs hover:bg-gray-200">
+                      <span class="size-3 shrink-0 rounded-sm bg-violet-600/20"></span>
+                      <span class="truncate font-medium text-gray-800">Send invoice</span>
+                    </a>
+                  </div>
+                  <!-- Tue 6 -->
+                  <div class="relative border-l border-gray-200 bg-[repeating-linear-gradient(to_bottom,var(--color-gray-200)_0_1px,transparent_1px_60px)]">
+                    <!-- Daily Standup (10 min, shown with a minimum height) -->
+                    <a href="#" class="absolute left-1/2 right-0.5 ring-1 ring-white top-[600px] @container z-10 flex h-4 items-center gap-x-1 overflow-hidden rounded-lg bg-cal-work px-1.5 text-[10px] leading-none hover:brightness-110">
+                      <span class="min-w-0 truncate font-semibold text-white">Daily Standup</span>
+                      <span class="ml-auto hidden shrink-0 text-[11px] text-white/80 @[8rem]:inline"><time datetime="2026-10-06T10:00">10:00</time>–<time datetime="2026-10-06T10:10">10:10</time></span>
+                    </a>
+                    <a href="#" class="absolute inset-x-0.5 top-[600px] h-[88px] overflow-hidden rounded-lg px-2 py-1 text-xs bg-cal-work hover:brightness-110">
+                      <p class="truncate font-semibold text-white">Design review</p>
+                      <p class="truncate text-[11px] text-white/80"><time datetime="2026-10-06T10:00">10:00</time>–<time datetime="2026-10-06T11:30">11:30</time></p>
+                    </a>
+                    <a href="#" class="absolute inset-x-0.5 top-[900px] h-[58px] overflow-hidden rounded-lg px-2 py-1 text-xs bg-cal-personal hover:brightness-110">
+                      <p class="truncate font-semibold text-white">Dentist</p>
+                      <p class="truncate text-[11px] text-white/80"><time datetime="2026-10-06T15:00">15:00</time>–<time datetime="2026-10-06T16:00">16:00</time></p>
+                    </a>
+                    <a href="#" class="absolute inset-x-0.5 top-[540px] flex h-[22px] items-center gap-x-1.5 overflow-hidden rounded-lg bg-gray-100 px-2 text-xs hover:bg-gray-200">
+                      <span class="flex size-3 shrink-0 items-center justify-center rounded-sm bg-sky-500 text-white"><svg class="size-2" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 14 14" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5 5.75 10.25 11 4"/></svg></span>
+                      <span class="truncate text-gray-400 line-through">Buy groceries</span>
+                    </a>
+                  </div>
+                  <!-- Wed 7 -->
+                  <div class="relative border-l border-gray-200 bg-[repeating-linear-gradient(to_bottom,var(--color-gray-200)_0_1px,transparent_1px_60px)]">
+                    <!-- Daily Standup (10 min, shown with a minimum height) -->
+                    <a href="#" class="absolute inset-x-0.5 top-[600px] @container z-10 flex h-4 items-center gap-x-1 overflow-hidden rounded-lg bg-cal-work px-1.5 text-[10px] leading-none hover:brightness-110">
+                      <span class="min-w-0 truncate font-semibold text-white">Daily Standup</span>
+                      <span class="ml-auto hidden shrink-0 text-[11px] text-white/80 @[8rem]:inline"><time datetime="2026-10-07T10:00">10:00</time>–<time datetime="2026-10-07T10:10">10:10</time></span>
+                    </a>
+                    <a href="#" class="absolute inset-x-0.5 top-[840px] h-[88px] overflow-hidden rounded-lg px-2 py-1 text-xs bg-cal-work hover:brightness-110">
+                      <p class="truncate font-semibold text-white">Client call</p>
+                      <p class="truncate text-[11px] text-white/80"><time datetime="2026-10-07T14:00">14:00</time>–<time datetime="2026-10-07T15:30">15:30</time></p>
+                    </a>
+                    <!-- 3 tasks at the same time, inline -->
+                    <div class="absolute inset-x-0.5 top-[660px] flex h-[22px] gap-x-0.5 text-[10px]">
+                      <a href="#" title="Reply to emails" class="flex min-w-0 flex-1 items-center gap-x-0.5 rounded-lg bg-gray-100 px-0.5 hover:bg-gray-200">
+                        <span class="size-2.5 shrink-0 rounded-sm bg-violet-600/20"></span>
+                        <span class="truncate font-medium text-gray-800">Reply to emails</span>
+                      </a>
+                      <a href="#" title="Update roadmap" class="flex min-w-0 flex-1 items-center gap-x-0.5 rounded-lg bg-gray-100 px-0.5 hover:bg-gray-200">
+                        <span class="size-2.5 shrink-0 rounded-sm bg-violet-600/20"></span>
+                        <span class="truncate font-medium text-gray-800">Update roadmap</span>
+                      </a>
+                      <a href="#" title="Order printer ink" class="flex min-w-0 flex-1 items-center gap-x-0.5 rounded-lg bg-gray-100 px-0.5 hover:bg-gray-200">
+                        <span class="size-2.5 shrink-0 rounded-sm bg-sky-500/20"></span>
+                        <span class="truncate font-medium text-gray-800">Order printer ink</span>
+                      </a>
+                    </div>
+                  </div>
+                  <!-- Thu 8 -->
+                  <div class="relative border-l border-gray-200 bg-[repeating-linear-gradient(to_bottom,var(--color-gray-200)_0_1px,transparent_1px_60px)]">
+                    <!-- Daily Standup (10 min, shown with a minimum height) -->
+                    <a href="#" class="absolute inset-x-0.5 top-[600px] @container z-10 flex h-4 items-center gap-x-1 overflow-hidden rounded-lg bg-cal-work px-1.5 text-[10px] leading-none hover:brightness-110">
+                      <span class="min-w-0 truncate font-semibold text-white">Daily Standup</span>
+                      <span class="ml-auto hidden shrink-0 text-[11px] text-white/80 @[8rem]:inline"><time datetime="2026-10-08T10:00">10:00</time>–<time datetime="2026-10-08T10:10">10:10</time></span>
+                    </a>
+                    <a href="#" class="absolute inset-x-0.5 top-[480px] h-[58px] overflow-hidden rounded-lg px-2 py-1 text-xs bg-cal-personal hover:brightness-110">
+                      <p class="truncate font-semibold text-white">Gym</p>
+                      <p class="truncate text-[11px] text-white/80"><time datetime="2026-10-08T08:00">08:00</time>–<time datetime="2026-10-08T09:00">09:00</time></p>
+                    </a>
+                    <a href="#" class="absolute inset-x-0.5 top-[780px] h-[58px] overflow-hidden rounded-lg px-2 py-1 text-xs bg-cal-work hover:brightness-110">
+                      <p class="truncate font-semibold text-white">1:1 with Marko</p>
+                      <p class="truncate text-[11px] text-white/80"><time datetime="2026-10-08T13:00">13:00</time>–<time datetime="2026-10-08T14:00">14:00</time></p>
+                    </a>
+                  </div>
+                  <!-- Fri 9 -->
+                  <div class="relative border-l border-gray-200 bg-[repeating-linear-gradient(to_bottom,var(--color-gray-200)_0_1px,transparent_1px_60px)]">
+                    <!-- Daily Standup (10 min, shown with a minimum height) -->
+                    <a href="#" class="absolute left-1/2 right-0.5 ring-1 ring-white top-[600px] @container z-10 flex h-4 items-center gap-x-1 overflow-hidden rounded-lg bg-cal-work px-1.5 text-[10px] leading-none hover:brightness-110">
+                      <span class="min-w-0 truncate font-semibold text-white">Daily Standup</span>
+                      <span class="ml-auto hidden shrink-0 text-[11px] text-white/80 @[8rem]:inline"><time datetime="2026-10-09T10:00">10:00</time>–<time datetime="2026-10-09T10:10">10:10</time></span>
+                    </a>
+                    <a href="#" class="absolute inset-x-0.5 top-[570px] h-[58px] overflow-hidden rounded-lg px-2 py-1 text-xs bg-cal-work hover:brightness-110">
+                      <p class="truncate font-semibold text-white">Sprint planning</p>
+                      <p class="truncate text-[11px] text-white/80"><time datetime="2026-10-09T09:30">09:30</time>–<time datetime="2026-10-09T10:30">10:30</time></p>
+                    </a>
+                    <a href="#" class="absolute inset-x-0.5 top-[960px] h-[88px] overflow-hidden rounded-lg px-2 py-1 text-xs bg-cal-work hover:brightness-110">
+                      <p class="truncate font-semibold text-white">Coffee with the team</p>
+                      <p class="truncate text-[11px] text-white/80"><time datetime="2026-10-09T16:00">16:00</time>–<time datetime="2026-10-09T17:30">17:30</time></p>
+                    </a>
+                    <a href="#" class="absolute inset-x-0.5 top-[720px] flex h-[22px] items-center gap-x-1.5 overflow-hidden rounded-lg bg-gray-100 px-2 text-xs hover:bg-gray-200">
+                      <span class="size-3 shrink-0 rounded-sm bg-violet-600/20"></span>
+                      <span class="truncate font-medium text-gray-800">Prepare slides</span>
+                    </a>
+                    <!-- Current time -->
+                    <div class="pointer-events-none absolute inset-x-0 top-[860px] z-10 flex items-center">
+                      <span class="-ml-1 size-2 rounded-lg bg-accent"></span>
+                      <span class="h-0.5 flex-1 bg-accent"></span>
+                    </div>
+                  </div>
+              </div>
+            </div>
+          </main>
+        </div>
+
+        <!-- Tasks card -->
+        <aside id="tasks-panel" class="flex w-72 shrink-0 flex-col overflow-hidden rounded-2xl bg-white">
+          <div class="flex h-16 shrink-0 items-center px-4">
+            <!-- List picker -->
+            <button type="button" class="flex items-center gap-x-2 rounded-lg bg-gray-100 px-3 py-1.5 text-sm font-semibold text-gray-900 hover:bg-gray-200">
+              <span class="size-2.5 rounded-sm bg-violet-500"></span>
+              My tasks
+              <svg class="size-4 text-gray-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></svg>
+            </button>
+          </div>
+
+          <div class="flex-1 overflow-y-auto px-2 pb-4">
+            <button type="button" class="flex w-full items-center gap-x-3 rounded-lg px-2 py-2 text-sm font-semibold text-accent hover:bg-accent/10">
+              <svg class="size-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/></svg>
+              Add a task
+            </button>
+
+            <ul id="tasks-list" class="mt-1 space-y-0.5">
+              <li class="group/task flex items-start gap-x-3 rounded-lg p-2 hover:bg-gray-50">
+                <span class="grid h-5 w-4 shrink-0 place-items-center">
+                  <input type="checkbox" aria-label="Mark as completed: Send invoice" class="peer col-start-1 row-start-1 size-4 cursor-pointer appearance-none rounded-full bg-violet-500/20 checked:bg-violet-500">
+                  <svg class="pointer-events-none col-start-1 row-start-1 hidden size-3.5 text-white peer-checked:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 14 14" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5 5.75 10.25 11 4"/></svg>
+                </span>
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-medium text-gray-900 group-has-checked/task:text-gray-400 group-has-checked/task:line-through">Send invoice</p>
+                  <p class="mt-1.5"><span class="inline-flex items-center gap-x-1 rounded-lg px-1.5 py-0.5 text-[11px] font-medium bg-red-50 text-red-600">Mon, Oct 5, 17:00</span></p>
+                </div>
+              </li>
+              <li class="group/task flex items-start gap-x-3 rounded-lg p-2 hover:bg-gray-50">
+                <span class="grid h-5 w-4 shrink-0 place-items-center">
+                  <input type="checkbox" aria-label="Mark as completed: Reply to emails" class="peer col-start-1 row-start-1 size-4 cursor-pointer appearance-none rounded-full bg-violet-500/20 checked:bg-violet-500">
+                  <svg class="pointer-events-none col-start-1 row-start-1 hidden size-3.5 text-white peer-checked:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 14 14" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5 5.75 10.25 11 4"/></svg>
+                </span>
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-medium text-gray-900 group-has-checked/task:text-gray-400 group-has-checked/task:line-through">Reply to emails</p>
+                  <p class="mt-1.5"><span class="inline-flex items-center gap-x-1 rounded-lg px-1.5 py-0.5 text-[11px] font-medium bg-red-50 text-red-600">Wed, Oct 7, 11:00</span></p>
+                </div>
+              </li>
+              <li class="group/task flex items-start gap-x-3 rounded-lg p-2 hover:bg-gray-50">
+                <span class="grid h-5 w-4 shrink-0 place-items-center">
+                  <input type="checkbox" aria-label="Mark as completed: Update roadmap" class="peer col-start-1 row-start-1 size-4 cursor-pointer appearance-none rounded-full bg-violet-500/20 checked:bg-violet-500">
+                  <svg class="pointer-events-none col-start-1 row-start-1 hidden size-3.5 text-white peer-checked:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 14 14" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5 5.75 10.25 11 4"/></svg>
+                </span>
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-medium text-gray-900 group-has-checked/task:text-gray-400 group-has-checked/task:line-through">Update roadmap</p>
+                  <p class="mt-1.5"><span class="inline-flex items-center gap-x-1 rounded-lg px-1.5 py-0.5 text-[11px] font-medium bg-red-50 text-red-600">Wed, Oct 7, 11:00</span></p>
+                </div>
+              </li>
+              <li class="group/task flex items-start gap-x-3 rounded-lg p-2 hover:bg-gray-50">
+                <span class="grid h-5 w-4 shrink-0 place-items-center">
+                  <input type="checkbox" aria-label="Mark as completed: Prepare slides" class="peer col-start-1 row-start-1 size-4 cursor-pointer appearance-none rounded-full bg-violet-500/20 checked:bg-violet-500">
+                  <svg class="pointer-events-none col-start-1 row-start-1 hidden size-3.5 text-white peer-checked:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 14 14" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5 5.75 10.25 11 4"/></svg>
+                </span>
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-medium text-gray-900 group-has-checked/task:text-gray-400 group-has-checked/task:line-through">Prepare slides</p>
+                  <p class="mt-1.5"><span class="inline-flex items-center gap-x-1 rounded-lg px-1.5 py-0.5 text-[11px] font-medium bg-accent/10 text-accent">Today, 12:00</span></p>
+                </div>
+              </li>
+              <li class="group/task flex items-start gap-x-3 rounded-lg p-2 hover:bg-gray-50">
+                <span class="grid h-5 w-4 shrink-0 place-items-center">
+                  <input type="checkbox" aria-label="Mark as completed: Plan Q4 goals" class="peer col-start-1 row-start-1 size-4 cursor-pointer appearance-none rounded-full bg-violet-500/20 checked:bg-violet-500">
+                  <svg class="pointer-events-none col-start-1 row-start-1 hidden size-3.5 text-white peer-checked:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 14 14" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5 5.75 10.25 11 4"/></svg>
+                </span>
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-medium text-gray-900 group-has-checked/task:text-gray-400 group-has-checked/task:line-through">Plan Q4 goals</p>
+                </div>
+              </li>
+              <li class="group/task flex items-start gap-x-3 rounded-lg p-2 hover:bg-gray-50">
+                <span class="grid h-5 w-4 shrink-0 place-items-center">
+                  <input type="checkbox" aria-label="Mark as completed: Water the plants" class="peer col-start-1 row-start-1 size-4 cursor-pointer appearance-none rounded-full bg-violet-500/20 checked:bg-violet-500">
+                  <svg class="pointer-events-none col-start-1 row-start-1 hidden size-3.5 text-white peer-checked:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 14 14" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5 5.75 10.25 11 4"/></svg>
+                </span>
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-medium text-gray-900 group-has-checked/task:text-gray-400 group-has-checked/task:line-through">Water the plants</p>
+                  <p class="mt-1.5"><span class="inline-flex items-center gap-x-1 rounded-lg px-1.5 py-0.5 text-[11px] font-medium bg-gray-100 text-gray-600">Sun, Oct 11<svg class="size-3" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg></span></p>
+                </div>
+              </li>
+            </ul>
+
+            <details class="group mt-2">
+              <summary class="flex cursor-pointer list-none items-center gap-x-2 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 [&::-webkit-details-marker]:hidden">
+                <svg class="size-4 text-gray-400 -rotate-90 transition-transform group-open:rotate-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></svg>
+                Completed (1)
+              </summary>
+              <ul class="mt-1 space-y-0.5">
+                <li class="group/task flex items-start gap-x-3 rounded-lg p-2 hover:bg-gray-50">
+                  <span class="grid h-5 w-4 shrink-0 place-items-center">
+                    <input type="checkbox" checked aria-label="Mark as completed: Book dentist appointment" class="peer col-start-1 row-start-1 size-4 cursor-pointer appearance-none rounded-full bg-violet-500/20 checked:bg-violet-500">
+                    <svg class="pointer-events-none col-start-1 row-start-1 hidden size-3.5 text-white peer-checked:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 14 14" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5 5.75 10.25 11 4"/></svg>
+                  </span>
+                  <div class="min-w-0 flex-1">
+                    <p class="text-sm text-gray-400 line-through">Book dentist appointment</p>
+                    <p class="mt-0.5 text-xs text-gray-400">Completed Tue, Oct 6</p>
+                  </div>
+                </li>
+              </ul>
+            </details>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Start the week view at 07:00 (60px per hour); earlier hours stay reachable by scrolling up.
+    // Waits until the Tailwind CDN has applied the grid height, otherwise the scroll gets clamped.
+    const main = document.querySelector('main')
+    const grid = document.getElementById('time-grid')
+    ;(function scrollToStart() {
+      if (grid.offsetHeight >= 24 * 60) main.scrollTop = 7 * 60 - 8
+      else requestAnimationFrame(scrollToStart)
+    })()
+  </script>
+</body>
+</html>
