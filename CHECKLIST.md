@@ -111,22 +111,22 @@ samo objekata (događaja i zadataka) unutar postojećih kolekcija.
 
 ## 7. Prikazi kalendara (port mockup-a u komponente)
 
-- [ ] Zajednička `TimeGrid` komponenta (sati, linije, kolone dana, skrol na 07:00 kao u mockup-u)
-- [ ] Red celodnevnih događaja (sticky), višednevni celodnevni koji se protežu preko kolona
-- [ ] Pozicioniranje događaja po vremenu (top/height iz DTSTART/DTEND)
-- [ ] Layout preklapajućih događaja (kolone / širina kao Google Calendar)
-- [ ] Indikator trenutnog vremena (crvena linija) i isticanje današnjeg dana
-- [ ] `EventChip` komponenta (boja kalendara, naslov, vreme, truncation)
-- [ ] Week prikaz (`index.html`)
-- [ ] Day prikaz (`day.html`)
-- [ ] Work-week prikaz (`work-week.html`, Pon–Pet)
-- [ ] Month prikaz (`month.html`): mreža 6×7, „+N more" overflow, višednevni događaji preko ćelija
-- [ ] Agenda prikaz (`agenda.html`): grupisanje po danu za izabrani opseg, prazni dani
-- [ ] Tasks panel u kalendar prikazu (`#tasks-panel` iz mockup-a) sa zadacima sa rokom
-- [ ] Prikaz zadataka sa `DUE` u kalendarskoj mreži (opciono, kao u `#draft-task` mockup-u)
-- [ ] Klik na prazan slot otvara create popup sa prepopunjenim vremenom
-- [ ] Klik na događaj otvara detalje (popover) sa Edit / Delete
-- [ ] Loading skeleton i prazna stanja za svaki prikaz
+- [x] Zajednička `TimeGrid` komponenta (sati, linije, kolone dana, skrol na 07:00 kao u mockup-u)
+- [x] Red celodnevnih događaja (sticky), višednevni celodnevni koji se protežu preko kolona
+- [x] Pozicioniranje događaja po vremenu (top/height iz DTSTART/DTEND)
+- [x] Layout preklapajućih događaja (kolone / širina kao Google Calendar)
+- [x] Indikator trenutnog vremena (crvena linija) i isticanje današnjeg dana
+- [x] `EventChip` komponenta (boja kalendara, naslov, vreme, truncation)
+- [x] Week prikaz (`index.html`)
+- [x] Day prikaz (`day.html`)
+- [x] Work-week prikaz (`work-week.html`, Pon–Pet)
+- [x] Month prikaz (`month.html`): mreža 6×7, „+N more" overflow, višednevni događaji preko ćelija
+- [x] Agenda prikaz (`agenda.html`): grupisanje po danu za izabrani opseg, prazni dani
+- [x] Tasks panel u kalendar prikazu (`#tasks-panel` iz mockup-a) sa zadacima sa rokom
+- [x] Prikaz zadataka sa `DUE` u kalendarskoj mreži (kao u `#draft-task` mockup-u)
+- [x] Klik na prazan slot otvara create popup sa prepopunjenim vremenom
+- [x] Klik na događaj otvara detalje (popover) sa Edit / Delete
+- [x] Loading skeleton i prazna stanja za svaki prikaz
 
 ## 8. Kreiranje i izmena događaja (`new-event.html`)
 

@@ -66,8 +66,8 @@ describe('app shell', () => {
     await flushPromises()
     expect(wrapper.find('aside#sidebar').text()).toContain('Work')
     expect(wrapper.find('aside#sidebar').text()).toContain('My tasks')
-    expect(wrapper.find('[data-testid="instances"]').text()).toContain('Design review')
-    expect(wrapper.find('[data-testid="instances"]').text()).toContain('Gym')
+    expect(wrapper.find('[data-testid="time-grid"]').text()).toContain('Design review')
+    expect(wrapper.find('[data-testid="time-grid"]').text()).toContain('Gym')
     expect(wrapper.find('#tasks-panel').text()).toContain('Send invoice')
 
     // Hide Personal in the sidebar → Gym disappears without a refetch.
@@ -77,7 +77,7 @@ describe('app shell', () => {
       .find((b) => b.element.parentElement?.parentElement?.textContent?.includes('Personal'))!
     ;(personalBox.element as HTMLInputElement).checked = false
     await personalBox.trigger('change')
-    expect(wrapper.find('[data-testid="instances"]').text()).not.toContain('Gym')
+    expect(wrapper.find('[data-testid="time-grid"]').text()).not.toContain('Gym')
     expect(client.fetchEvents).toHaveBeenCalledTimes(fetches)
 
     // Next week via the toolbar updates the URL and title.
@@ -91,6 +91,7 @@ describe('app shell', () => {
     await flushPromises()
     expect(router.currentRoute.value.params.view).toBe('agenda')
     expect(wrapper.find('h1').text()).toBe('October 2026')
+    expect(wrapper.find('[data-testid="agenda-view"]').text()).toContain('Design review')
     await wrapper.find('time[datetime="2026-10-07"]').element.parentElement!.click()
     await flushPromises()
     expect(router.currentRoute.value.fullPath).toBe('/agenda/2026-10-07')

@@ -1,19 +1,22 @@
 <script setup lang="ts">
-/**
- * Calendar page: toolbar, the active view card and the tasks panel.
- * The per-view grids are added in CHECKLIST.md §7; until then the card lists loaded instances.
- */
+/** Calendar page: toolbar, the active view (day / work week / week / month / agenda) and the tasks panel. */
 import { computed, watch } from 'vue'
 
+import type { EventInstance, Task } from '@/api/ical'
 import { useCalendarRoute } from '@/composables/useCalendarRoute'
-import { formatShortDateTime, formatTime } from '@/lib/format'
+import { eachDay } from '@/lib/dates'
 import { useCalendarsStore } from '@/stores/calendars'
 import { useEventsStore } from '@/stores/events'
 import { useTasksStore } from '@/stores/tasks'
 import { useUiStore } from '@/stores/ui'
+import AgendaView from '@/components/calendar/AgendaView.vue'
+import EventPopover from '@/components/calendar/EventPopover.vue'
+import MonthView from '@/components/calendar/MonthView.vue'
+import TasksPanel from '@/components/calendar/TasksPanel.vue'
+import TimeGrid from '@/components/calendar/TimeGrid.vue'
 import CalendarToolbar from '@/components/shell/CalendarToolbar.vue'
 
-useCalendarRoute()
+const nav = useCalendarRoute()
 const ui = useUiStore()
 const calendars = useCalendarsStore()
 const events = useEventsStore()
@@ -31,77 +34,115 @@ watch(
 )
 
 const instances = computed(() => events.instancesFor(ui.visibleRange))
-const loading = computed(() => events.isLoading(ui.visibleRange))
-const loadError = computed(() => events.loadError(ui.visibleRange))
 const dueTasks = computed(() => tasks.tasksDueIn(ui.visibleRange))
+const loading = computed(() => calendars.status === 'loading' || events.isLoading(ui.visibleRange))
+const loadError = computed(() => events.loadError(ui.visibleRange))
+const days = computed(() => eachDay(ui.visibleRange))
+const isGrid = computed(() => ui.view === 'day' || ui.view === 'week' || ui.view === 'work-week')
+const selectedKey = computed(() =>
+  ui.selection ? `${ui.selection.objectUrl}|${ui.selection.recurrenceId ?? ''}` : null,
+)
+const selectedInstance = computed(() =>
+  ui.selection
+    ? instances.value.find(
+        (i) =>
+          i.objectUrl === ui.selection!.objectUrl &&
+          (i.recurrenceId?.toString() ?? null) === ui.selection!.recurrenceId,
+      )
+    : undefined,
+)
+
+const colorFor = (url: string) => calendars.colorFor(url)
+const nameFor = (url: string) => calendars.get(url)?.displayName ?? ''
+
+function anchorOf(el: HTMLElement) {
+  const r = el.getBoundingClientRect()
+  return { x: r.left, y: r.top, width: r.width, height: r.height }
+}
+function selectEvent(instance: EventInstance, el: HTMLElement) {
+  ui.select({
+    objectUrl: instance.objectUrl,
+    recurrenceId: instance.recurrenceId?.toString() ?? null,
+    anchor: anchorOf(el),
+  })
+}
+function selectTask(task: Task) {
+  ui.openCreate({
+    kind: 'task',
+    collectionUrl: task.collectionUrl,
+    edit: { objectUrl: task.objectUrl, recurrenceId: null },
+  })
+}
+function createAt(start: Date, end: Date, allDay: boolean) {
+  ui.openCreate({ kind: 'event', start, end, allDay })
+}
 </script>
 
 <template>
   <CalendarToolbar />
 
   <div class="flex min-h-0 flex-1 gap-x-2">
-    <div class="flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl bg-white">
-      <main class="min-h-0 flex-1 overflow-auto px-4 py-3">
-        <p v-if="loadError" class="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-          {{ loadError }}
-        </p>
-        <p v-else-if="loading && instances.length === 0" class="text-sm text-gray-400">
-          Loading events…
-        </p>
-        <p v-else-if="instances.length === 0" class="text-sm text-gray-400">
-          No events in this period.
-        </p>
-        <ul v-else class="space-y-1" data-testid="instances">
-          <li
-            v-for="i in instances"
-            :key="`${i.objectUrl}|${i.recurrenceId?.toString() ?? ''}`"
-            class="flex items-center gap-x-3 rounded-lg px-2 py-1.5 text-sm hover:bg-gray-50"
-          >
-            <span
-              class="size-2.5 shrink-0 rounded-sm"
-              :style="{ backgroundColor: calendars.colorFor(i.collectionUrl) }"
-            ></span>
-            <span class="w-40 shrink-0 text-gray-500">
-              {{ i.allDay ? formatShortDateTime(i.start, false) : formatShortDateTime(i.start) }}
-              <template v-if="!i.allDay"> – {{ formatTime(i.end) }}</template>
-            </span>
-            <span class="truncate font-medium text-gray-900">{{ i.summary }}</span>
-          </li>
-        </ul>
-      </main>
+    <div class="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl bg-white">
+      <p
+        v-if="loadError"
+        class="mx-2 mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+        role="alert"
+      >
+        {{ loadError }}
+      </p>
+      <div
+        v-if="loading"
+        class="pointer-events-none absolute inset-x-0 top-0 z-30 h-0.5 overflow-hidden"
+        data-testid="loading-bar"
+      >
+        <div class="h-full w-1/3 animate-pulse bg-accent"></div>
+      </div>
+
+      <TimeGrid
+        v-if="isGrid"
+        :key="ui.view"
+        :days="days"
+        :instances="instances"
+        :tasks="dueTasks"
+        :color-for="colorFor"
+        :selected-key="selectedKey"
+        @select-event="selectEvent"
+        @select-task="selectTask"
+        @create-at="createAt"
+      />
+      <MonthView
+        v-else-if="ui.view === 'month'"
+        :range="ui.visibleRange"
+        :month="ui.currentDate.getMonth()"
+        :instances="instances"
+        :tasks="dueTasks"
+        :color-for="colorFor"
+        :selected-key="selectedKey"
+        @select-event="selectEvent"
+        @select-task="selectTask"
+        @create-at="createAt"
+        @show-more="(d) => nav.go('day', d)"
+      />
+      <AgendaView
+        v-else
+        :range="ui.visibleRange"
+        :instances="instances"
+        :tasks="dueTasks"
+        :color-for="colorFor"
+        :name-for="nameFor"
+        :selected-key="selectedKey"
+        @select-event="selectEvent"
+        @select-task="selectTask"
+      />
     </div>
 
-    <aside
-      v-show="ui.tasksPanelOpen"
-      id="tasks-panel"
-      class="flex w-72 shrink-0 flex-col overflow-hidden rounded-2xl bg-white"
-    >
-      <div class="flex h-16 shrink-0 items-center px-4">
-        <span class="text-sm font-semibold text-gray-900">Tasks due</span>
-      </div>
-      <div class="flex-1 overflow-y-auto px-2 pb-4">
-        <p v-if="dueTasks.length === 0" class="px-2 text-sm text-gray-400">
-          Nothing due in this period.
-        </p>
-        <ul v-else class="space-y-0.5">
-          <li
-            v-for="t in dueTasks"
-            :key="t.objectUrl"
-            class="flex items-start gap-x-3 rounded-lg p-2 hover:bg-gray-50"
-          >
-            <span
-              class="mt-1 size-2.5 shrink-0 rounded-full"
-              :style="{ backgroundColor: calendars.colorFor(t.collectionUrl) }"
-            ></span>
-            <div class="min-w-0 flex-1">
-              <p class="truncate text-sm font-medium text-gray-900">{{ t.summary }}</p>
-              <p v-if="t.due" class="mt-1 text-[11px] text-gray-500">
-                {{ formatShortDateTime(t.due, !t.dueAllDay) }}
-              </p>
-            </div>
-          </li>
-        </ul>
-      </div>
-    </aside>
+    <TasksPanel v-show="ui.tasksPanelOpen" />
   </div>
+
+  <EventPopover
+    v-if="selectedInstance"
+    :instance="selectedInstance"
+    :anchor="ui.selection?.anchor"
+    @close="ui.select(null)"
+  />
 </template>

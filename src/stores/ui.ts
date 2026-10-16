@@ -36,12 +36,23 @@ export interface CreateDraft {
   end?: Date
   allDay?: boolean
   collectionUrl?: string
+  /** When set, the popup edits this existing object instead of creating one. */
+  edit?: Selection
+}
+
+export interface Anchor {
+  x: number
+  y: number
+  width: number
+  height: number
 }
 
 export interface Selection {
   objectUrl: string
   /** `recurrenceId.toString()` of the occurrence, when the event repeats. */
   recurrenceId: string | null
+  /** Viewport rectangle of the clicked chip, for positioning the details popover. */
+  anchor?: Anchor
 }
 
 export const useUiStore = defineStore('ui', () => {
