@@ -52,22 +52,23 @@ samo objekata (događaja i zadataka) unutar postojećih kolekcija.
 
 ## 3. CalDAV sloj (`src/api/caldav.ts`, tsdav)
 
-- [ ] Login: Basic auth, provera kredencijala PROPFIND-om na root
-- [ ] Discovery: `current-user-principal` → `calendar-home-set` → lista kolekcija
-- [ ] Metapodaci kolekcije: `displayname`, `calendar-color`, `supported-calendar-component-set` (VEVENT / VTODO), `getctag`
-- [ ] Filtriranje kolekcija po obimu iz sekcije 0: `VEVENT` → kalendar, `VTODO` → task lista, sve ostalo odbaciti
-- [ ] Unit test filtera: adresar, VJOURNAL i mešovita „Calendar and Tasks" kolekcija ne smeju da prođu
-- [ ] `calendar-query` REPORT sa `time-range` filterom za prikazani opseg datuma
-  - [ ] uključiti `expand`? NE – Radicale ne ekspanduje pouzdano, ekspanzija se radi na klijentu
-- [ ] `calendar-query` za VTODO (sve, uključujući završene, sa filterom po statusu u UI-u)
-- [ ] `calendar-multiget` po href-ovima (osvežavanje pojedinačnih objekata)
-- [ ] Kreiranje: `PUT` sa `If-None-Match: *` na `<kolekcija>/<uid>.ics`
-- [ ] Izmena: `PUT` sa `If-Match: <etag>`
-- [ ] Brisanje: `DELETE` sa `If-Match: <etag>`
-- [ ] Obrada `412 Precondition Failed` (konflikt sa iPhone izmenom) → poseban tip greške za UI
-- [ ] Obrada `401` → odjava i povratak na login
-- [ ] Osvežavanje po `getctag` promeni (polling na fokus prozora / interval) (opciono: `sync-collection` REPORT)
-- [ ] Jedinstveni `UID` generator (UUID v4) i `DTSTAMP` / `LAST-MODIFIED` ažuriranje pri svakom upisu
+- [x] Login: Basic auth, provera kredencijala PROPFIND-om na root
+- [x] Discovery: `current-user-principal` → `calendar-home-set` → lista kolekcija
+- [x] Metapodaci kolekcije: `displayname`, `calendar-color`, `supported-calendar-component-set` (VEVENT / VTODO), `getctag`
+- [x] Filtriranje kolekcija po obimu iz sekcije 0: `VEVENT` → kalendar, `VTODO` → task lista, sve ostalo odbaciti
+- [x] Unit test filtera: adresar, VJOURNAL i mešovita „Calendar and Tasks" kolekcija ne smeju da prođu
+- [x] `calendar-query` REPORT sa `time-range` filterom za prikazani opseg datuma
+  - [x] uključiti `expand`? NE – Radicale ne ekspanduje pouzdano, ekspanzija se radi na klijentu
+- [x] `calendar-query` za VTODO (sve, uključujući završene, sa filterom po statusu u UI-u)
+- [x] `calendar-multiget` po href-ovima (osvežavanje pojedinačnih objekata)
+- [x] Kreiranje: `PUT` sa `If-None-Match: *` na `<kolekcija>/<uid>.ics`
+- [x] Izmena: `PUT` sa `If-Match: <etag>`
+- [x] Brisanje: `DELETE` sa `If-Match: <etag>`
+- [x] Obrada `412 Precondition Failed` (konflikt sa iPhone izmenom) → poseban tip greške za UI
+- [x] Obrada `401` → odjava i povratak na login
+- [x] Osvežavanje po `getctag` promeni (polling na fokus prozora / interval) – `createCtagWatcher`
+  - [ ] `sync-collection` REPORT umesto pollinga (opciono)
+- [x] Jedinstveni `UID` generator (UUID v4) i `DTSTAMP` / `LAST-MODIFIED` ažuriranje pri svakom upisu
 
 ## 4. iCalendar sloj (`src/api/ical.ts`, ical.js)
 
