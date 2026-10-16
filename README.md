@@ -40,16 +40,16 @@ one address book that the app must ignore.
 
 ### Scripts
 
-| Command               | What it does                                   |
-| --------------------- | ---------------------------------------------- |
-| `npm run dev`         | Vite dev server with the `/dav` proxy          |
-| `npm run build`       | Type-check and build to `dist/`                |
-| `npm run preview`     | Serve `dist/` locally                          |
-| `npm run test:unit`   | Vitest, single run (`test:watch` for watch)    |
-| `npm run lint`        | oxlint + ESLint with autofix                   |
-| `npm run format`      | Prettier over `src/`                           |
-| `npm run radicale:*`  | `up`, `down`, `reset` the local Radicale       |
-| `npm run seed`        | Seed the local Radicale                        |
+| Command              | What it does                                |
+| -------------------- | ------------------------------------------- |
+| `npm run dev`        | Vite dev server with the `/dav` proxy       |
+| `npm run build`      | Type-check and build to `dist/`             |
+| `npm run preview`    | Serve `dist/` locally                       |
+| `npm run test:unit`  | Vitest, single run (`test:watch` for watch) |
+| `npm run lint`       | oxlint + ESLint with autofix                |
+| `npm run format`     | Prettier over `src/`                        |
+| `npm run radicale:*` | `up`, `down`, `reset` the local Radicale    |
+| `npm run seed`       | Seed the local Radicale                     |
 
 Note on `--legacy-peer-deps`: npm 10.9 fails with `Cannot read properties of null (reading 'edgesOut')`
 while resolving the ESLint 10 peer set. The flag works around it; nothing in the tree actually
@@ -57,7 +57,31 @@ conflicts.
 
 ## Production
 
-Target: `https://daisycal.home`, talking to Radicale at `https://calendar.home`. The app is served
-by nginx from a Docker image which also reverse-proxies `/dav/` to Radicale on the same origin
-(Radicale sends no CORS headers). See `CHECKLIST.md` §2; the Dockerfile and nginx config are
-added there.
+Target: `https://daisycal.home`, talking to Radicale at `https://calendar.home`.
+
+```bash
+# optional: TLS for daisycal.home itself
+cp /path/to/fullchain.pem /path/to/privkey.pem certs/
+docker compose up -d --build
+```
+
+The image (`Dockerfile`) builds the SPA and serves it with nginx, which also reverse-proxies
+`/dav/` to Radicale on the same origin (Radicale sends no CORS headers). nginx strips the prefix
+and sets `X-Script-Name: /dav`, the same trick the dev proxy uses.
+
+| Variable              | Default                 | Meaning                                                                   |
+| --------------------- | ----------------------- | ------------------------------------------------------------------------- |
+| `RADICALE_UPSTREAM`   | `https://calendar.home` | Radicale URL. Resolved per request, so nginx starts even if DNS is down.  |
+| `RADICALE_SSL_VERIFY` | `off`                   | `on` to verify the Radicale certificate.                                  |
+| `RADICALE_CA_FILE`    | system CA bundle        | CA used for verification; mount your own at `/etc/nginx/radicale-ca.pem`. |
+| `NGINX_RESOLVER`      | `127.0.0.11`            | DNS resolver for the upstream lookup (Docker DNS forwards to the host).   |
+| `DAV_BASE`            | `/dav`                  | Must match `VITE_DAV_BASE` at build time.                                 |
+
+Set them in the environment or in a `.env` file next to `docker-compose.yml`.
+
+TLS for `daisycal.home`: put `fullchain.pem` and `privkey.pem` in `certs/`. When both are present
+the container serves HTTPS on 443 and redirects HTTP; otherwise it serves plain HTTP on 80
+(`docker/nginx/entrypoint.d/30-tls.sh`). Hashed assets under `/assets/` are cached for a year,
+`index.html` and SPA routes are `no-cache`. `/healthz` is the health check endpoint.
+
+nginx config lives in `docker/nginx/templates/` and is rendered with `envsubst` at container start.

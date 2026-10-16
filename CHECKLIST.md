@@ -40,15 +40,15 @@ samo objekata (događaja i zadataka) unutar postojećih kolekcija.
 
 ## 2. Produkcija i deploy (daisycal.home)
 
-- [ ] `Dockerfile` (multi-stage): `node` build → `nginx` koji servira `dist/`
-- [ ] nginx konfiguracija:
-  - [ ] SPA fallback (`try_files ... /index.html`)
-  - [ ] reverse proxy `/dav/` → `https://calendar.home` (rešava CORS, Radicale ne šalje CORS zaglavlja)
-  - [ ] prosleđivanje `Authorization`, `If-Match`, `If-None-Match`, `Depth` zaglavlja i WebDAV metoda (PROPFIND, REPORT)
-  - [ ] TLS ka upstream-u: `proxy_ssl_verify` / mount CA sertifikata za `.home` domen
-- [ ] `docker-compose.yml` za produkciju (image, port, env `RADICALE_UPSTREAM`)
-- [ ] Upstream URL kroz env promenljivu, a ne hardkodiran u nginx konfiguraciji (envsubst na startu)
-- [ ] Cache zaglavlja za statiku, bez keša za `index.html`
+- [x] `Dockerfile` (multi-stage): `node` build → `nginx` koji servira `dist/`
+- [x] nginx konfiguracija:
+  - [x] SPA fallback (`try_files ... /index.html`)
+  - [x] reverse proxy `/dav/` → `https://calendar.home` (rešava CORS, Radicale ne šalje CORS zaglavlja)
+  - [x] prosleđivanje `Authorization`, `If-Match`, `If-None-Match`, `Depth` zaglavlja i WebDAV metoda (PROPFIND, REPORT)
+  - [x] TLS ka upstream-u: `proxy_ssl_verify` / mount CA sertifikata za `.home` domen
+- [x] `docker-compose.yml` za produkciju (image, port, env `RADICALE_UPSTREAM`)
+- [x] Upstream URL kroz env promenljivu, a ne hardkodiran u nginx konfiguraciji (envsubst na startu)
+- [x] Cache zaglavlja za statiku, bez keša za `index.html`
 
 ## 3. CalDAV sloj (`src/api/caldav.ts`, tsdav)
 

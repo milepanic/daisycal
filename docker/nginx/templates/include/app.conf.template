@@ -1,0 +1,69 @@
+# Shared by the HTTP and HTTPS server blocks.
+
+root /usr/share/nginx/html;
+index index.html;
+
+# DAV bodies (PUT of .ics) are small, but allow room for large recurring events / attachments.
+client_max_body_size 20m;
+
+gzip on;
+gzip_types text/plain text/css application/javascript application/json image/svg+xml text/calendar application/xml;
+gzip_min_length 1024;
+
+location = /healthz {
+    access_log off;
+    add_header Content-Type text/plain;
+    return 200 "ok\n";
+}
+
+# --- CalDAV reverse proxy: ${DAV_BASE}/ -> ${RADICALE_UPSTREAM}/ ---------------------------
+# The upstream is resolved per request (variable + resolver) so nginx starts even when
+# calendar.home is not resolvable yet, and picks up DNS changes.
+location ${DAV_BASE}/ {
+    resolver ${NGINX_RESOLVER} valid=30s ipv6=off;
+    set $radicale_upstream "${RADICALE_UPSTREAM}";
+
+    # Strip the prefix; Radicale re-adds it to the hrefs it returns via X-Script-Name.
+    rewrite ^${DAV_BASE}(/.*)$ $1 break;
+    proxy_pass $radicale_upstream;
+
+    proxy_http_version 1.1;
+    proxy_set_header Host $proxy_host;
+    proxy_set_header X-Script-Name ${DAV_BASE};
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    # Authorization, Depth, If-Match, If-None-Match, Destination, Prefer and the WebDAV
+    # methods (PROPFIND, REPORT, MKCOL, MKCALENDAR, ...) are passed through unchanged;
+    # nginx only rewrites Host and Connection.
+    proxy_pass_request_headers on;
+    proxy_request_buffering off;
+    proxy_buffering off;
+    proxy_read_timeout 120s;
+
+    # Upstream TLS (ignored for an http:// upstream).
+    proxy_ssl_server_name on;
+    proxy_ssl_verify ${RADICALE_SSL_VERIFY};
+    proxy_ssl_verify_depth 3;
+    proxy_ssl_trusted_certificate ${RADICALE_CA_FILE};
+    proxy_ssl_protocols TLSv1.2 TLSv1.3;
+}
+
+# --- Static SPA ---------------------------------------------------------------------------
+# Hashed build assets: cache forever.
+location /assets/ {
+    expires 1y;
+    add_header Cache-Control "public, immutable";
+    try_files $uri =404;
+}
+
+# index.html must always be revalidated so deploys are picked up immediately.
+location = /index.html {
+    add_header Cache-Control "no-cache";
+}
+
+# SPA fallback for client-side routes (/week/2026-10-16, /tasks, ...).
+location / {
+    add_header Cache-Control "no-cache";
+    try_files $uri $uri/ /index.html;
+}

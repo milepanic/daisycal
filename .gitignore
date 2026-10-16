@@ -40,3 +40,7 @@ __screenshots__/
 
 # Local Radicale data (docker-compose.dev.yml uses a named volume, but keep bind mounts out too)
 docker/radicale/data/
+
+# TLS certificates for daisycal.home (docker-compose.yml mounts ./certs)
+certs/*
+!certs/.gitkeep

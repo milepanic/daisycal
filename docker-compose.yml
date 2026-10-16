@@ -1,0 +1,27 @@
+# Production deployment for https://daisycal.home.
+#
+#   docker compose up -d --build
+#
+# The container serves the SPA and reverse-proxies /dav/ to Radicale, so the browser only
+# ever talks to daisycal.home. Put TLS certs for daisycal.home in ./certs (fullchain.pem,
+# privkey.pem) to enable HTTPS; without them the app is served on plain HTTP.
+services:
+  daisycal:
+    build: .
+    image: daisycal:latest
+    container_name: daisycal
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      RADICALE_UPSTREAM: ${RADICALE_UPSTREAM:-https://calendar.home}
+      # Set to "on" and mount a CA bundle at /etc/nginx/radicale-ca.pem to verify the
+      # Radicale certificate (self-signed .home certs fail verification otherwise).
+      RADICALE_SSL_VERIFY: ${RADICALE_SSL_VERIFY:-off}
+      # Resolver nginx uses to look up RADICALE_UPSTREAM at request time. Docker's embedded
+      # DNS forwards to the host's resolver, which must know calendar.home.
+      NGINX_RESOLVER: ${NGINX_RESOLVER:-127.0.0.11}
+    volumes:
+      - ./certs:/etc/nginx/certs:ro
+      # - ./radicale-ca.pem:/etc/nginx/radicale-ca.pem:ro
+    restart: unless-stopped
