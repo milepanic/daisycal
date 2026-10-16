@@ -14,6 +14,7 @@ import {
   ALL_DAY_MULTI,
   APPLE_STANDUP,
   MISSING_VTIMEZONE,
+  MIXED_ZONE_OVERRIDE,
   MOVED_FROM_OUTSIDE,
   NO_DTEND,
   WITH_DURATION,
@@ -79,6 +80,19 @@ describe('expandEvent', () => {
     // ...and does not show it at its original slot the week after.
     const nextWeek = expandEvent(doc, new Date(2026, 9, 26), new Date(2026, 10, 2))
     expect(nextWeek).toHaveLength(0)
+  })
+
+  it('matches an override keyed in UTC against a TZID master exactly once', () => {
+    const doc = parseEventObject(obj(MIXED_ZONE_OVERRIDE))
+    const instances = expandEvent(doc, WEEK_START, WEEK_END)
+    expect(instances.map((i) => i.summary)).toEqual(['Standup', 'Standup (demo)', 'Standup'])
+    const demo = instances[1]!
+    const edited = updateEventIcs(doc, { ...eventToForm(demo), summary: 'Demo 2' }, demo, 'this')
+    expect(edited.match(/BEGIN:VEVENT/g)).toHaveLength(2)
+    expect(edited).toContain('SUMMARY:Demo 2')
+    const removed = excludeOccurrenceIcs(parseEventObject(obj(MIXED_ZONE_OVERRIDE)), demo)
+    expect(removed.match(/BEGIN:VEVENT/g)).toHaveLength(1)
+    expect(expandEvent(parseEventObject(obj(removed)), WEEK_START, WEEK_END)).toHaveLength(2)
   })
 
   it('handles all-day multi-day events with exclusive DTEND', () => {

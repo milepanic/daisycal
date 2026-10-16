@@ -24,6 +24,22 @@ export const DEFAULT_EVENT_MINUTES = 60
 /** Safety cap when expanding runaway rules. */
 const MAX_OCCURRENCES = 2000
 
+/** Same instant, regardless of the zone each value is expressed in (UTC vs TZID). */
+function sameInstant(a: ICAL.Time | null | undefined, b: ICAL.Time | null | undefined): boolean {
+  if (!a || !b) return false
+  return a.isDate === b.isDate && a.toUnixTime() === b.toUnixTime()
+}
+
+function findOverride(
+  vcalendar: ICAL.Component,
+  recurrenceId: ICAL.Time,
+): ICAL.Component | undefined {
+  return vcalendar.getAllSubcomponents('vevent').find((v) => {
+    const rid = v.getFirstPropertyValue('recurrence-id')
+    return rid instanceof ICAL.Time && sameInstant(rid, recurrenceId)
+  })
+}
+
 /** A parsed `.ics` holding one event (master + any RECURRENCE-ID overrides). */
 export interface EventDocument {
   object: CalendarObject
@@ -150,7 +166,7 @@ export function expandEvent(doc: EventDocument, rangeStart: Date, rangeEnd: Date
   }
 
   const out: EventInstance[] = []
-  const seen = new Set<string>()
+  const seen = new Set<number>()
   const iterator = master.iterator()
   let next: ICAL.Time | null
   let guard = 0
@@ -160,7 +176,7 @@ export function expandEvent(doc: EventDocument, rangeStart: Date, rangeEnd: Date
     const item = details.item
     const start = details.startDate
     const end = item === master ? shiftedEnd(master, start) : endOf(item)
-    seen.add(next.toString())
+    seen.add(next.toUnixTime())
     if (overlaps(toJsDate(start), toJsDate(end)))
       out.push(instanceFrom(doc, item, start, end, next))
   }
@@ -169,7 +185,7 @@ export function expandEvent(doc: EventDocument, rangeStart: Date, rangeEnd: Date
   // into it (e.g. next week's standup pulled into this week).
   for (const exception of Object.values(master.exceptions)) {
     const rid = exception.recurrenceId
-    if (!rid || seen.has(rid.toString())) continue
+    if (!rid || seen.has(rid.toUnixTime())) continue
     const s = exception.startDate
     const e = endOf(exception)
     if (overlaps(toJsDate(s), toJsDate(e))) out.push(instanceFrom(doc, exception, s, e, rid))
@@ -319,10 +335,8 @@ export function excludeOccurrenceIcs(doc: EventDocument, instance: EventInstance
   if (!instance.recurrenceId) throw new Error('Not a recurring occurrence')
   const vcalendar = doc.vcalendar
   const rid = instance.recurrenceId
-  for (const v of vcalendar.getAllSubcomponents('vevent')) {
-    if (v.getFirstPropertyValue('recurrence-id')?.toString() === rid.toString())
-      vcalendar.removeSubcomponent(v)
-  }
+  const override = findOverride(vcalendar, rid)
+  if (override) vcalendar.removeSubcomponent(override)
   const masterComp = doc.master.component
   const exdate = masterComp.addProperty(new ICAL.Property('exdate'))
   exdate.setValue(rid)

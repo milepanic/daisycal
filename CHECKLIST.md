@@ -87,13 +87,13 @@ samo objekata (događaja i zadataka) unutar postojećih kolekcija.
 
 ## 5. State (Pinia)
 
-- [ ] `auth` store: kredencijali u `sessionStorage` (ili `localStorage` uz „zapamti me"), logout
-- [ ] `calendars` store: lista kolekcija, boje, vidljivost po kolekciji (persistovano u `localStorage`)
-- [ ] `events` store: keš po opsegu datuma, ekspandirane instance, status učitavanja po opsegu
-- [ ] `tasks` store: VTODO po listi, filter završenih
-- [ ] `ui` store: trenutni datum, aktivni prikaz, otvoren sidebar, otvoren tasks panel, otvoren create popup, izabran događaj
-- [ ] Optimistic update za kreiranje/izmenu/brisanje sa rollback-om pri grešci
-- [ ] Invalidacija keša nakon upisa i nakon promene `getctag`
+- [x] `auth` store: kredencijali u `sessionStorage` (ili `localStorage` uz „zapamti me"), logout
+- [x] `calendars` store: lista kolekcija, boje, vidljivost po kolekciji (persistovano u `localStorage`)
+- [x] `events` store: keš po opsegu datuma, ekspandirane instance, status učitavanja po opsegu
+- [x] `tasks` store: VTODO po listi, filter završenih
+- [x] `ui` store: trenutni datum, aktivni prikaz, otvoren sidebar, otvoren tasks panel, otvoren create popup, izabran događaj
+- [x] Optimistic update za kreiranje/izmenu/brisanje sa rollback-om pri grešci
+- [x] Invalidacija keša nakon upisa i nakon promene `getctag`
 
 ## 6. App shell i navigacija
 
