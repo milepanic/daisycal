@@ -97,16 +97,16 @@ samo objekata (događaja i zadataka) unutar postojećih kolekcija.
 
 ## 6. App shell i navigacija
 
-- [ ] Vue Router rute: `/week/:date`, `/day/:date`, `/work-week/:date`, `/month/:date`, `/agenda/:date`, `/tasks`, `/login`
-- [ ] Route guard: bez kredencijala → `/login`
-- [ ] Login stranica (korisničko ime, lozinka, „zapamti me")
-- [ ] Layout: sidebar + glavna kolona (iz mockup-a), toggle sidebara (zameniti CSS `:has()` trik stanjem)
-- [ ] Top nav tabovi Calendar / Tasks
-- [ ] Toolbar: naslov opsega, Today, prethodno/sledeće, izbor prikaza, dugme Create, toggle tasks panela
-- [ ] Sidebar: Mini kalendar (navigacija po mesecima, klik na dan, oznaka današnjeg dana i izabranog)
-- [ ] Sidebar: lista kalendara sa checkbox-ovima i bojama sa servera (zamena hardkodiranih `--color-cal-*`)
-- [ ] Sidebar: lista task listi sa checkbox-ovima
-- [ ] Tastaturne prečice (`t` today, `←`/`→`, `d`/`w`/`m`/`a` prikazi, `c` create, `Esc` zatvori) (opciono)
+- [x] Vue Router rute: `/week/:date`, `/day/:date`, `/work-week/:date`, `/month/:date`, `/agenda/:date`, `/tasks`, `/login`
+- [x] Route guard: bez kredencijala → `/login`
+- [x] Login stranica (korisničko ime, lozinka, „zapamti me")
+- [x] Layout: sidebar + glavna kolona (iz mockup-a), toggle sidebara (zameniti CSS `:has()` trik stanjem)
+- [x] Top nav tabovi Calendar / Tasks
+- [x] Toolbar: naslov opsega, Today, prethodno/sledeće, izbor prikaza, dugme Create, toggle tasks panela
+- [x] Sidebar: Mini kalendar (navigacija po mesecima, klik na dan, oznaka današnjeg dana i izabranog)
+- [x] Sidebar: lista kalendara sa checkbox-ovima i bojama sa servera (zamena hardkodiranih `--color-cal-*`)
+- [x] Sidebar: lista task listi sa checkbox-ovima
+- [x] Tastaturne prečice (`t` today, `←`/`→`, `d`/`w`/`m`/`a` prikazi, `c` create, `Esc` zatvori)
 - [ ] Podešavanja: prvi dan nedelje, radni dani/sati za work-week, format vremena (opciono)
 
 ## 7. Prikazi kalendara (port mockup-a u komponente)

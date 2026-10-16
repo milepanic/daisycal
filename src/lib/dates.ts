@@ -113,8 +113,9 @@ export function rangeForView(view: CalendarView, date: Date, weekStart: WeekStar
       return { start, end: addDays(start, 42) }
     }
     case 'agenda': {
-      const start = startOfDay(date)
-      return { start, end: addDays(start, 30) }
+      // The agenda lists a whole month (the mockup is titled "October 2026").
+      const start = startOfMonth(date)
+      return { start, end: addMonths(start, 1) }
     }
   }
 }
@@ -130,7 +131,7 @@ export function stepDate(view: CalendarView, date: Date, direction: 1 | -1): Dat
     case 'month':
       return addMonths(date, direction)
     case 'agenda':
-      return addDays(date, 30 * direction)
+      return addMonths(date, direction)
   }
 }
 
