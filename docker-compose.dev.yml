@@ -1,0 +1,21 @@
+# Local Radicale for development. Not the production server (that is https://calendar.home).
+#
+#   docker compose -f docker-compose.dev.yml up -d
+#   npm run seed          # creates test collections + sample events/tasks
+#
+# Login: daisy / daisy   (docker/radicale/users, bcrypt)
+services:
+  radicale:
+    image: ghcr.io/kozea/radicale:stable
+    container_name: daisycal-radicale
+    command: ['--config', '/config/config', '--hosts', '0.0.0.0:5232']
+    ports:
+      - '5232:5232'
+    volumes:
+      - ./docker/radicale/config:/config/config:ro
+      - ./docker/radicale/users:/config/users:ro
+      - radicale-data:/var/lib/radicale
+    restart: unless-stopped
+
+volumes:
+  radicale-data:

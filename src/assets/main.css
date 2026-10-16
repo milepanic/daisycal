@@ -1,0 +1,24 @@
+@import 'tailwindcss';
+
+/* Accent color and fallback calendar colors.
+   Real calendar colors come from Radicale (ICAL:calendar-color) at runtime. */
+@theme {
+  --font-sans: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+
+  --color-accent: #e30000;
+
+  --color-cal-personal: #566c86;
+  --color-cal-apartment: #7c94b8;
+  --color-cal-birthdays: #2a4d88;
+  --color-cal-travel: #8094aa;
+  --color-cal-tasks: #2a4d88;
+  --color-cal-work: #225688;
+}
+
+/* Tailwind v4 resets buttons to the default cursor; restore the pointer for clickable buttons. */
+@layer base {
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+}
