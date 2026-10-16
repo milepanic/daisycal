@@ -72,18 +72,18 @@ samo objekata (događaja i zadataka) unutar postojećih kolekcija.
 
 ## 4. iCalendar sloj (`src/api/ical.ts`, ical.js)
 
-- [ ] Parsiranje `.ics` → domenski objekti `CalendarEvent` i `Task` (zadržati referencu na originalnu `ICAL.Component`)
-- [ ] **Očuvanje nepoznatih propertija** (X-APPLE-*, VALARM, ATTACH…) pri izmeni: menjati samo polja iz forme nad originalnim stablom, ne praviti VEVENT ispočetka
-- [ ] Vremenske zone: registrovati `VTIMEZONE` komponente iz svakog `.ics` u `ICAL.TimezoneService`; fallback na IANA zonu browsera
-- [ ] Celodnevni događaji (`DTSTART;VALUE=DATE`) i višednevni celodnevni (`DTEND` ekskluzivan)
-- [ ] Događaji bez `DTEND` (koristiti `DURATION` ili default trajanje)
-- [ ] Ekspanzija ponavljanja za zadati opseg (`RecurExpansion`): `RRULE`, `RDATE`, `EXDATE`
-- [ ] `RECURRENCE-ID` izuzeci (izmenjene pojedinačne instance) – spajanje sa master događajem
-- [ ] Serijalizacija nazad u `.ics` (`VCALENDAR` + `PRODID` DaisyCal)
-- [ ] VTODO mapiranje: `SUMMARY`, `STATUS`, `COMPLETED`, `PERCENT-COMPLETE`, `DUE`, `PRIORITY`, `DESCRIPTION`
-- [ ] Jednostavna podrška za `VALARM` (polje „Notification" iz forme → `TRIGGER` relativan na početak)
-- [ ] Kreiranje `RRULE` iz polja „Repeat" (daily / weekly / monthly / yearly, bez kraja ili do datuma)
-- [ ] Unit testovi (Vitest) za sve mapere, posebno nad primerima koje je upisao Apple Calendar / Reminders
+- [x] Parsiranje `.ics` → domenski objekti `CalendarEvent` i `Task` (zadržati referencu na originalnu `ICAL.Component`)
+- [x] **Očuvanje nepoznatih propertija** (X-APPLE-*, VALARM, ATTACH…) pri izmeni: menjati samo polja iz forme nad originalnim stablom, ne praviti VEVENT ispočetka
+- [x] Vremenske zone: registrovati `VTIMEZONE` komponente iz svakog `.ics` u `ICAL.TimezoneService`; fallback na IANA zonu browsera
+- [x] Celodnevni događaji (`DTSTART;VALUE=DATE`) i višednevni celodnevni (`DTEND` ekskluzivan)
+- [x] Događaji bez `DTEND` (koristiti `DURATION` ili default trajanje)
+- [x] Ekspanzija ponavljanja za zadati opseg (`RecurExpansion`): `RRULE`, `RDATE`, `EXDATE`
+- [x] `RECURRENCE-ID` izuzeci (izmenjene pojedinačne instance) – spajanje sa master događajem
+- [x] Serijalizacija nazad u `.ics` (`VCALENDAR` + `PRODID` DaisyCal)
+- [x] VTODO mapiranje: `SUMMARY`, `STATUS`, `COMPLETED`, `PERCENT-COMPLETE`, `DUE`, `PRIORITY`, `DESCRIPTION`
+- [x] Jednostavna podrška za `VALARM` (polje „Notification" iz forme → `TRIGGER` relativan na početak)
+- [x] Kreiranje `RRULE` iz polja „Repeat" (daily / weekly / monthly / yearly, bez kraja ili do datuma)
+- [x] Unit testovi (Vitest) za sve mapere, posebno nad primerima koje je upisao Apple Calendar / Reminders
 
 ## 5. State (Pinia)
 
