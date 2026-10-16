@@ -1,0 +1,12 @@
+/* Global styles that cannot be set with Tailwind utility classes. */
+
+html,
+body {
+  font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Tailwind v4 resets buttons to the default cursor; restore the pointer for clickable buttons. */
+button:not(:disabled),
+[role="button"]:not(:disabled) {
+  cursor: pointer;
+}
