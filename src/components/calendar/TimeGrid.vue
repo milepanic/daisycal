@@ -113,6 +113,54 @@ function draftPlacement(day: Date) {
   return { top, height: Math.max(bottom - top, d.kind === 'task' ? 22 : 16) }
 }
 
+/**
+ * Keyboard navigation: with a chip focused, ←/→ jump to the nearest chip in the adjacent
+ * day column, ↑/↓ move within the column. A focused column creates an event at 09:00 on
+ * Enter/Space.
+ */
+function onGridKeydown(e: KeyboardEvent) {
+  const target = e.target as HTMLElement
+  if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter', ' '].includes(e.key)) return
+  const column = target.closest<HTMLElement>('[data-day]')
+  if (!column) return
+  if ((e.key === 'Enter' || e.key === ' ') && target === column) {
+    e.preventDefault()
+    const day = props.days.find((d) => toDateKey(d) === column.dataset.day)
+    if (!day) return
+    const start = startOfDay(day)
+    start.setHours(9)
+    const r = column.getBoundingClientRect()
+    emit('createAt', start, new Date(start.getTime() + 60 * 60_000), false, {
+      x: r.left,
+      y: r.top,
+      width: r.width,
+      height: 0,
+    })
+    return
+  }
+  if (!target.matches('button')) return
+  e.preventDefault()
+  const chipsOf = (col: HTMLElement) =>
+    [...col.querySelectorAll<HTMLElement>('button')].sort((a, b) => a.offsetTop - b.offsetTop)
+  const chips = chipsOf(column)
+  const index = chips.indexOf(target)
+  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+    const next = chips[index + (e.key === 'ArrowDown' ? 1 : -1)]
+    next?.focus()
+    return
+  }
+  const columns = [...(root.value?.querySelectorAll<HTMLElement>('[data-day]') ?? [])]
+  const sibling = columns[columns.indexOf(column) + (e.key === 'ArrowRight' ? 1 : -1)]
+  if (!sibling) return
+  const candidates = chipsOf(sibling)
+  if (candidates.length === 0) {
+    sibling.focus()
+    return
+  }
+  const top = target.offsetTop
+  candidates.sort((a, b) => Math.abs(a.offsetTop - top) - Math.abs(b.offsetTop - top))[0]!.focus()
+}
+
 /** Tasks due at the same time share one row (mockup: "3 tasks at the same time, inline"). */
 function taskRows(tasks: Task[]): { top: number; tasks: Task[] }[] {
   const byTime = new Map<number, Task[]>()
@@ -128,7 +176,12 @@ function taskRows(tasks: Task[]): { top: number; tasks: Task[] }[] {
 </script>
 
 <template>
-  <div ref="root" class="min-h-0 flex-1 overflow-auto px-2 pb-2" data-testid="time-grid">
+  <div
+    ref="root"
+    class="min-h-0 flex-1 overflow-auto px-2 pb-2"
+    data-testid="time-grid"
+    @keydown="onGridKeydown"
+  >
     <div :class="days.length > 1 ? 'min-w-[640px]' : 'min-w-[320px]'">
       <!-- Day headers + all-day events (sticky) -->
       <div class="sticky top-0 z-20 border-b border-gray-200 bg-white pb-0.5">
@@ -210,6 +263,9 @@ function taskRows(tasks: Task[]): { top: number; tasks: Task[] }[] {
           :key="c.key"
           class="relative cursor-pointer border-l border-gray-200 bg-[repeating-linear-gradient(to_bottom,var(--color-gray-200)_0_1px,transparent_1px_60px)]"
           :data-day="c.key"
+          tabindex="0"
+          role="gridcell"
+          :aria-label="`${WEEKDAYS_LONG[c.day.getDay()]} ${c.day.getDate()}, press Enter to add an event`"
           @click="onColumnClick(c.day, $event)"
         >
           <div

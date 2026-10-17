@@ -84,7 +84,10 @@ describe.skipIf(!up)('CalDAV client against local Radicale', () => {
     const ctags = await client.fetchCtags()
     const fresh = await client.listCollections()
     expect(ctags.size).toBe(fresh.length)
-    expect(ctags.get(work.url)).toBe(fresh.find((c) => c.url === work.url)!.ctag)
+    expect(ctags.get(work.url)).toBeTruthy()
+    // Personal is untouched by the other integration suite, so its ctag is stable.
+    const personal = fresh.find((c) => c.displayName === 'Personal')!
+    expect(ctags.get(personal.url)).toBe(personal.ctag)
   })
 
   it('fetches events in a time range, including a recurring master, without expanding', async () => {

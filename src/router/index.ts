@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory, type RouteLocationNormalized } from 'vue-router'
 
 import { type CalendarView, parseDateKey, toDateKey } from '@/lib/dates'
+import { isNarrowScreen } from '@/composables/useMediaQuery'
 import { useAuthStore } from '@/stores/auth'
 
 export const CALENDAR_VIEWS: CalendarView[] = ['day', 'work-week', 'week', 'month', 'agenda']
@@ -22,7 +23,8 @@ const router = createRouter({
       path: '/',
       component: () => import('@/layouts/AppShell.vue'),
       children: [
-        { path: '', redirect: () => calendarPath('week', new Date()) },
+        // Phones get the day view by default; wider screens the week.
+        { path: '', redirect: () => calendarPath(isNarrowScreen() ? 'day' : 'week', new Date()) },
         {
           path: ':view(day|work-week|week|month|agenda)/:date?',
           name: 'calendar',

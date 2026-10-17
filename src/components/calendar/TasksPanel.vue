@@ -4,6 +4,7 @@ import { computed, ref, watch } from 'vue'
 
 import type { Task } from '@/api/ical'
 import { useCalendarsStore } from '@/stores/calendars'
+import { useNotificationsStore } from '@/stores/notifications'
 import { useTasksStore } from '@/stores/tasks'
 import { useUiStore } from '@/stores/ui'
 import AppIcon from '@/components/ui/AppIcon.vue'
@@ -12,6 +13,7 @@ import TaskRow from '@/components/tasks/TaskRow.vue'
 const calendars = useCalendarsStore()
 const tasks = useTasksStore()
 const ui = useUiStore()
+const notifications = useNotificationsStore()
 
 const listUrl = ref<string | null>(null)
 watch(
@@ -30,7 +32,6 @@ const all = computed(() =>
 const open = computed(() => all.value.filter((t) => !t.completed))
 const completed = computed(() => all.value.filter((t) => t.completed))
 const pickerOpen = ref(false)
-const error = ref<string | null>(null)
 
 function openTask(task: Task) {
   ui.openCreate({
@@ -41,11 +42,12 @@ function openTask(task: Task) {
 }
 
 async function toggle(t: Task, done: boolean) {
-  error.value = null
   try {
     await tasks.setCompleted(t, done)
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Could not update the task'
+    notifications.reportError(err, `Could not update "${t.summary}"`, () =>
+      tasks.setCompleted(t, done),
+    )
   }
 }
 </script>
@@ -98,10 +100,6 @@ async function toggle(t: Task, done: boolean) {
         <AppIcon name="plus" class="size-5" />
         Add a task
       </button>
-
-      <p v-if="error" class="mx-2 mt-2 rounded-lg bg-red-50 px-2 py-1 text-xs text-red-700">
-        {{ error }}
-      </p>
       <p
         v-if="listUrl && tasks.isLoading(listUrl) && all.length === 0"
         class="px-2 py-2 text-sm text-gray-400"

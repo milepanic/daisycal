@@ -3,7 +3,8 @@
 Web UI for a self-hosted [Radicale](https://radicale.org) CalDAV server. Shows calendars (`VEVENT`)
 and task lists (`VTODO`) and lets you create, edit and delete events and tasks. Other collection
 types (address books, journals, mixed calendar+tasks) are ignored. See `CHECKLIST.md` for the
-implementation plan and `design/` for the original static mockups.
+implementation plan; the original static mockups live in the git history (`design/` up to the
+"Add Tasks page" commit).
 
 Stack: Vue 3, Vite, TypeScript, Pinia, Vue Router, Tailwind CSS v4, [tsdav](https://github.com/natelindev/tsdav),
 [ical.js](https://github.com/kewisch/ical.js).
@@ -54,6 +55,13 @@ one address book that the app must ignore.
 Note on `--legacy-peer-deps`: npm 10.9 fails with `Cannot read properties of null (reading 'edgesOut')`
 while resolving the ESLint 10 peer set. The flag works around it; nothing in the tree actually
 conflicts.
+
+## CI
+
+`.github/workflows/ci.yml` runs on every push and pull request: install, start the local Radicale
+with Docker Compose and seed it, lint, type-check, unit + integration tests, build. On pushes to
+`master` it also builds the production image and pushes it to `ghcr.io/<owner>/daisycal`
+(`:latest` and `:<sha>`), so the server can `docker compose pull` instead of building.
 
 ## Production
 

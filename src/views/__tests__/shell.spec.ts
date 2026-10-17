@@ -125,6 +125,66 @@ describe('app shell', () => {
     expect(router.currentRoute.value.query.redirect).toBe('/tasks')
   })
 
+  it('shows the offline banner when polling fails and clears it after a successful retry', async () => {
+    useAuthStore()._setClient(client)
+    const wrapper = await mountApp('/week/2026-10-12')
+    const { useSyncStore } = await import('@/stores/sync')
+    const { useNotificationsStore } = await import('@/stores/notifications')
+    const sync = useSyncStore()
+    sync.lastError = 'offline'
+    await flushPromises()
+    expect(wrapper.find('[data-testid="offline-banner"]').exists()).toBe(true)
+    sync.lastError = null
+    await flushPromises()
+    expect(wrapper.find('[data-testid="offline-banner"]').exists()).toBe(false)
+
+    // A failed task toggle shows a toast with Retry; the retry succeeds.
+    client.failNext = { op: 'update', error: new (await import('@/api/errors')).NetworkError('x') }
+    const box = wrapper.find('input[aria-label="Mark as completed: Send invoice"]')
+    ;(box.element as HTMLInputElement).checked = true
+    await box.trigger('change')
+    await flushPromises()
+    expect(useNotificationsStore().offline).toBe(true)
+    expect(wrapper.find('[data-testid="toasts"]').text()).toContain(
+      'Could not update "Send invoice"',
+    )
+    await wrapper.find('[data-testid="toasts"] button').trigger('click')
+    await flushPromises()
+    expect(client.objects.get(`${MY_TASKS.url}a.ics`)!.data).toContain('STATUS:COMPLETED')
+    expect(useNotificationsStore().offline).toBe(false)
+    expect(wrapper.find('[data-testid="toasts"]').text()).toBe('')
+  })
+
+  it('uses a drawer sidebar and the day view by default on narrow screens', async () => {
+    const original = window.matchMedia
+    window.matchMedia = ((q: string) => ({
+      matches: q.includes('767'),
+      media: q,
+      addEventListener() {},
+      removeEventListener() {},
+      onchange: null,
+      addListener() {},
+      removeListener() {},
+      dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia
+    try {
+      useAuthStore()._setClient(client)
+      const wrapper = await mountApp('/')
+      await routeIs(() => expect(router.currentRoute.value.params.view).toBe('day'))
+      const ui = useUiStore()
+      expect(ui.sidebarOpen).toBe(false)
+      expect(ui.tasksPanelOpen).toBe(false)
+      await wrapper.find('button[title="Menu"]').trigger('click')
+      expect(wrapper.find('[data-testid="drawer-backdrop"]').exists()).toBe(true)
+      expect(wrapper.find('aside#sidebar').classes()).toContain('fixed')
+      await wrapper.find('[data-testid="drawer-backdrop"]').trigger('click')
+      expect(ui.sidebarOpen).toBe(false)
+      expect(wrapper.find('#view-select').exists()).toBe(true)
+    } finally {
+      window.matchMedia = original
+    }
+  })
+
   it('redirects to login when the session expires', async () => {
     useAuthStore()._setClient(client)
     await mountApp('/day/2026-10-14')

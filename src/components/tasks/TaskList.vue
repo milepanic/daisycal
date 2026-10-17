@@ -8,6 +8,7 @@ import { computed, nextTick, ref } from 'vue'
 import type { Collection } from '@/api/collections'
 import type { Task } from '@/api/ical'
 import { useCalendarsStore } from '@/stores/calendars'
+import { useNotificationsStore } from '@/stores/notifications'
 import { useTasksStore } from '@/stores/tasks'
 import { useUiStore } from '@/stores/ui'
 import AppIcon from '@/components/ui/AppIcon.vue'
@@ -18,6 +19,7 @@ const props = defineProps<{ list: Collection }>()
 const calendars = useCalendarsStore()
 const tasks = useTasksStore()
 const ui = useUiStore()
+const notifications = useNotificationsStore()
 
 const color = computed(() => calendars.colorFor(props.list.url))
 const all = computed(() => tasks.tasksFor(props.list.url, { includeCompleted: true }))
@@ -29,7 +31,6 @@ const listError = computed(() => tasks.listError(props.list.url))
 const adding = ref(false)
 const newTitle = ref('')
 const newInput = ref<HTMLInputElement | null>(null)
-const error = ref<string | null>(null)
 
 async function startAdd() {
   adding.value = true
@@ -48,7 +49,6 @@ async function submitAdd() {
     cancelAdd()
     return
   }
-  error.value = null
   newTitle.value = ''
   try {
     await tasks.createTask(props.list, {
@@ -60,17 +60,26 @@ async function submitAdd() {
       alarm: null,
     })
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Could not add the task'
-    newTitle.value = title
+    notifications.reportError(err, `Could not add "${title}"`, () =>
+      tasks.createTask(props.list, {
+        summary: title,
+        description: '',
+        due: null,
+        dueAllDay: true,
+        priority: null,
+        alarm: null,
+      }),
+    )
   }
 }
 
 async function toggle(task: Task, done: boolean) {
-  error.value = null
   try {
     await tasks.setCompleted(task, done)
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Could not update the task'
+    notifications.reportError(err, `Could not update "${task.summary}"`, () =>
+      tasks.setCompleted(task, done),
+    )
   }
 }
 
@@ -135,11 +144,11 @@ function openDetailed() {
     </button>
 
     <p
-      v-if="error || listError"
+      v-if="listError"
       class="mx-2 mt-1 rounded-lg bg-red-50 px-2 py-1 text-xs text-red-700"
       role="alert"
     >
-      {{ error ?? listError }}
+      {{ listError }}
     </p>
 
     <div class="mt-1 min-h-0 overflow-y-auto">

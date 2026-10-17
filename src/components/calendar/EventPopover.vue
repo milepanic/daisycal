@@ -6,6 +6,7 @@ import { ConflictError } from '@/api/errors'
 import { type EditScope, type EventInstance, describeRepeat } from '@/api/ical'
 import { isSameDay } from '@/lib/dates'
 import { dayTitle, formatShortDateTime, formatTime } from '@/lib/format'
+import { useFocusTrap } from '@/composables/useFocusTrap'
 import { useCalendarsStore } from '@/stores/calendars'
 import { useEventsStore } from '@/stores/events'
 import { type Anchor, useUiStore } from '@/stores/ui'
@@ -19,6 +20,7 @@ const events = useEventsStore()
 const ui = useUiStore()
 
 const root = ref<HTMLElement | null>(null)
+useFocusTrap(root)
 const confirming = ref(false)
 const busy = ref(false)
 const error = ref<string | null>(null)
@@ -55,7 +57,10 @@ const style = computed(() => {
 function onDocClick(e: MouseEvent) {
   if (root.value && !root.value.contains(e.target as Node)) emit('close')
 }
-onMounted(() => setTimeout(() => document.addEventListener('mousedown', onDocClick), 0))
+onMounted(() => {
+  root.value?.querySelector<HTMLElement>('button')?.focus()
+  setTimeout(() => document.addEventListener('mousedown', onDocClick), 0)
+})
 onBeforeUnmount(() => document.removeEventListener('mousedown', onDocClick))
 
 function edit() {

@@ -31,6 +31,7 @@ import {
 } from '@/api/ical'
 import { addDays, parseDateKey, startOfDay, toDateKey } from '@/lib/dates'
 import { MONTHS_LONG, WEEKDAYS_LONG } from '@/lib/format'
+import { useFocusTrap } from '@/composables/useFocusTrap'
 import { useCalendarsStore } from '@/stores/calendars'
 import { useEventsStore } from '@/stores/events'
 import { useTasksStore } from '@/stores/tasks'
@@ -74,6 +75,7 @@ const busy = ref(false)
 const confirmingDelete = ref(false)
 const titleInput = ref<HTMLInputElement | null>(null)
 const root = ref<HTMLElement | null>(null)
+useFocusTrap(root)
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const hhmm = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`

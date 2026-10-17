@@ -156,12 +156,12 @@ samo objekata (događaja i zadataka) unutar postojećih kolekcija.
 
 ## 10. Kvalitet i isporuka
 
-- [ ] Vitest unit testovi: ical maperi, ekspanzija ponavljanja, layout preklapanja, store logika
-- [ ] Integracioni test protiv dev Radicale-a u Dockeru (login, lista kolekcija, create/update/delete sa ETag)
-- [ ] Ručni test kompatibilnosti: događaj kreiran u DaisyCal → vidljiv na iPhone-u; izmenjen na iPhone-u → ispravno prikazan i izmena ne gubi Apple polja
-- [ ] Obrada grešaka: toast za neuspele upise, banner za nedostupan server, retry
-- [ ] Responzivnost: tablet i telefon (sidebar kao drawer, day/agenda kao podrazumevani prikaz na uskom ekranu)
-- [ ] Pristupačnost: fokus u popup-u, `aria-label` na ikonicama, tastaturna navigacija po mreži
-- [ ] GitHub Actions: lint + test + build + Docker image
+- [x] Vitest unit testovi: ical maperi, ekspanzija ponavljanja, layout preklapanja, store logika
+- [x] Integracioni test protiv dev Radicale-a u Dockeru (login, lista kolekcija, create/update/delete sa ETag)
+- [ ] Ručni test kompatibilnosti: događaj kreiran u DaisyCal → vidljiv na iPhone-u; izmenjen na iPhone-u → ispravno prikazan i izmena ne gubi Apple polja (ručno, treba calendar.home i iPhone)
+- [x] Obrada grešaka: toast za neuspele upise, banner za nedostupan server, retry
+- [x] Responzivnost: tablet i telefon (sidebar kao drawer, day/agenda kao podrazumevani prikaz na uskom ekranu)
+- [x] Pristupačnost: fokus u popup-u, `aria-label` na ikonicama, tastaturna navigacija po mreži
+- [x] GitHub Actions: lint + test + build + Docker image
 - [x] Premeštanje statičkih mockup `.html` fajlova u `design/` (urađeno uz scaffold, jer Vite koristi `index.html` kao ulaz)
-- [ ] Uklanjanje `design/` nakon što su svi prikazi portovani
+- [x] Uklanjanje `design/` nakon što su svi prikazi portovani

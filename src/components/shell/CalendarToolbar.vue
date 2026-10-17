@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 
 import { useCalendarRoute } from '@/composables/useCalendarRoute'
+import type { CalendarView } from '@/lib/dates'
 import { stepLabel, viewTitle } from '@/lib/format'
 import { useSyncStore } from '@/stores/sync'
 import { useUiStore } from '@/stores/ui'
@@ -48,7 +49,7 @@ const unit = computed(() => stepLabel(ui.view))
           <AppIcon name="chevron-right" class="size-4" stroke-width="2" />
         </button>
       </div>
-      <h1 class="ml-1 truncate text-lg font-semibold text-gray-900">{{ title }}</h1>
+      <h1 class="ml-1 truncate text-base font-semibold text-gray-900 sm:text-lg">{{ title }}</h1>
     </div>
 
     <div class="ml-auto flex shrink-0 items-center gap-x-2">
@@ -58,7 +59,26 @@ const unit = computed(() => stepLabel(ui.view))
         :class="sync.lastError ? 'text-red-600' : ''"
         @click="sync.syncNow()"
       />
-      <ViewSwitcher :view="ui.view" @change="nav.setView" />
+      <ViewSwitcher :view="ui.view" class="hidden md:flex" @change="nav.setView" />
+      <div class="relative md:hidden">
+        <label for="view-select" class="sr-only">Calendar view</label>
+        <select
+          id="view-select"
+          :value="ui.view"
+          class="h-9 cursor-pointer appearance-none rounded-lg bg-white/60 py-1.5 pr-7 pl-3 text-sm font-medium text-gray-900"
+          @change="nav.setView(($event.target as HTMLSelectElement).value as CalendarView)"
+        >
+          <option value="agenda">Agenda</option>
+          <option value="day">Day</option>
+          <option value="work-week">Work week</option>
+          <option value="week">Week</option>
+          <option value="month">Month</option>
+        </select>
+        <AppIcon
+          name="chevron-down"
+          class="pointer-events-none absolute top-1/2 right-2 size-4 -translate-y-1/2 text-gray-500"
+        />
+      </div>
       <IconButton
         icon="tasks"
         label="Show tasks panel"
@@ -71,7 +91,8 @@ const unit = computed(() => stepLabel(ui.view))
         @click="ui.openCreate({ kind: 'event' })"
       >
         <AppIcon name="plus" class="-ml-0.5 size-5" />
-        Create
+        <span class="hidden sm:inline">Create</span>
+        <span class="sr-only sm:hidden">Create</span>
       </button>
     </div>
   </header>
