@@ -3,13 +3,11 @@
 import { computed, ref, watch } from 'vue'
 
 import type { Task } from '@/api/ical'
-import { isSameDay, startOfDay } from '@/lib/dates'
-import { formatShortDateTime, formatTime } from '@/lib/format'
 import { useCalendarsStore } from '@/stores/calendars'
 import { useTasksStore } from '@/stores/tasks'
 import { useUiStore } from '@/stores/ui'
 import AppIcon from '@/components/ui/AppIcon.vue'
-import ColorCheckbox from '@/components/ui/ColorCheckbox.vue'
+import TaskRow from '@/components/tasks/TaskRow.vue'
 
 const calendars = useCalendarsStore()
 const tasks = useTasksStore()
@@ -34,17 +32,12 @@ const completed = computed(() => all.value.filter((t) => t.completed))
 const pickerOpen = ref(false)
 const error = ref<string | null>(null)
 
-function dueBadge(t: Task): { label: string; cls: string } | null {
-  if (!t.due) return null
-  const today = startOfDay(new Date())
-  const label = isSameDay(t.due, today)
-    ? t.dueAllDay
-      ? 'Today'
-      : `Today, ${formatTime(t.due)}`
-    : formatShortDateTime(t.due, !t.dueAllDay)
-  if (t.due < (t.dueAllDay ? today : new Date())) return { label, cls: 'bg-red-50 text-red-600' }
-  if (isSameDay(t.due, today)) return { label, cls: 'bg-accent/10 text-accent' }
-  return { label, cls: 'bg-gray-100 text-gray-600' }
+function openTask(task: Task) {
+  ui.openCreate({
+    kind: 'task',
+    collectionUrl: task.collectionUrl,
+    edit: { objectUrl: task.objectUrl, recurrenceId: null },
+  })
 }
 
 async function toggle(t: Task, done: boolean) {
@@ -120,34 +113,17 @@ async function toggle(t: Task, done: boolean) {
       </p>
 
       <ul class="mt-1 space-y-0.5">
-        <li
+        <TaskRow
           v-for="t in open"
           :key="t.objectUrl"
-          class="group/task flex items-start gap-x-3 rounded-lg p-2 hover:bg-gray-50"
-        >
-          <span class="grid h-5 w-4 shrink-0 place-items-center">
-            <ColorCheckbox
-              :color="color"
-              :model-value="false"
-              round
-              :label="`Mark as completed: ${t.summary}`"
-              @update:model-value="toggle(t, $event)"
-            />
-          </span>
-          <div class="min-w-0 flex-1">
-            <p class="text-sm font-medium text-gray-900">{{ t.summary }}</p>
-            <p v-if="dueBadge(t)" class="mt-1.5">
-              <span
-                class="inline-flex items-center gap-x-1 rounded-lg px-1.5 py-0.5 text-[11px] font-medium"
-                :class="dueBadge(t)!.cls"
-                >{{ dueBadge(t)!.label }}</span
-              >
-            </p>
-          </div>
-        </li>
+          :task="t"
+          :color="color"
+          @toggle="toggle"
+          @open="openTask"
+        />
       </ul>
 
-      <details v-if="completed.length" class="group mt-2">
+      <details v-if="completed.length && ui.showCompletedTasks" class="group mt-2">
         <summary
           class="flex cursor-pointer list-none items-center gap-x-2 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 [&::-webkit-details-marker]:hidden"
         >
@@ -158,27 +134,14 @@ async function toggle(t: Task, done: boolean) {
           Completed ({{ completed.length }})
         </summary>
         <ul class="mt-1 space-y-0.5">
-          <li
+          <TaskRow
             v-for="t in completed"
             :key="t.objectUrl"
-            class="group/task flex items-start gap-x-3 rounded-lg p-2 hover:bg-gray-50"
-          >
-            <span class="grid h-5 w-4 shrink-0 place-items-center">
-              <ColorCheckbox
-                :color="color"
-                :model-value="true"
-                round
-                :label="`Mark as not completed: ${t.summary}`"
-                @update:model-value="toggle(t, $event)"
-              />
-            </span>
-            <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-gray-400 line-through">{{ t.summary }}</p>
-              <p v-if="t.completedAt" class="mt-0.5 text-xs text-gray-400">
-                Completed {{ formatShortDateTime(t.completedAt, false) }}
-              </p>
-            </div>
-          </li>
+            :task="t"
+            :color="color"
+            @toggle="toggle"
+            @open="openTask"
+          />
         </ul>
       </details>
     </div>

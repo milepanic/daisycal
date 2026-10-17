@@ -144,14 +144,14 @@ samo objekata (događaja i zadataka) unutar postojećih kolekcija.
 
 ## 9. Tasks (`tasks.html`)
 
-- [ ] Tasks stranica: kolone/sekcije po task listi, samo vidljive liste
-- [ ] Kreiranje zadatka inline (naslov + list) i kroz create popup (Title, Task list, Due, Notification, Description)
-- [ ] Označavanje završeno / nezavršeno (`STATUS:COMPLETED` + `COMPLETED` + `PERCENT-COMPLETE:100`, i obrnuto)
-- [ ] Sekcija „Completed (N)" sklopiva, sa datumom završetka
-- [ ] Prikaz roka i isticanje zakasnelih
-- [ ] Izmena i brisanje zadatka
-- [ ] Prioritet (`PRIORITY` 1/5/9 → high/medium/low) (opciono)
-- [ ] Sortiranje: po roku, pa po prioritetu, pa po naslovu
+- [x] Tasks stranica: kolone/sekcije po task listi, samo vidljive liste
+- [x] Kreiranje zadatka inline (naslov + list) i kroz create popup (Title, Task list, Due, Notification, Description)
+- [x] Označavanje završeno / nezavršeno (`STATUS:COMPLETED` + `COMPLETED` + `PERCENT-COMPLETE:100`, i obrnuto)
+- [x] Sekcija „Completed (N)" sklopiva, sa datumom završetka
+- [x] Prikaz roka i isticanje zakasnelih
+- [x] Izmena i brisanje zadatka
+- [x] Prioritet (`PRIORITY` 1/5/9 → high/medium/low)
+- [x] Sortiranje: po roku, pa po prioritetu, pa po naslovu
 - [ ] Podzadaci preko `RELATED-TO` kako ih Reminders upisuje (opciono)
 
 ## 10. Kvalitet i isporuka
