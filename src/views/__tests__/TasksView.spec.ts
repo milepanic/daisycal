@@ -152,6 +152,54 @@ describe('TasksView', () => {
     wrapper.unmount()
   })
 
+  it('drags a task into another list to move it', async () => {
+    const wrapper = await mountView()
+    const sections = wrapper.findAll('section[data-list]')
+    sections.forEach((sec, i) => {
+      sec.element.getBoundingClientRect = () => ({
+        top: 0,
+        left: i * 400,
+        width: 320,
+        height: 600,
+        bottom: 600,
+        right: i * 400 + 320,
+        x: i * 400,
+        y: 0,
+        toJSON: () => ({}),
+      })
+    })
+    const fire = async (el: Element, type: string, init: PointerEventInit) => {
+      el.dispatchEvent(
+        new PointerEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+          pointerType: 'mouse',
+          ...init,
+        }),
+      )
+      await flushPromises()
+    }
+    const row = sections[1]!.find('li[data-task="ink"]')
+    await fire(row.element, 'pointerdown', { clientX: 450, clientY: 100 })
+    await fire(row.element, 'pointermove', { clientX: 100, clientY: 100 })
+    expect(wrapper.find('[data-testid="task-drag-ghost"]').text()).toBe('Order printer ink')
+    expect(sections[0]!.classes()).toContain('ring-2')
+    await fire(row.element, 'pointerup', { clientX: 100, clientY: 100 })
+    await flushPromises()
+    const moved = [...client.objects.values()].find((o) =>
+      o.data.includes('SUMMARY:Order printer ink'),
+    )!
+    expect(moved.collectionUrl).toBe(MY_TASKS.url)
+    expect(client.objects.has(`${SHOPPING.url}ink.ics`)).toBe(false)
+    expect(wrapper.findAll('section[data-list]')[0]!.text()).toContain('Order printer ink')
+    expect(wrapper.find('[data-testid="task-drag-ghost"]').exists()).toBe(false)
+    // The click after the drag does not open the editor.
+    await wrapper.find('li[data-task="ink"] button').trigger('click')
+    expect(useUiStore().createDraft).toBeNull()
+    wrapper.unmount()
+  })
+
   it('shows the empty state when nothing is visible', async () => {
     const calendars = useCalendarsStore()
     calendars.setVisible(MY_TASKS.url, false)

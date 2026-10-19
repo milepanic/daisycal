@@ -19,6 +19,7 @@ import {
   minutesSinceMidnight,
   slotFromOffset,
 } from '@/lib/layout'
+import { markDragged, wasJustDragged } from '@/lib/dragGuard'
 import type { Anchor, CreateDraft } from '@/stores/ui'
 import EventChip from './EventChip.vue'
 import TaskChip from './TaskChip.vue'
@@ -41,6 +42,8 @@ const emit = defineEmits<{
   createAt: [start: Date, end: Date, allDay: boolean, anchor: Anchor]
   /** A chip was dragged or resized to a new time. */
   moveEvent: [instance: EventInstance, start: Date, end: Date]
+  /** A task chip was dragged to a new due date/time. */
+  moveTask: [task: Task, due: Date]
 }>()
 
 const root = ref<HTMLElement | null>(null)
@@ -144,9 +147,19 @@ type Drag =
       moved: boolean
       startY: number
     }
+  | {
+      kind: 'task'
+      task: Task
+      column: HTMLElement
+      day: Date
+      grabMin: number
+      startMin: number
+      moved: boolean
+      startX: number
+      startY: number
+    }
 
 const drag = shallowRef<Drag | null>(null)
-let suppressClickUntil = 0
 
 const snap = (min: number) => Math.round(min / SNAP) * SNAP
 const clampMin = (min: number) => Math.max(0, Math.min(24 * 60, min))
@@ -228,6 +241,26 @@ function onChipPointerDown(instance: EventInstance, day: Date, e: PointerEvent) 
   capture(e)
 }
 
+/** A task chip: start moving its due time. */
+function onTaskPointerDown(task: Task, day: Date, e: PointerEvent) {
+  if (!isPrimaryPointer(e) || !task.due) return
+  const column = (e.currentTarget as HTMLElement).closest<HTMLElement>('[data-day]')
+  if (!column) return
+  const startMin = Math.max(0, (task.due.getTime() - startOfDay(day).getTime()) / 60_000)
+  drag.value = {
+    kind: 'task',
+    task,
+    column,
+    day,
+    grabMin: minutesAt(column, e.clientY) - startMin,
+    startMin,
+    moved: false,
+    startX: e.clientX,
+    startY: e.clientY,
+  }
+  capture(e)
+}
+
 /** Bottom edge of a chip: start resizing. */
 function onResizePointerDown(instance: EventInstance, day: Date, e: PointerEvent) {
   if (!isPrimaryPointer(e)) return
@@ -258,6 +291,20 @@ function onPointerMove(e: PointerEvent) {
       ...d,
       curMin: minutesAt(d.column, e.clientY),
       moved: d.moved || Math.abs(e.clientY - d.startY) >= DRAG_THRESHOLD_PX,
+    }
+  } else if (d.kind === 'task') {
+    const target = columnAt(e.clientX) ?? { el: d.column, day: d.day }
+    drag.value = {
+      ...d,
+      column: target.el,
+      day: target.day,
+      startMin: Math.min(
+        24 * 60 - SNAP,
+        clampMin(snap(minutesAt(target.el, e.clientY) - d.grabMin)),
+      ),
+      moved:
+        d.moved ||
+        Math.abs(e.clientX - d.startX) + Math.abs(e.clientY - d.startY) >= DRAG_THRESHOLD_PX,
     }
   } else if (d.kind === 'move') {
     const target = columnAt(e.clientX) ?? { el: d.column, day: d.day }
@@ -303,7 +350,12 @@ function onPointerUp(e: PointerEvent) {
     return
   }
   if (!d.moved) return
-  suppressClickUntil = Date.now() + 400
+  markDragged()
+  if (d.kind === 'task') {
+    const due = dateAt(d.day, d.startMin)
+    if (due.getTime() !== d.task.due!.getTime()) emit('moveTask', d.task, due)
+    return
+  }
   if (d.kind === 'move') {
     const start = dateAt(d.day, d.startMin)
     const end = new Date(start.getTime() + d.durationMin * 60_000)
@@ -320,8 +372,13 @@ function onPointerCancel() {
 }
 
 function onSelectEvent(instance: EventInstance, el: HTMLElement) {
-  if (Date.now() < suppressClickUntil) return
+  if (wasJustDragged()) return
   emit('selectEvent', instance, el)
+}
+
+function onSelectTask(task: Task, el: HTMLElement) {
+  if (wasJustDragged()) return
+  emit('selectTask', task, el)
 }
 
 /** Preview chip while selecting a slot, moving or resizing. */
@@ -343,6 +400,18 @@ const dragPreview = computed(() => {
     }
   }
   if (!d.moved) return null
+  if (d.kind === 'task') {
+    return {
+      dayKey: toDateKey(d.day),
+      top: d.startMin * PX_PER_MIN,
+      height: 22,
+      title: d.task.summary,
+      from: dateAt(d.day, d.startMin),
+      to: dateAt(d.day, d.startMin),
+      color: props.colorFor(d.task.collectionUrl),
+      task: true,
+    }
+  }
   const startMin = d.startMin
   const endMin = d.kind === 'move' ? Math.min(24 * 60, startMin + d.durationMin) : d.endMin
   return {
@@ -353,13 +422,14 @@ const dragPreview = computed(() => {
     from: dateAt(d.day, startMin),
     to: dateAt(d.day, endMin),
     color: props.colorFor(d.instance.collectionUrl),
+    task: false,
   }
 })
-const draggingKey = computed(() =>
-  drag.value && drag.value.kind !== 'create' && drag.value.moved
-    ? eventKey(drag.value.instance)
-    : null,
-)
+const draggingKey = computed(() => {
+  const d = drag.value
+  if (!d || !d.moved || d.kind === 'create') return null
+  return d.kind === 'task' ? d.task.objectUrl : eventKey(d.instance)
+})
 
 /** Where the draft chip goes in each column (null when it is not a timed draft on that day). */
 function draftPlacement(day: Date) {
@@ -585,24 +655,44 @@ function taskRows(tasks: Task[]): { top: number; tasks: Task[] }[] {
               :key="t.objectUrl"
               :task="t"
               :color="colorFor(t.collectionUrl)"
-              class="min-w-0 flex-1"
-              @select="(task, el) => emit('selectTask', task, el)"
+              class="min-w-0 flex-1 cursor-grab transition-opacity duration-150 active:cursor-grabbing"
+              :class="draggingKey === t.objectUrl ? 'opacity-40' : ''"
+              :data-task-chip="t.objectUrl"
+              @pointerdown="onTaskPointerDown(t, c.day, $event)"
+              @select="onSelectTask"
             />
           </div>
           <div
             v-if="dragPreview && dragPreview.dayKey === c.key"
-            class="pointer-events-none absolute inset-x-0.5 z-40 overflow-hidden rounded-lg px-2 py-1 text-xs text-white ring-2 ring-white"
+            class="pointer-events-none absolute inset-x-0.5 z-40 overflow-hidden rounded-lg text-xs ring-2 ring-white"
+            :class="
+              dragPreview.task
+                ? 'flex items-center gap-x-1.5 bg-gray-100 px-2'
+                : 'px-2 py-1 text-white'
+            "
             :style="{
               top: `${dragPreview.top}px`,
               height: `${dragPreview.height}px`,
-              backgroundColor: dragPreview.color,
+              backgroundColor: dragPreview.task ? undefined : dragPreview.color,
             }"
             data-testid="drag-preview"
           >
-            <p class="truncate font-semibold">{{ dragPreview.title }}</p>
-            <p class="truncate text-[11px] text-white/80">
-              {{ formatTime(dragPreview.from) }}–{{ formatTime(dragPreview.to) }}
-            </p>
+            <template v-if="dragPreview.task">
+              <span
+                class="size-3 shrink-0 rounded-sm"
+                :style="{ backgroundColor: dragPreview.color + '33' }"
+              ></span>
+              <span class="truncate font-medium text-gray-800">{{ dragPreview.title }}</span>
+              <span class="ml-auto shrink-0 text-[11px] text-gray-500">{{
+                formatTime(dragPreview.from)
+              }}</span>
+            </template>
+            <template v-else>
+              <p class="truncate font-semibold">{{ dragPreview.title }}</p>
+              <p class="truncate text-[11px] text-white/80">
+                {{ formatTime(dragPreview.from) }}–{{ formatTime(dragPreview.to) }}
+              </p>
+            </template>
           </div>
           <div
             v-if="draftPlacement(c.day)"

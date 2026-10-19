@@ -203,6 +203,41 @@ describe('TimeGrid', () => {
     wrapper.unmount()
   })
 
+  it('drags a task chip to a new due date and time', async () => {
+    const { instances, tasks } = seeded()
+    const wrapper = mount(TimeGrid, {
+      props: { days: eachDay(WEEK), instances, tasks, colorFor },
+      attachTo: document.body,
+    })
+    const cols = wrapper.findAll('[data-day]')
+    cols.forEach((c, i) => {
+      c.element.getBoundingClientRect = () => ({
+        top: 0,
+        left: i * 100,
+        width: 100,
+        height: 1440,
+        bottom: 1440,
+        right: (i + 1) * 100,
+        x: i * 100,
+        y: 0,
+        toJSON: () => ({}),
+      })
+    })
+    // "Prepare slides" is due Wednesday 12:00 (720px); drag it to Thursday 15:00.
+    const chip = wrapper.find('[data-task-chip$="slides.ics"]')
+    await pointer(chip, 'pointerdown', { clientX: 250, clientY: 725 })
+    await pointer(chip, 'pointermove', { clientX: 350, clientY: 905 })
+    expect(wrapper.find('[data-testid="drag-preview"]').text()).toContain('Prepare slides')
+    expect(wrapper.find('[data-testid="drag-preview"]').text()).toContain('15:00')
+    await pointer(chip, 'pointerup', { clientX: 350, clientY: 905 })
+    const [task, due] = wrapper.emitted('moveTask')![0]!
+    expect(task).toMatchObject({ summary: 'Prepare slides' })
+    expect(due).toEqual(new Date(2026, 9, 15, 15, 0))
+    await chip.trigger('click')
+    expect(wrapper.emitted('selectTask')).toBeUndefined()
+    wrapper.unmount()
+  })
+
   it("shows the current time line only in today's column", () => {
     const today = new Date()
     const wrapper = mount(TimeGrid, {

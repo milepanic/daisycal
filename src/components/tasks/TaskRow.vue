@@ -9,7 +9,18 @@ import AppIcon from '@/components/ui/AppIcon.vue'
 import ColorCheckbox from '@/components/ui/ColorCheckbox.vue'
 
 const props = defineProps<{ task: Task; color: string }>()
-const emit = defineEmits<{ toggle: [task: Task, completed: boolean]; open: [task: Task] }>()
+const emit = defineEmits<{
+  toggle: [task: Task, completed: boolean]
+  open: [task: Task]
+  /** Primary-button press on the row (not the checkbox): the parent may start a drag. */
+  grab: [task: Task, event: PointerEvent]
+}>()
+
+function onPointerDown(e: PointerEvent) {
+  if (e.button !== 0 || e.pointerType === 'touch') return
+  if ((e.target as HTMLElement).closest('input')) return
+  emit('grab', props.task, e)
+}
 
 const badge = computed(() => dueBadge(props.task))
 const priorityClass = computed(() =>
@@ -27,6 +38,7 @@ const priorityClass = computed(() =>
   <li
     class="group/task flex items-start gap-x-3 rounded-lg p-2 hover:bg-gray-50"
     :data-task="task.uid"
+    @pointerdown="onPointerDown"
   >
     <span class="grid h-5 w-4 shrink-0 place-items-center">
       <ColorCheckbox

@@ -54,7 +54,10 @@ describe.skipIf(!up)('iCalendar round trip through Radicale', () => {
     )
     const weekEnd = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 7)
     const objects = await client.fetchEvents(work, { start: weekStart, end: weekEnd })
-    const seeded = objects.find((o) => o.data.includes('SUMMARY:Daily standup'))!
+    // The seeded master, not a copy left behind by an interrupted earlier run.
+    const seeded = objects.find(
+      (o) => o.data.includes('SUMMARY:Daily standup') && !o.data.includes('UID:standup-copy-'),
+    )!
     // Work on a private copy so the other integration suite sees the seed untouched.
     const copyUid = `standup-copy-${crypto.randomUUID()}`
     const standupObj = await client.createObject(

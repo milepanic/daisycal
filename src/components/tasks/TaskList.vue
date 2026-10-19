@@ -8,6 +8,7 @@ import { computed, nextTick, ref } from 'vue'
 import type { Collection } from '@/api/collections'
 import type { Task, TaskForm } from '@/api/ical'
 import { parseDateKey } from '@/lib/dates'
+import { wasJustDragged } from '@/lib/dragGuard'
 import { useCalendarsStore } from '@/stores/calendars'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useTasksStore } from '@/stores/tasks'
@@ -16,7 +17,8 @@ import AppIcon from '@/components/ui/AppIcon.vue'
 import TimeSelect from '@/components/ui/TimeSelect.vue'
 import TaskRow from './TaskRow.vue'
 
-const props = defineProps<{ list: Collection }>()
+const props = defineProps<{ list: Collection; dropTarget?: boolean }>()
+const emit = defineEmits<{ grab: [task: Task, event: PointerEvent] }>()
 
 const calendars = useCalendarsStore()
 const tasks = useTasksStore()
@@ -95,11 +97,16 @@ async function toggle(task: Task, done: boolean) {
 }
 
 function openTask(task: Task) {
+  if (wasJustDragged()) return
   ui.openCreate({
     kind: 'task',
     collectionUrl: task.collectionUrl,
     edit: { objectUrl: task.objectUrl, recurrenceId: null },
   })
+}
+
+function forwardGrab(task: Task, e: PointerEvent) {
+  emit('grab', task, e)
 }
 
 function openDetailed() {
@@ -109,7 +116,8 @@ function openDetailed() {
 
 <template>
   <section
-    class="flex max-h-full w-80 shrink-0 flex-col rounded-2xl bg-white p-2"
+    class="flex max-h-full w-80 shrink-0 flex-col rounded-2xl bg-white p-2 transition-shadow duration-150"
+    :class="dropTarget ? 'ring-2 ring-gray-900' : ''"
     :data-list="list.url"
   >
     <div class="flex items-center gap-x-2 px-2 pt-1 pb-1">
@@ -225,6 +233,7 @@ function openDetailed() {
           :color="color"
           @toggle="toggle"
           @open="openTask"
+          @grab="forwardGrab"
         />
       </ul>
 
@@ -246,6 +255,7 @@ function openDetailed() {
             :color="color"
             @toggle="toggle"
             @open="openTask"
+            @grab="forwardGrab"
           />
         </ul>
       </details>
