@@ -119,6 +119,21 @@ describe('TasksView', () => {
     )!
     expect(created.collectionUrl).toBe(SHOPPING.url)
     expect(created.data).not.toContain('DUE')
+
+    // With a date and a 24h time picked inline.
+    await shopping.find('input[aria-label="New task title"]').setValue('Return library books')
+    await shopping.find('input[aria-label="New task due date"]').setValue('2026-10-20')
+    await shopping
+      .findAll('button')
+      .find((b) => b.text() === 'Add time')!
+      .trigger('click')
+    await shopping.find('select[aria-label="New task due time"]').setValue('18:30')
+    await shopping.find('form').trigger('submit')
+    await flushPromises()
+    const timed = [...client.objects.values()].find((o) =>
+      o.data.includes('SUMMARY:Return library books'),
+    )!
+    expect(timed.data).toContain('DUE;TZID=Europe/Belgrade:20261020T183000')
     expect(shopping.text()).toContain('Pick up package')
     expect(shopping.find('input[aria-label="New task title"]').exists()).toBe(true) // stays open for the next one
 

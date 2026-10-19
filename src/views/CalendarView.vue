@@ -5,7 +5,9 @@ import { computed, watch } from 'vue'
 import type { EventInstance, Task } from '@/api/ical'
 import { useCalendarRoute } from '@/composables/useCalendarRoute'
 import { eachDay } from '@/lib/dates'
+import { eventToForm } from '@/api/ical'
 import { useCalendarsStore } from '@/stores/calendars'
+import { useNotificationsStore } from '@/stores/notifications'
 import { useEventsStore } from '@/stores/events'
 import { useTasksStore } from '@/stores/tasks'
 import { type Anchor, useUiStore } from '@/stores/ui'
@@ -21,6 +23,7 @@ const ui = useUiStore()
 const calendars = useCalendarsStore()
 const events = useEventsStore()
 const tasks = useTasksStore()
+const notifications = useNotificationsStore()
 
 watch(
   () => [ui.visibleRange, calendars.status] as const,
@@ -73,6 +76,21 @@ function selectTask(task: Task) {
     edit: { objectUrl: task.objectUrl, recurrenceId: null },
   })
 }
+/** Drag/resize in the grid. Recurring events change only the dragged occurrence. */
+async function moveEvent(instance: EventInstance, start: Date, end: Date) {
+  const run = () =>
+    events.updateEvent(
+      instance,
+      { ...eventToForm(instance), start, end },
+      instance.isRecurring ? 'this' : 'all',
+    )
+  try {
+    await run()
+  } catch (err) {
+    notifications.reportError(err, `Could not move "${instance.summary}"`, run)
+  }
+}
+
 function createAt(start: Date, end: Date, allDay: boolean, anchor: Anchor) {
   ui.openCreate({ kind: 'event', start, end, allDay, anchor })
 }
@@ -103,53 +121,58 @@ const draftColor = computed(() =>
         <div class="h-full w-1/3 animate-pulse bg-accent"></div>
       </div>
 
-      <TimeGrid
-        v-if="isGrid"
-        :key="ui.view"
-        :days="days"
-        :instances="instances"
-        :tasks="dueTasks"
-        :color-for="colorFor"
-        :selected-key="selectedKey"
-        :draft="ui.createDraft"
-        :draft-color="draftColor"
-        @select-event="selectEvent"
-        @select-task="selectTask"
-        @create-at="createAt"
-      />
-      <MonthView
-        v-else-if="ui.view === 'month'"
-        :range="ui.visibleRange"
-        :month="ui.currentDate.getMonth()"
-        :instances="instances"
-        :tasks="dueTasks"
-        :color-for="colorFor"
-        :selected-key="selectedKey"
-        @select-event="selectEvent"
-        @select-task="selectTask"
-        @create-at="createAt"
-        @show-more="(d) => nav.go('day', d)"
-      />
-      <AgendaView
-        v-else
-        :range="ui.visibleRange"
-        :instances="instances"
-        :tasks="dueTasks"
-        :color-for="colorFor"
-        :name-for="nameFor"
-        :selected-key="selectedKey"
-        @select-event="selectEvent"
-        @select-task="selectTask"
-      />
+      <Transition name="fade" mode="out-in">
+        <TimeGrid
+          v-if="isGrid"
+          :key="ui.view"
+          :days="days"
+          :instances="instances"
+          :tasks="dueTasks"
+          :color-for="colorFor"
+          :selected-key="selectedKey"
+          :draft="ui.createDraft"
+          :draft-color="draftColor"
+          @select-event="selectEvent"
+          @select-task="selectTask"
+          @create-at="createAt"
+          @move-event="moveEvent"
+        />
+        <MonthView
+          v-else-if="ui.view === 'month'"
+          :range="ui.visibleRange"
+          :month="ui.currentDate.getMonth()"
+          :instances="instances"
+          :tasks="dueTasks"
+          :color-for="colorFor"
+          :selected-key="selectedKey"
+          @select-event="selectEvent"
+          @select-task="selectTask"
+          @create-at="createAt"
+          @show-more="(d) => nav.go('day', d)"
+        />
+        <AgendaView
+          v-else
+          :range="ui.visibleRange"
+          :instances="instances"
+          :tasks="dueTasks"
+          :color-for="colorFor"
+          :name-for="nameFor"
+          :selected-key="selectedKey"
+          @select-event="selectEvent"
+          @select-task="selectTask"
+        />
+      </Transition>
     </div>
 
     <TasksPanel v-show="ui.tasksPanelOpen" />
   </div>
 
-  <EventPopover
-    v-if="selectedInstance"
-    :instance="selectedInstance"
-    :anchor="ui.selection?.anchor"
-    @close="ui.select(null)"
-  />
+  <Transition name="pop">
+    <EventPopover
+      v-if="selectedInstance"
+      :instance="selectedInstance"
+      :anchor="ui.selection?.anchor"
+      @close="ui.select(null)"
+    />
+  </Transition>
 </template>

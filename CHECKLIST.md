@@ -140,7 +140,7 @@ samo objekata (događaja i zadataka) unutar postojećih kolekcija.
 - [x] Ponavljajući događaji: izbor obima izmene/brisanja – samo ova instanca (RECURRENCE-ID / EXDATE) ili ceo niz
 - [x] Premeštanje događaja u drugi kalendar (PUT u novu kolekciju + DELETE iz stare)
 - [x] Dijalog za `412` konflikt: „izmenjeno sa drugog uređaja" → osveži i ponovo primeni
-- [ ] Drag-and-drop premeštanje i resize u mreži (opciono)
+- [x] Drag-and-drop premeštanje i resize u mreži
 
 ## 9. Tasks (`tasks.html`)
 

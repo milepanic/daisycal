@@ -1,17 +1,19 @@
 <script setup lang="ts">
 /**
- * One task list column (mockup tasks.html section): header, inline "Add a task", open tasks,
- * collapsible "Completed (N)". Writes go through the tasks store.
+ * One task list column (mockup tasks.html section): header, inline "Add a task" with optional
+ * due date and 24h time, open tasks, collapsible "Completed (N)". Writes go through the store.
  */
 import { computed, nextTick, ref } from 'vue'
 
 import type { Collection } from '@/api/collections'
-import type { Task } from '@/api/ical'
+import type { Task, TaskForm } from '@/api/ical'
+import { parseDateKey } from '@/lib/dates'
 import { useCalendarsStore } from '@/stores/calendars'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useTasksStore } from '@/stores/tasks'
 import { useUiStore } from '@/stores/ui'
 import AppIcon from '@/components/ui/AppIcon.vue'
+import TimeSelect from '@/components/ui/TimeSelect.vue'
 import TaskRow from './TaskRow.vue'
 
 const props = defineProps<{ list: Collection }>()
@@ -30,6 +32,8 @@ const listError = computed(() => tasks.listError(props.list.url))
 
 const adding = ref(false)
 const newTitle = ref('')
+const newDate = ref('')
+const newTime = ref('')
 const newInput = ref<HTMLInputElement | null>(null)
 
 async function startAdd() {
@@ -41,6 +45,18 @@ async function startAdd() {
 function cancelAdd() {
   adding.value = false
   newTitle.value = ''
+  newDate.value = ''
+  newTime.value = ''
+}
+
+function newDue(): { due: Date | null; dueAllDay: boolean } {
+  const d = parseDateKey(newDate.value)
+  if (!d) return { due: null, dueAllDay: true }
+  if (newTime.value) {
+    d.setHours(Number(newTime.value.slice(0, 2)), Number(newTime.value.slice(3, 5)), 0, 0)
+    return { due: d, dueAllDay: false }
+  }
+  return { due: d, dueAllDay: true }
 }
 
 async function submitAdd() {
@@ -49,26 +65,21 @@ async function submitAdd() {
     cancelAdd()
     return
   }
+  const form: TaskForm = {
+    summary: title,
+    description: '',
+    ...newDue(),
+    priority: null,
+    alarm: null,
+  }
   newTitle.value = ''
+  newDate.value = ''
+  newTime.value = ''
   try {
-    await tasks.createTask(props.list, {
-      summary: title,
-      description: '',
-      due: null,
-      dueAllDay: true,
-      priority: null,
-      alarm: null,
-    })
+    await tasks.createTask(props.list, form)
   } catch (err) {
     notifications.reportError(err, `Could not add "${title}"`, () =>
-      tasks.createTask(props.list, {
-        summary: title,
-        description: '',
-        due: null,
-        dueAllDay: true,
-        priority: null,
-        alarm: null,
-      }),
+      tasks.createTask(props.list, form),
     )
   }
 }
@@ -118,20 +129,70 @@ function openDetailed() {
 
     <form
       v-if="adding"
-      class="mt-1 flex items-center gap-x-3 rounded-lg bg-gray-50 px-2 py-1.5"
+      class="mt-1 rounded-lg bg-gray-50 px-2 py-1.5"
+      data-testid="inline-add"
       @submit.prevent="submitAdd"
     >
-      <span class="size-4 shrink-0 rounded-full" :style="{ backgroundColor: color + '33' }"></span>
-      <input
-        ref="newInput"
-        v-model="newTitle"
-        type="text"
-        placeholder="Task title"
-        aria-label="New task title"
-        class="min-w-0 flex-1 bg-transparent text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
-        @keydown.escape.prevent="cancelAdd"
-        @blur="submitAdd"
-      />
+      <div class="flex items-center gap-x-3">
+        <span
+          class="size-4 shrink-0 rounded-full"
+          :style="{ backgroundColor: color + '33' }"
+        ></span>
+        <input
+          ref="newInput"
+          v-model="newTitle"
+          type="text"
+          placeholder="Task title"
+          aria-label="New task title"
+          class="min-w-0 flex-1 bg-transparent text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
+          @keydown.escape.prevent="cancelAdd"
+        />
+      </div>
+      <div class="mt-1.5 flex flex-wrap items-center gap-1.5 pl-7 text-xs">
+        <input
+          v-model="newDate"
+          type="date"
+          aria-label="New task due date"
+          class="rounded-lg bg-white px-2 py-1 font-medium text-gray-900 ring-1 ring-gray-200"
+        />
+        <TimeSelect
+          v-if="newDate && newTime"
+          v-model="newTime"
+          label="New task due time"
+          class="!bg-white !px-2 !py-1 !text-xs ring-1 ring-gray-200"
+        />
+        <button
+          v-if="newDate && !newTime"
+          type="button"
+          class="rounded-lg px-2 py-1 font-medium text-gray-500 hover:bg-white hover:text-gray-900"
+          @click="newTime = '09:00'"
+        >
+          Add time
+        </button>
+        <button
+          v-if="newTime"
+          type="button"
+          class="rounded-lg px-2 py-1 font-medium text-gray-500 hover:bg-white hover:text-gray-900"
+          @click="newTime = ''"
+        >
+          No time
+        </button>
+        <span class="ml-auto flex gap-x-1">
+          <button
+            type="button"
+            class="rounded-lg px-2 py-1 font-medium text-gray-500 hover:bg-white hover:text-gray-900"
+            @click="cancelAdd"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="rounded-lg bg-gray-900 px-2.5 py-1 font-semibold text-white hover:bg-gray-700"
+          >
+            Add
+          </button>
+        </span>
+      </div>
     </form>
     <button
       v-else

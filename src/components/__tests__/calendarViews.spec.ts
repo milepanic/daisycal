@@ -1,4 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils'
+import { nextTick } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 
@@ -22,6 +23,20 @@ import {
   eventIcs,
   todoIcs,
 } from '@/stores/__tests__/fakeClient'
+
+/** test-utils builds a MouseEvent for pointer* and cannot set `button`; dispatch a real PointerEvent. */
+async function pointer(target: { element: Element }, type: string, init: PointerEventInit) {
+  target.element.dispatchEvent(
+    new PointerEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      pointerType: 'mouse',
+      ...init,
+    }),
+  )
+  await nextTick()
+}
 
 const WEEK = { start: new Date(2026, 9, 12), end: new Date(2026, 9, 19) }
 const colorFor = (url: string) => (url === WORK.url ? '#225688' : '#566c86')
@@ -111,11 +126,80 @@ describe('TimeGrid', () => {
       y: 0,
       toJSON: () => ({}),
     })
-    await col.trigger('click', { clientY: 635 })
+    await pointer(col, 'pointerdown', { clientX: 50, clientY: 635 })
+    await pointer(col, 'pointerup', { clientX: 50, clientY: 635 })
     const [start, end, allDay] = wrapper.emitted('createAt')![0]!
     expect(start).toEqual(new Date(2026, 9, 13, 10, 30))
     expect(end).toEqual(new Date(2026, 9, 13, 11, 30))
     expect(allDay).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('drags on empty space to pick a slot, drags chips to move them and resizes from the bottom edge', async () => {
+    const { instances } = seeded()
+    const wrapper = mount(TimeGrid, {
+      props: { days: eachDay(WEEK), instances, tasks: [], colorFor },
+      attachTo: document.body,
+    })
+    const cols = wrapper.findAll('[data-day]')
+    cols.forEach((c, i) => {
+      c.element.getBoundingClientRect = () => ({
+        top: 0,
+        left: i * 100,
+        width: 100,
+        height: 1440,
+        bottom: 1440,
+        right: (i + 1) * 100,
+        x: i * 100,
+        y: 0,
+        toJSON: () => ({}),
+      })
+    })
+
+    // Drag from 10:00 to 11:40 on Tuesday → 10:00–11:45 (15-minute snap).
+    const tue = cols[1]!
+    await pointer(tue, 'pointerdown', { clientX: 150, clientY: 600 })
+    await pointer(tue, 'pointermove', { clientX: 150, clientY: 700 })
+    expect(wrapper.find('[data-testid="drag-preview"]').text()).toContain('10:00–11:45')
+    await pointer(tue, 'pointerup', { clientX: 150, clientY: 700 })
+    const [s1, e1] = wrapper.emitted('createAt')![0]!
+    expect(s1).toEqual(new Date(2026, 9, 13, 10, 0))
+    expect(e1).toEqual(new Date(2026, 9, 13, 11, 45))
+
+    // Move "Design review" (Wed 10:00–11:30) to Thursday 13:00.
+    const review = wrapper.find('[data-chip$="review.ics|"]')
+    await pointer(review, 'pointerdown', { clientX: 250, clientY: 610 })
+    await pointer(review, 'pointermove', { clientX: 350, clientY: 790 })
+    expect(wrapper.find('[data-testid="drag-preview"]').text()).toContain('13:00–14:30')
+    expect(wrapper.find('[data-chip$="review.ics|"]').classes()).toContain('opacity-40')
+    await pointer(review, 'pointerup', { clientX: 350, clientY: 790 })
+    const [moved, ms, me] = wrapper.emitted('moveEvent')![0]!
+    expect(moved).toMatchObject({ summary: 'Design review' })
+    expect(ms).toEqual(new Date(2026, 9, 15, 13, 0))
+    expect(me).toEqual(new Date(2026, 9, 15, 14, 30))
+    // The click that follows a drag does not select.
+    await review.find('button').trigger('click')
+    expect(wrapper.emitted('selectEvent')).toBeUndefined()
+
+    // Resize "Gym" (Fri 08:00–09:00) to end at 09:45.
+    const gym = wrapper.find('[data-chip$="gym.ics|"]')
+    await pointer(gym.find('[data-testid="resize-handle"]'), 'pointerdown', {
+      clientX: 450,
+      clientY: 540,
+    })
+    await pointer(gym, 'pointermove', { clientX: 450, clientY: 587 })
+    await pointer(gym, 'pointerup', { clientX: 450, clientY: 587 })
+    const [, rs, re] = wrapper.emitted('moveEvent')![1]!
+    expect(rs).toEqual(new Date(2026, 9, 16, 8, 0))
+    expect(re).toEqual(new Date(2026, 9, 16, 9, 45))
+
+    // A press without movement on a chip is still a click.
+    const standup = wrapper.find('[data-chip$="standup.ics|"]')
+    await new Promise((r) => setTimeout(r, 450))
+    await pointer(standup, 'pointerdown', { clientX: 250, clientY: 605 })
+    await pointer(standup, 'pointerup', { clientX: 251, clientY: 606 })
+    await standup.find('button').trigger('click')
+    expect(wrapper.emitted('selectEvent')![0]![0]).toMatchObject({ summary: 'Daily Standup' })
     wrapper.unmount()
   })
 

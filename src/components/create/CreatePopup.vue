@@ -37,6 +37,7 @@ import { useEventsStore } from '@/stores/events'
 import { useTasksStore } from '@/stores/tasks'
 import { useUiStore } from '@/stores/ui'
 import AppIcon from '@/components/ui/AppIcon.vue'
+import TimeSelect from '@/components/ui/TimeSelect.vue'
 
 const ui = useUiStore()
 const calendars = useCalendarsStore()
@@ -266,6 +267,19 @@ function init() {
     ''
 }
 
+// Moving the start keeps the event length (as in the mockup's 12:00 – 13:00 slot).
+watch(
+  () => form.startTime,
+  (next, prev) => {
+    if (kind.value !== 'event' || form.allDay || !prev || !next) return
+    const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5))
+    const length = toMin(form.endTime) - toMin(prev)
+    if (length <= 0) return
+    const end = Math.min(24 * 60 - 1, toMin(next) + length)
+    form.endTime = `${String(Math.floor(end / 60)).padStart(2, '0')}:${String(end % 60).padStart(2, '0')}`
+  },
+)
+
 watch(kind, (k) => {
   if (isEdit.value) return
   const lists = k === 'task' ? taskLists.value : eventCalendars.value
@@ -454,438 +468,434 @@ async function remove(deleteScope: EditScope) {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-30 cursor-default" aria-hidden="true"></div>
-  <section
-    ref="root"
-    role="dialog"
-    aria-modal="true"
-    :aria-label="
-      isEdit
-        ? kind === 'task'
-          ? 'Edit task'
-          : 'Edit event'
-        : kind === 'task'
-          ? 'New task'
-          : 'New event'
-    "
-    class="fixed z-40 w-[26rem] max-w-[calc(100vw-1rem)] rounded-2xl bg-white text-left shadow-[0_8px_32px_rgba(0,0,0,0.16)] ring-1 ring-gray-200"
-    :style="style"
-    data-testid="create-popup"
-  >
-    <div class="flex items-center justify-between px-4 pt-3">
-      <fieldset v-if="!isEdit" class="flex h-9 rounded-lg bg-gray-100 p-0.5">
-        <legend class="sr-only">Type</legend>
-        <label
-          v-for="t in ['event', 'task'] as const"
-          :key="t"
-          class="flex cursor-pointer items-center gap-x-1.5 rounded-lg px-3 text-sm font-medium text-gray-600 hover:text-gray-900 has-checked:bg-white has-checked:text-gray-900 has-focus-visible:outline-2 has-focus-visible:outline-accent"
+  <div class="contents">
+    <div class="fixed inset-0 z-30 cursor-default" aria-hidden="true"></div>
+    <section
+      ref="root"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="
+        isEdit
+          ? kind === 'task'
+            ? 'Edit task'
+            : 'Edit event'
+          : kind === 'task'
+            ? 'New task'
+            : 'New event'
+      "
+      class="fixed z-40 w-[26rem] max-w-[calc(100vw-1rem)] rounded-2xl bg-white text-left shadow-[0_8px_32px_rgba(0,0,0,0.16)] ring-1 ring-gray-200"
+      :style="style"
+      data-testid="create-popup"
+    >
+      <div class="flex items-center justify-between px-4 pt-3">
+        <fieldset v-if="!isEdit" class="flex h-9 rounded-lg bg-gray-100 p-0.5">
+          <legend class="sr-only">Type</legend>
+          <label
+            v-for="t in ['event', 'task'] as const"
+            :key="t"
+            class="flex cursor-pointer items-center gap-x-1.5 rounded-lg px-3 text-sm font-medium text-gray-600 hover:text-gray-900 has-checked:bg-white has-checked:text-gray-900 has-focus-visible:outline-2 has-focus-visible:outline-accent"
+          >
+            <input v-model="kind" type="radio" name="create-type" :value="t" class="sr-only" />
+            <AppIcon :name="t === 'event' ? 'calendar' : 'tasks'" class="size-4" />
+            {{ t === 'event' ? 'Event' : 'Task' }}
+          </label>
+        </fieldset>
+        <h2 v-else class="text-sm font-semibold text-gray-500">
+          {{ kind === 'task' ? 'Edit task' : 'Edit event' }}
+        </h2>
+        <button
+          type="button"
+          title="Close"
+          class="flex size-9 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+          @click="ui.closeCreate()"
         >
-          <input v-model="kind" type="radio" name="create-type" :value="t" class="sr-only" />
-          <AppIcon :name="t === 'event' ? 'calendar' : 'tasks'" class="size-4" />
-          {{ t === 'event' ? 'Event' : 'Task' }}
-        </label>
-      </fieldset>
-      <h2 v-else class="text-sm font-semibold text-gray-500">
-        {{ kind === 'task' ? 'Edit task' : 'Edit event' }}
-      </h2>
-      <button
-        type="button"
-        title="Close"
-        class="flex size-9 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900"
-        @click="ui.closeCreate()"
-      >
-        <span class="sr-only">Close</span>
-        <AppIcon name="close" class="size-5" />
-      </button>
-    </div>
-
-    <form class="px-4 pb-4" novalidate @submit.prevent="save">
-      <div class="mt-3 pl-9">
-        <label for="create-name" class="sr-only">Title</label>
-        <input
-          id="create-name"
-          ref="titleInput"
-          v-model="form.title"
-          type="text"
-          placeholder="Add title"
-          autocomplete="off"
-          class="w-full border-b-2 border-gray-200 bg-transparent py-1.5 text-xl font-semibold text-gray-900 placeholder:font-medium placeholder:text-gray-400 focus:border-gray-900 focus:outline-none"
-        />
+          <span class="sr-only">Close</span>
+          <AppIcon name="close" class="size-5" />
+        </button>
       </div>
 
-      <!-- ===== Event fields ===== -->
-      <div v-if="kind === 'event'" class="mt-4 space-y-4">
-        <div class="flex items-start gap-x-4">
-          <AppIcon name="clock" class="mt-1.5 size-5 shrink-0 text-gray-400" />
-          <div class="min-w-0 flex-1">
-            <div class="flex flex-wrap items-center gap-1.5 text-sm">
-              <input
-                v-model="form.date"
-                type="date"
-                aria-label="Start date"
-                class="rounded-lg bg-gray-100 px-2.5 py-1.5 font-medium text-gray-900 hover:bg-gray-200"
-              />
-              <template v-if="form.allDay">
-                <span class="text-gray-400">–</span>
-                <input
-                  v-model="form.endDate"
-                  type="date"
-                  aria-label="End date"
-                  class="rounded-lg bg-gray-100 px-2.5 py-1.5 font-medium text-gray-900 hover:bg-gray-200"
-                />
-              </template>
-              <template v-else>
-                <input
-                  v-model="form.startTime"
-                  type="time"
-                  step="300"
-                  aria-label="Start time"
-                  class="rounded-lg bg-gray-100 px-2.5 py-1.5 font-medium text-gray-900 tabular-nums hover:bg-gray-200"
-                />
-                <span class="text-gray-400">–</span>
-                <input
-                  v-model="form.endTime"
-                  type="time"
-                  step="300"
-                  aria-label="End time"
-                  class="rounded-lg bg-gray-100 px-2.5 py-1.5 font-medium text-gray-900 tabular-nums hover:bg-gray-200"
-                />
-              </template>
-            </div>
-            <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
-              <label class="flex cursor-pointer items-center gap-x-2 text-sm text-gray-700">
-                <span class="grid size-4 shrink-0 place-items-center">
-                  <input
-                    v-model="form.allDay"
-                    type="checkbox"
-                    class="peer col-start-1 row-start-1 size-4 cursor-pointer appearance-none rounded-sm bg-gray-200 checked:bg-gray-900"
-                  />
-                  <svg
-                    class="pointer-events-none col-start-1 row-start-1 hidden size-3.5 text-white peer-checked:block"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    viewBox="0 0 14 14"
-                    aria-hidden="true"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M3 7.5 5.75 10.25 11 4"
-                    />
-                  </svg>
-                </span>
-                All day
-              </label>
-              <div class="relative">
-                <label for="event-repeat" class="sr-only">Repeat</label>
-                <select
-                  id="event-repeat"
-                  v-model="form.repeat"
-                  class="cursor-pointer appearance-none rounded-lg py-1.5 pr-7 pl-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:outline-2 focus:outline-accent"
-                >
-                  <option v-for="o in repeatOptions" :key="o.value" :value="o.value">
-                    {{ o.label }}
-                  </option>
-                </select>
-                <AppIcon
-                  name="chevron-down"
-                  class="pointer-events-none absolute top-1/2 right-2 size-4 -translate-y-1/2 text-gray-400"
-                />
-              </div>
-            </div>
-            <div
-              v-if="isEdit && editingInstance?.isRecurring"
-              class="mt-2 flex flex-wrap items-center gap-x-4 text-sm text-gray-700"
-              data-testid="scope"
-            >
-              <span class="text-gray-500">Apply to</span>
-              <label class="flex cursor-pointer items-center gap-x-1.5"
-                ><input v-model="scope" type="radio" value="this" class="accent-gray-900" /> This
-                event</label
-              >
-              <label class="flex cursor-pointer items-center gap-x-1.5"
-                ><input v-model="scope" type="radio" value="all" class="accent-gray-900" /> All
-                events</label
-              >
-            </div>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-x-4">
-          <AppIcon name="calendar" class="size-5 shrink-0 text-gray-400" />
-          <div class="relative flex min-w-0 flex-1 items-center">
-            <span
-              class="pointer-events-none absolute left-2.5 size-2.5 rounded-sm"
-              :style="{ backgroundColor: color }"
-            ></span>
-            <label for="event-calendar" class="sr-only">Calendar</label>
-            <select
-              id="event-calendar"
-              v-model="form.collectionUrl"
-              class="w-full cursor-pointer appearance-none rounded-lg bg-gray-100 py-2 pr-8 pl-7 text-sm font-medium text-gray-900 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
-            >
-              <option v-for="c in eventCalendars" :key="c.url" :value="c.url">
-                {{ c.displayName }}
-              </option>
-            </select>
-            <AppIcon
-              name="chevron-down"
-              class="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-gray-500"
-            />
-          </div>
-        </div>
-
-        <div class="flex items-center gap-x-4">
-          <AppIcon name="pin" class="size-5 shrink-0 text-gray-400" />
-          <label for="event-location" class="sr-only">Location</label>
+      <form class="px-4 pb-4" novalidate @submit.prevent="save">
+        <div class="mt-3 pl-9">
+          <label for="create-name" class="sr-only">Title</label>
           <input
-            id="event-location"
-            v-model="form.location"
+            id="create-name"
+            ref="titleInput"
+            v-model="form.title"
             type="text"
-            placeholder="Add location"
+            placeholder="Add title"
             autocomplete="off"
-            class="w-full rounded-lg bg-gray-100 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
+            class="w-full border-b-2 border-gray-200 bg-transparent py-1.5 text-xl font-semibold text-gray-900 placeholder:font-medium placeholder:text-gray-400 focus:border-gray-900 focus:outline-none"
           />
         </div>
 
-        <div class="flex items-start gap-x-4">
-          <AppIcon name="bell" class="mt-2 size-5 shrink-0 text-gray-400" />
-          <div class="min-w-0 flex-1">
-            <div v-if="form.alarm != null" class="flex items-center gap-x-1.5">
-              <div class="relative">
-                <label for="event-reminder" class="sr-only">Notification</label>
-                <select
-                  id="event-reminder"
-                  v-model.number="form.alarm"
-                  class="cursor-pointer appearance-none rounded-lg bg-gray-100 py-2 pr-8 pl-3 text-sm font-medium text-gray-900 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
-                >
-                  <option v-for="o in alarmOptions" :key="o.value" :value="o.value">
-                    {{ o.label }}
-                  </option>
-                  <option v-if="customAlarm != null" :value="customAlarm">
-                    {{ customAlarm }} minutes before
-                  </option>
-                </select>
-                <AppIcon
-                  name="chevron-down"
-                  class="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-gray-500"
+        <!-- ===== Event fields ===== -->
+        <div v-if="kind === 'event'" class="mt-4 space-y-4">
+          <div class="flex items-start gap-x-4">
+            <AppIcon name="clock" class="mt-1.5 size-5 shrink-0 text-gray-400" />
+            <div class="min-w-0 flex-1">
+              <div class="flex flex-wrap items-center gap-1.5 text-sm">
+                <input
+                  v-model="form.date"
+                  type="date"
+                  aria-label="Start date"
+                  class="rounded-lg bg-gray-100 px-2.5 py-1.5 font-medium text-gray-900 hover:bg-gray-200"
                 />
+                <template v-if="form.allDay">
+                  <span class="text-gray-400">–</span>
+                  <input
+                    v-model="form.endDate"
+                    type="date"
+                    aria-label="End date"
+                    class="rounded-lg bg-gray-100 px-2.5 py-1.5 font-medium text-gray-900 hover:bg-gray-200"
+                  />
+                </template>
+                <template v-else>
+                  <TimeSelect v-model="form.startTime" label="Start time" />
+                  <span class="text-gray-400">–</span>
+                  <TimeSelect v-model="form.endTime" label="End time" />
+                </template>
+              </div>
+              <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
+                <label class="flex cursor-pointer items-center gap-x-2 text-sm text-gray-700">
+                  <span class="grid size-4 shrink-0 place-items-center">
+                    <input
+                      v-model="form.allDay"
+                      type="checkbox"
+                      class="peer col-start-1 row-start-1 size-4 cursor-pointer appearance-none rounded-sm bg-gray-200 checked:bg-gray-900"
+                    />
+                    <svg
+                      class="pointer-events-none col-start-1 row-start-1 hidden size-3.5 text-white peer-checked:block"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      viewBox="0 0 14 14"
+                      aria-hidden="true"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M3 7.5 5.75 10.25 11 4"
+                      />
+                    </svg>
+                  </span>
+                  All day
+                </label>
+                <div class="relative">
+                  <label for="event-repeat" class="sr-only">Repeat</label>
+                  <select
+                    id="event-repeat"
+                    v-model="form.repeat"
+                    class="cursor-pointer appearance-none rounded-lg py-1.5 pr-7 pl-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:outline-2 focus:outline-accent"
+                  >
+                    <option v-for="o in repeatOptions" :key="o.value" :value="o.value">
+                      {{ o.label }}
+                    </option>
+                  </select>
+                  <AppIcon
+                    name="chevron-down"
+                    class="pointer-events-none absolute top-1/2 right-2 size-4 -translate-y-1/2 text-gray-400"
+                  />
+                </div>
+              </div>
+              <div
+                v-if="isEdit && editingInstance?.isRecurring"
+                class="mt-2 flex flex-wrap items-center gap-x-4 text-sm text-gray-700"
+                data-testid="scope"
+              >
+                <span class="text-gray-500">Apply to</span>
+                <label class="flex cursor-pointer items-center gap-x-1.5"
+                  ><input v-model="scope" type="radio" value="this" class="accent-gray-900" /> This
+                  event</label
+                >
+                <label class="flex cursor-pointer items-center gap-x-1.5"
+                  ><input v-model="scope" type="radio" value="all" class="accent-gray-900" /> All
+                  events</label
+                >
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-x-4">
+            <AppIcon name="calendar" class="size-5 shrink-0 text-gray-400" />
+            <div class="relative flex min-w-0 flex-1 items-center">
+              <span
+                class="pointer-events-none absolute left-2.5 size-2.5 rounded-sm"
+                :style="{ backgroundColor: color }"
+              ></span>
+              <label for="event-calendar" class="sr-only">Calendar</label>
+              <select
+                id="event-calendar"
+                v-model="form.collectionUrl"
+                class="w-full cursor-pointer appearance-none rounded-lg bg-gray-100 py-2 pr-8 pl-7 text-sm font-medium text-gray-900 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
+              >
+                <option v-for="c in eventCalendars" :key="c.url" :value="c.url">
+                  {{ c.displayName }}
+                </option>
+              </select>
+              <AppIcon
+                name="chevron-down"
+                class="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-gray-500"
+              />
+            </div>
+          </div>
+
+          <div class="flex items-center gap-x-4">
+            <AppIcon name="pin" class="size-5 shrink-0 text-gray-400" />
+            <label for="event-location" class="sr-only">Location</label>
+            <input
+              id="event-location"
+              v-model="form.location"
+              type="text"
+              placeholder="Add location"
+              autocomplete="off"
+              class="w-full rounded-lg bg-gray-100 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
+            />
+          </div>
+
+          <div class="flex items-start gap-x-4">
+            <AppIcon name="bell" class="mt-2 size-5 shrink-0 text-gray-400" />
+            <div class="min-w-0 flex-1">
+              <div v-if="form.alarm != null" class="flex items-center gap-x-1.5">
+                <div class="relative">
+                  <label for="event-reminder" class="sr-only">Notification</label>
+                  <select
+                    id="event-reminder"
+                    v-model.number="form.alarm"
+                    class="cursor-pointer appearance-none rounded-lg bg-gray-100 py-2 pr-8 pl-3 text-sm font-medium text-gray-900 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
+                  >
+                    <option v-for="o in alarmOptions" :key="o.value" :value="o.value">
+                      {{ o.label }}
+                    </option>
+                    <option v-if="customAlarm != null" :value="customAlarm">
+                      {{ customAlarm }} minutes before
+                    </option>
+                  </select>
+                  <AppIcon
+                    name="chevron-down"
+                    class="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-gray-500"
+                  />
+                </div>
+                <button
+                  type="button"
+                  class="flex size-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                  @click="form.alarm = null"
+                >
+                  <span class="sr-only">Remove notification</span>
+                  <AppIcon name="close" class="size-4" />
+                </button>
               </div>
               <button
+                v-else
                 type="button"
-                class="flex size-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-                @click="form.alarm = null"
+                class="inline-flex items-center gap-x-1 rounded-lg px-2 py-1 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                @click="form.alarm = 30"
               >
-                <span class="sr-only">Remove notification</span>
-                <AppIcon name="close" class="size-4" />
+                <AppIcon name="plus" class="size-4" />
+                Add notification
               </button>
             </div>
+          </div>
+
+          <div class="flex items-start gap-x-4">
+            <AppIcon name="lines" class="mt-2 size-5 shrink-0 text-gray-400" />
+            <label for="event-description" class="sr-only">Description</label>
+            <textarea
+              id="event-description"
+              v-model="form.description"
+              rows="2"
+              placeholder="Add description"
+              class="w-full resize-none rounded-lg bg-gray-100 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
+            ></textarea>
+          </div>
+        </div>
+
+        <!-- ===== Task fields ===== -->
+        <div v-else class="mt-4 space-y-4">
+          <div class="flex items-start gap-x-4">
+            <AppIcon name="clock" class="mt-1.5 size-5 shrink-0 text-gray-400" />
+            <div class="min-w-0 flex-1">
+              <div class="flex flex-wrap items-center gap-1.5 text-sm">
+                <input
+                  v-model="form.dueDate"
+                  type="date"
+                  aria-label="Due date"
+                  class="rounded-lg bg-gray-100 px-2.5 py-1.5 font-medium text-gray-900 hover:bg-gray-200"
+                />
+                <TimeSelect v-if="form.dueTime" v-model="form.dueTime" label="Due time" />
+                <button
+                  v-if="!form.dueTime"
+                  type="button"
+                  class="rounded-lg px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                  @click="form.dueTime = '09:00'"
+                >
+                  Add time
+                </button>
+                <button
+                  v-if="form.dueTime"
+                  type="button"
+                  class="flex size-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                  @click="form.dueTime = ''"
+                >
+                  <span class="sr-only">Remove time</span>
+                  <AppIcon name="close" class="size-4" />
+                </button>
+                <button
+                  v-if="form.dueDate"
+                  type="button"
+                  class="rounded-lg px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                  @click="((form.dueDate = ''), (form.dueTime = ''))"
+                >
+                  No due date
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-x-4">
+            <AppIcon name="tasks" class="size-5 shrink-0 text-gray-400" />
+            <div class="relative flex min-w-0 flex-1 items-center">
+              <span
+                class="pointer-events-none absolute left-2.5 size-2.5 rounded-sm"
+                :style="{ backgroundColor: color }"
+              ></span>
+              <label for="task-list" class="sr-only">Task list</label>
+              <select
+                id="task-list"
+                v-model="form.collectionUrl"
+                class="w-full cursor-pointer appearance-none rounded-lg bg-gray-100 py-2 pr-8 pl-7 text-sm font-medium text-gray-900 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
+              >
+                <option v-for="c in taskLists" :key="c.url" :value="c.url">
+                  {{ c.displayName }}
+                </option>
+              </select>
+              <AppIcon
+                name="chevron-down"
+                class="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-gray-500"
+              />
+            </div>
+          </div>
+
+          <div class="flex items-center gap-x-4">
+            <AppIcon name="flag" class="size-5 shrink-0 text-gray-400" />
+            <div class="relative">
+              <label for="task-priority" class="sr-only">Priority</label>
+              <select
+                id="task-priority"
+                v-model="form.priority"
+                class="cursor-pointer appearance-none rounded-lg bg-gray-100 py-2 pr-8 pl-3 text-sm font-medium text-gray-900 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
+              >
+                <option :value="null">No priority</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+              <AppIcon
+                name="chevron-down"
+                class="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-gray-500"
+              />
+            </div>
+          </div>
+
+          <div class="flex items-start gap-x-4">
+            <AppIcon name="lines" class="mt-2 size-5 shrink-0 text-gray-400" />
+            <label for="task-description" class="sr-only">Description</label>
+            <textarea
+              id="task-description"
+              v-model="form.description"
+              rows="2"
+              placeholder="Add description"
+              class="w-full resize-none rounded-lg bg-gray-100 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
+            ></textarea>
+          </div>
+        </div>
+
+        <p
+          v-if="error"
+          role="alert"
+          class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+        >
+          {{ error }}
+        </p>
+        <div
+          v-if="conflict"
+          role="alert"
+          class="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800"
+          data-testid="conflict"
+        >
+          <p class="font-medium">Changed on another device.</p>
+          <p class="mt-0.5">
+            The latest version has been loaded. Save again to apply your changes on top of it, or
+            cancel to keep the other device's version.
+          </p>
+        </div>
+
+        <div
+          v-if="confirmingDelete"
+          class="mt-4 rounded-lg bg-gray-50 p-3 text-sm"
+          data-testid="confirm-delete"
+        >
+          <p class="font-medium text-gray-900">
+            {{
+              editingInstance?.isRecurring
+                ? 'Delete this repeating event?'
+                : kind === 'task'
+                  ? 'Delete this task?'
+                  : 'Delete this event?'
+            }}
+          </p>
+          <div class="mt-2 flex flex-wrap gap-2">
             <button
-              v-else
+              v-if="editingInstance?.isRecurring"
               type="button"
-              class="inline-flex items-center gap-x-1 rounded-lg px-2 py-1 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-              @click="form.alarm = 30"
+              :disabled="busy"
+              class="rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-700 disabled:opacity-60"
+              @click="remove('this')"
             >
-              <AppIcon name="plus" class="size-4" />
-              Add notification
+              Only this occurrence
+            </button>
+            <button
+              type="button"
+              :disabled="busy"
+              class="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-60"
+              @click="remove('all')"
+            >
+              {{ editingInstance?.isRecurring ? 'All occurrences' : 'Delete' }}
+            </button>
+            <button
+              type="button"
+              class="rounded-lg px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200"
+              @click="confirmingDelete = false"
+            >
+              Cancel
             </button>
           </div>
         </div>
 
-        <div class="flex items-start gap-x-4">
-          <AppIcon name="lines" class="mt-2 size-5 shrink-0 text-gray-400" />
-          <label for="event-description" class="sr-only">Description</label>
-          <textarea
-            id="event-description"
-            v-model="form.description"
-            rows="2"
-            placeholder="Add description"
-            class="w-full resize-none rounded-lg bg-gray-100 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
-          ></textarea>
-        </div>
-      </div>
-
-      <!-- ===== Task fields ===== -->
-      <div v-else class="mt-4 space-y-4">
-        <div class="flex items-start gap-x-4">
-          <AppIcon name="clock" class="mt-1.5 size-5 shrink-0 text-gray-400" />
-          <div class="min-w-0 flex-1">
-            <div class="flex flex-wrap items-center gap-1.5 text-sm">
-              <input
-                v-model="form.dueDate"
-                type="date"
-                aria-label="Due date"
-                class="rounded-lg bg-gray-100 px-2.5 py-1.5 font-medium text-gray-900 hover:bg-gray-200"
-              />
-              <input
-                v-model="form.dueTime"
-                type="time"
-                step="300"
-                aria-label="Due time"
-                class="rounded-lg bg-gray-100 px-2.5 py-1.5 font-medium text-gray-900 tabular-nums hover:bg-gray-200"
-              />
-              <button
-                v-if="form.dueTime"
-                type="button"
-                class="flex size-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-                @click="form.dueTime = ''"
-              >
-                <span class="sr-only">Remove time</span>
-                <AppIcon name="close" class="size-4" />
-              </button>
-              <button
-                v-if="form.dueDate"
-                type="button"
-                class="rounded-lg px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-900"
-                @click="((form.dueDate = ''), (form.dueTime = ''))"
-              >
-                No due date
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-x-4">
-          <AppIcon name="tasks" class="size-5 shrink-0 text-gray-400" />
-          <div class="relative flex min-w-0 flex-1 items-center">
-            <span
-              class="pointer-events-none absolute left-2.5 size-2.5 rounded-sm"
-              :style="{ backgroundColor: color }"
-            ></span>
-            <label for="task-list" class="sr-only">Task list</label>
-            <select
-              id="task-list"
-              v-model="form.collectionUrl"
-              class="w-full cursor-pointer appearance-none rounded-lg bg-gray-100 py-2 pr-8 pl-7 text-sm font-medium text-gray-900 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
-            >
-              <option v-for="c in taskLists" :key="c.url" :value="c.url">
-                {{ c.displayName }}
-              </option>
-            </select>
-            <AppIcon
-              name="chevron-down"
-              class="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-gray-500"
-            />
-          </div>
-        </div>
-
-        <div class="flex items-center gap-x-4">
-          <AppIcon name="flag" class="size-5 shrink-0 text-gray-400" />
-          <div class="relative">
-            <label for="task-priority" class="sr-only">Priority</label>
-            <select
-              id="task-priority"
-              v-model="form.priority"
-              class="cursor-pointer appearance-none rounded-lg bg-gray-100 py-2 pr-8 pl-3 text-sm font-medium text-gray-900 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
-            >
-              <option :value="null">No priority</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
-            <AppIcon
-              name="chevron-down"
-              class="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-gray-500"
-            />
-          </div>
-        </div>
-
-        <div class="flex items-start gap-x-4">
-          <AppIcon name="lines" class="mt-2 size-5 shrink-0 text-gray-400" />
-          <label for="task-description" class="sr-only">Description</label>
-          <textarea
-            id="task-description"
-            v-model="form.description"
-            rows="2"
-            placeholder="Add description"
-            class="w-full resize-none rounded-lg bg-gray-100 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
-          ></textarea>
-        </div>
-      </div>
-
-      <p v-if="error" role="alert" class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-        {{ error }}
-      </p>
-      <div
-        v-if="conflict"
-        role="alert"
-        class="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800"
-        data-testid="conflict"
-      >
-        <p class="font-medium">Changed on another device.</p>
-        <p class="mt-0.5">
-          The latest version has been loaded. Save again to apply your changes on top of it, or
-          cancel to keep the other device's version.
-        </p>
-      </div>
-
-      <div
-        v-if="confirmingDelete"
-        class="mt-4 rounded-lg bg-gray-50 p-3 text-sm"
-        data-testid="confirm-delete"
-      >
-        <p class="font-medium text-gray-900">
-          {{
-            editingInstance?.isRecurring
-              ? 'Delete this repeating event?'
-              : kind === 'task'
-                ? 'Delete this task?'
-                : 'Delete this event?'
-          }}
-        </p>
-        <div class="mt-2 flex flex-wrap gap-2">
+        <div class="mt-5 flex items-center gap-x-2">
           <button
-            v-if="editingInstance?.isRecurring"
+            v-if="isEdit && !confirmingDelete"
             type="button"
-            :disabled="busy"
-            class="rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-700 disabled:opacity-60"
-            @click="remove('this')"
+            class="rounded-lg px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+            @click="confirmingDelete = true"
           >
-            Only this occurrence
+            Delete
           </button>
           <button
             type="button"
-            :disabled="busy"
-            class="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-60"
-            @click="remove('all')"
-          >
-            {{ editingInstance?.isRecurring ? 'All occurrences' : 'Delete' }}
-          </button>
-          <button
-            type="button"
-            class="rounded-lg px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200"
-            @click="confirmingDelete = false"
+            class="ml-auto cursor-pointer rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+            @click="ui.closeCreate()"
           >
             Cancel
           </button>
+          <button
+            type="submit"
+            :disabled="busy"
+            class="inline-flex h-9 items-center rounded-lg bg-gray-900 px-4 text-sm font-semibold text-white hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900 disabled:opacity-60"
+          >
+            {{ busy ? 'Saving…' : conflict ? 'Save again' : 'Save' }}
+          </button>
         </div>
-      </div>
-
-      <div class="mt-5 flex items-center gap-x-2">
-        <button
-          v-if="isEdit && !confirmingDelete"
-          type="button"
-          class="rounded-lg px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
-          @click="confirmingDelete = true"
-        >
-          Delete
-        </button>
-        <button
-          type="button"
-          class="ml-auto cursor-pointer rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-          @click="ui.closeCreate()"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          :disabled="busy"
-          class="inline-flex h-9 items-center rounded-lg bg-gray-900 px-4 text-sm font-semibold text-white hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900 disabled:opacity-60"
-        >
-          {{ busy ? 'Saving…' : conflict ? 'Save again' : 'Save' }}
-        </button>
-      </div>
-    </form>
-  </section>
+      </form>
+    </section>
+  </div>
 </template>

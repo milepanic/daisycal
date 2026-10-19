@@ -139,16 +139,20 @@ async function retrySync() {
         data-testid="drawer-backdrop"
         @click="ui.sidebarOpen = false"
       ></div>
-      <AppSidebar
-        v-show="ui.sidebarOpen"
-        :class="narrow ? 'fixed inset-y-0 left-0 z-30 h-full bg-zinc-100 px-2 shadow-xl' : ''"
-      />
+      <Transition :name="narrow ? 'slide' : 'fade'">
+        <AppSidebar
+          v-show="ui.sidebarOpen"
+          :class="narrow ? 'fixed inset-y-0 left-0 z-30 h-full bg-zinc-100 px-2 shadow-xl' : ''"
+        />
+      </Transition>
       <div class="flex min-w-0 flex-1 flex-col">
         <RouterView />
       </div>
     </div>
 
-    <CreatePopup v-if="ui.createDraft" :key="ui.createDraft.edit?.objectUrl ?? 'new'" />
+    <Transition name="pop">
+      <CreatePopup v-if="ui.createDraft" :key="ui.createDraft.edit?.objectUrl ?? 'new'" />
+    </Transition>
     <ToastStack />
   </div>
 </template>

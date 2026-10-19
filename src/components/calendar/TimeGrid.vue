@@ -1,9 +1,11 @@
 <script setup lang="ts">
 /**
  * Day/work-week/week grid: sticky day headers with the all-day row, hour labels, one column
- * per day with positioned events, due tasks, the current-time line and click-to-create.
+ * per day with positioned events, due tasks, the current-time line and pointer interactions:
+ *  - click or drag on empty space selects a time slot and opens the create popup
+ *  - drag a chip to move it (also across days), drag its bottom edge to resize
  */
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 
 import type { EventInstance, Task } from '@/api/ical'
 import { addDays, isSameDay, startOfDay, toDateKey } from '@/lib/dates'
@@ -37,6 +39,8 @@ const emit = defineEmits<{
   selectEvent: [instance: EventInstance, el: HTMLElement]
   selectTask: [task: Task, el: HTMLElement]
   createAt: [start: Date, end: Date, allDay: boolean, anchor: Anchor]
+  /** A chip was dragged or resized to a new time. */
+  moveEvent: [instance: EventInstance, start: Date, end: Date]
 }>()
 
 const root = ref<HTMLElement | null>(null)
@@ -54,6 +58,11 @@ onBeforeUnmount(() => {
 
 const gridCols = computed(() => `3.5rem repeat(${props.days.length}, minmax(0, 1fr))`)
 const hours = Array.from({ length: 23 }, (_, i) => i + 1)
+const PX_PER_MIN = HOUR_PX / 60
+/** Drag snapping. */
+const SNAP = 15
+/** Pointer travel before a press counts as a drag rather than a click. */
+const DRAG_THRESHOLD_PX = 6
 
 const allDayPlacements = computed(() =>
   layoutSpans(props.instances.filter(isAllDayRow), props.days, (i) => ({
@@ -79,27 +88,278 @@ const columns = computed(() =>
   }),
 )
 
-const nowTop = computed(() => minutesSinceMidnight(now.value, now.value) * (HOUR_PX / 60))
+const nowTop = computed(() => minutesSinceMidnight(now.value, now.value) * PX_PER_MIN)
 
 function eventKey(i: EventInstance) {
   return `${i.objectUrl}|${i.recurrenceId?.toString() ?? ''}`
 }
 
-function anchorAt(e: MouseEvent): Anchor {
-  const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
-  return { x: r.left, y: e.clientY, width: r.width, height: 0 }
-}
-
-function onColumnClick(day: Date, e: MouseEvent) {
-  const el = e.currentTarget as HTMLElement
-  const start = slotFromOffset(day, e.clientY - el.getBoundingClientRect().top)
-  emit('createAt', start, new Date(start.getTime() + 60 * 60_000), false, anchorAt(e))
+function anchorAt(el: HTMLElement, clientY: number): Anchor {
+  const r = el.getBoundingClientRect()
+  return { x: r.left, y: clientY, width: r.width, height: 0 }
 }
 
 function onAllDayClick(day: Date, e: MouseEvent) {
   const start = startOfDay(day)
-  emit('createAt', start, addDays(start, 1), true, anchorAt(e))
+  emit(
+    'createAt',
+    start,
+    addDays(start, 1),
+    true,
+    anchorAt(e.currentTarget as HTMLElement, e.clientY),
+  )
 }
+
+// ---- pointer interactions -------------------------------------------------------------------
+
+type Drag =
+  | {
+      kind: 'create'
+      column: HTMLElement
+      day: Date
+      anchorMin: number
+      curMin: number
+      moved: boolean
+      startY: number
+    }
+  | {
+      kind: 'move'
+      instance: EventInstance
+      column: HTMLElement
+      day: Date
+      grabMin: number
+      durationMin: number
+      startMin: number
+      moved: boolean
+      startX: number
+      startY: number
+    }
+  | {
+      kind: 'resize'
+      instance: EventInstance
+      column: HTMLElement
+      day: Date
+      startMin: number
+      endMin: number
+      moved: boolean
+      startY: number
+    }
+
+const drag = shallowRef<Drag | null>(null)
+let suppressClickUntil = 0
+
+const snap = (min: number) => Math.round(min / SNAP) * SNAP
+const clampMin = (min: number) => Math.max(0, Math.min(24 * 60, min))
+
+function minutesAt(column: HTMLElement, clientY: number): number {
+  return clampMin((clientY - column.getBoundingClientRect().top) / PX_PER_MIN)
+}
+
+function columnAt(clientX: number): { el: HTMLElement; day: Date } | null {
+  const cols = [...(root.value?.querySelectorAll<HTMLElement>('[data-day]') ?? [])]
+  for (const el of cols) {
+    const r = el.getBoundingClientRect()
+    if (clientX >= r.left && clientX < r.right) {
+      const day = props.days.find((d) => toDateKey(d) === el.dataset.day)
+      if (day) return { el, day }
+    }
+  }
+  return null
+}
+
+function dateAt(day: Date, min: number): Date {
+  const d = startOfDay(day)
+  d.setMinutes(min)
+  return d
+}
+
+function isPrimaryPointer(e: PointerEvent): boolean {
+  return e.button === 0 && e.pointerType !== 'touch'
+}
+
+function capture(e: PointerEvent) {
+  const el = e.currentTarget as HTMLElement
+  if (typeof el.setPointerCapture === 'function') {
+    try {
+      el.setPointerCapture(e.pointerId)
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+/** Empty space: start a slot selection. */
+function onColumnPointerDown(day: Date, e: PointerEvent) {
+  if (!isPrimaryPointer(e) || e.target !== e.currentTarget) return
+  const column = e.currentTarget as HTMLElement
+  const min = minutesAt(column, e.clientY)
+  drag.value = {
+    kind: 'create',
+    column,
+    day,
+    anchorMin: min,
+    curMin: min,
+    moved: false,
+    startY: e.clientY,
+  }
+  capture(e)
+}
+
+/** A chip: start moving it. The chip's own click still selects it when nothing moved. */
+function onChipPointerDown(instance: EventInstance, day: Date, e: PointerEvent) {
+  if (!isPrimaryPointer(e)) return
+  const column = (e.currentTarget as HTMLElement).closest<HTMLElement>('[data-day]')
+  if (!column) return
+  const dayStart = startOfDay(day).getTime()
+  const startMin = Math.max(0, (instance.start.getTime() - dayStart) / 60_000)
+  const durationMin = (instance.end.getTime() - instance.start.getTime()) / 60_000
+  drag.value = {
+    kind: 'move',
+    instance,
+    column,
+    day,
+    grabMin: minutesAt(column, e.clientY) - startMin,
+    durationMin,
+    startMin,
+    moved: false,
+    startX: e.clientX,
+    startY: e.clientY,
+  }
+  capture(e)
+}
+
+/** Bottom edge of a chip: start resizing. */
+function onResizePointerDown(instance: EventInstance, day: Date, e: PointerEvent) {
+  if (!isPrimaryPointer(e)) return
+  e.stopPropagation()
+  const column = (e.currentTarget as HTMLElement).closest<HTMLElement>('[data-day]')
+  if (!column) return
+  const dayStart = startOfDay(day).getTime()
+  const startMin = Math.max(0, (instance.start.getTime() - dayStart) / 60_000)
+  const endMin = Math.min(24 * 60, (instance.end.getTime() - dayStart) / 60_000)
+  drag.value = {
+    kind: 'resize',
+    instance,
+    column,
+    day,
+    startMin,
+    endMin,
+    moved: false,
+    startY: e.clientY,
+  }
+  capture(e)
+}
+
+function onPointerMove(e: PointerEvent) {
+  const d = drag.value
+  if (!d) return
+  if (d.kind === 'create') {
+    drag.value = {
+      ...d,
+      curMin: minutesAt(d.column, e.clientY),
+      moved: d.moved || Math.abs(e.clientY - d.startY) >= DRAG_THRESHOLD_PX,
+    }
+  } else if (d.kind === 'move') {
+    const target = columnAt(e.clientX) ?? { el: d.column, day: d.day }
+    let startMin = clampMin(snap(minutesAt(target.el, e.clientY) - d.grabMin))
+    if (startMin + d.durationMin > 24 * 60) startMin = 24 * 60 - d.durationMin
+    drag.value = {
+      ...d,
+      column: target.el,
+      day: target.day,
+      startMin,
+      moved:
+        d.moved ||
+        Math.abs(e.clientX - d.startX) + Math.abs(e.clientY - d.startY) >= DRAG_THRESHOLD_PX,
+    }
+  } else {
+    drag.value = {
+      ...d,
+      endMin: Math.max(d.startMin + SNAP, snap(minutesAt(d.column, e.clientY))),
+      moved: d.moved || Math.abs(e.clientY - d.startY) >= DRAG_THRESHOLD_PX,
+    }
+  }
+}
+
+function onPointerUp(e: PointerEvent) {
+  const d = drag.value
+  if (!d) return
+  drag.value = null
+  if (d.kind === 'create') {
+    if (!d.moved) {
+      const start = slotFromOffset(d.day, d.anchorMin * PX_PER_MIN)
+      emit(
+        'createAt',
+        start,
+        new Date(start.getTime() + 60 * 60_000),
+        false,
+        anchorAt(d.column, e.clientY),
+      )
+      return
+    }
+    const a = snap(Math.min(d.anchorMin, d.curMin))
+    const b = Math.max(a + SNAP, snap(Math.max(d.anchorMin, d.curMin)))
+    emit('createAt', dateAt(d.day, a), dateAt(d.day, b), false, anchorAt(d.column, e.clientY))
+    return
+  }
+  if (!d.moved) return
+  suppressClickUntil = Date.now() + 400
+  if (d.kind === 'move') {
+    const start = dateAt(d.day, d.startMin)
+    const end = new Date(start.getTime() + d.durationMin * 60_000)
+    if (start.getTime() !== d.instance.start.getTime()) emit('moveEvent', d.instance, start, end)
+  } else {
+    const end = dateAt(d.day, d.endMin)
+    if (end.getTime() !== d.instance.end.getTime())
+      emit('moveEvent', d.instance, d.instance.start, end)
+  }
+}
+
+function onPointerCancel() {
+  drag.value = null
+}
+
+function onSelectEvent(instance: EventInstance, el: HTMLElement) {
+  if (Date.now() < suppressClickUntil) return
+  emit('selectEvent', instance, el)
+}
+
+/** Preview chip while selecting a slot, moving or resizing. */
+const dragPreview = computed(() => {
+  const d = drag.value
+  if (!d) return null
+  if (d.kind === 'create') {
+    if (!d.moved) return null
+    const a = snap(Math.min(d.anchorMin, d.curMin))
+    const b = Math.max(a + SNAP, snap(Math.max(d.anchorMin, d.curMin)))
+    return {
+      dayKey: toDateKey(d.day),
+      top: a * PX_PER_MIN,
+      height: (b - a) * PX_PER_MIN,
+      title: '(No title)',
+      from: dateAt(d.day, a),
+      to: dateAt(d.day, b),
+      color: props.draftColor,
+    }
+  }
+  if (!d.moved) return null
+  const startMin = d.startMin
+  const endMin = d.kind === 'move' ? Math.min(24 * 60, startMin + d.durationMin) : d.endMin
+  return {
+    dayKey: toDateKey(d.day),
+    top: startMin * PX_PER_MIN,
+    height: Math.max((endMin - startMin) * PX_PER_MIN, 16),
+    title: d.instance.summary || '(No title)',
+    from: dateAt(d.day, startMin),
+    to: dateAt(d.day, endMin),
+    color: props.colorFor(d.instance.collectionUrl),
+  }
+})
+const draggingKey = computed(() =>
+  drag.value && drag.value.kind !== 'create' && drag.value.moved
+    ? eventKey(drag.value.instance)
+    : null,
+)
 
 /** Where the draft chip goes in each column (null when it is not a timed draft on that day). */
 function draftPlacement(day: Date) {
@@ -145,12 +405,11 @@ function onGridKeydown(e: KeyboardEvent) {
   const chips = chipsOf(column)
   const index = chips.indexOf(target)
   if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-    const next = chips[index + (e.key === 'ArrowDown' ? 1 : -1)]
-    next?.focus()
+    chips[index + (e.key === 'ArrowDown' ? 1 : -1)]?.focus()
     return
   }
-  const columns = [...(root.value?.querySelectorAll<HTMLElement>('[data-day]') ?? [])]
-  const sibling = columns[columns.indexOf(column) + (e.key === 'ArrowRight' ? 1 : -1)]
+  const cols = [...(root.value?.querySelectorAll<HTMLElement>('[data-day]') ?? [])]
+  const sibling = cols[cols.indexOf(column) + (e.key === 'ArrowRight' ? 1 : -1)]
   if (!sibling) return
   const candidates = chipsOf(sibling)
   if (candidates.length === 0) {
@@ -169,7 +428,7 @@ function taskRows(tasks: Task[]): { top: number; tasks: Task[] }[] {
     byTime.set(key, [...(byTime.get(key) ?? []), t])
   }
   return [...byTime.entries()].map(([time, list]) => ({
-    top: minutesSinceMidnight(new Date(time), new Date(time)) * (HOUR_PX / 60),
+    top: minutesSinceMidnight(new Date(time), new Date(time)) * PX_PER_MIN,
     tasks: list,
   }))
 }
@@ -179,8 +438,20 @@ function taskRows(tasks: Task[]): { top: number; tasks: Task[] }[] {
   <div
     ref="root"
     class="min-h-0 flex-1 overflow-auto px-2 pb-2"
+    :class="
+      drag
+        ? drag.kind === 'resize'
+          ? 'cursor-ns-resize select-none'
+          : drag.kind === 'move'
+            ? 'cursor-grabbing select-none'
+            : 'select-none'
+        : ''
+    "
     data-testid="time-grid"
     @keydown="onGridKeydown"
+    @pointermove="onPointerMove"
+    @pointerup="onPointerUp"
+    @pointercancel="onPointerCancel"
   >
     <div :class="days.length > 1 ? 'min-w-[640px]' : 'min-w-[320px]'">
       <!-- Day headers + all-day events (sticky) -->
@@ -239,7 +510,7 @@ function taskRows(tasks: Task[]): { top: number; tasks: Task[] }[] {
                 :selected="selectedKey === eventKey(p.item)"
                 :continues-before="p.continuesBefore"
                 :continues-after="p.continuesAfter"
-                @select="(i, el) => emit('selectEvent', i, el)"
+                @select="onSelectEvent"
               />
             </div>
           </div>
@@ -266,19 +537,24 @@ function taskRows(tasks: Task[]): { top: number; tasks: Task[] }[] {
           tabindex="0"
           role="gridcell"
           :aria-label="`${WEEKDAYS_LONG[c.day.getDay()]} ${c.day.getDate()}, press Enter to add an event`"
-          @click="onColumnClick(c.day, $event)"
+          @pointerdown="onColumnPointerDown(c.day, $event)"
         >
           <div
             v-for="p in c.placements"
             :key="eventKey(p.instance)"
-            class="absolute z-10"
+            class="absolute z-10 transition-opacity duration-150"
+            :class="[
+              p.left > 0 ? 'ring-1 ring-white' : '',
+              draggingKey === eventKey(p.instance) ? 'opacity-40' : '',
+            ]"
             :style="{
               top: `${p.top}px`,
               height: `${p.height}px`,
               left: `calc(${p.left * 100}% + 2px)`,
               width: `calc(${p.width * 100}% - 4px)`,
             }"
-            :class="p.left > 0 ? 'ring-1 ring-white' : ''"
+            :data-chip="eventKey(p.instance)"
+            @pointerdown="onChipPointerDown(p.instance, c.day, $event)"
           >
             <EventChip
               :instance="p.instance"
@@ -288,8 +564,15 @@ function taskRows(tasks: Task[]): { top: number; tasks: Task[] }[] {
               :selected="selectedKey === eventKey(p.instance)"
               :continues-before="p.continuesBefore"
               :continues-after="p.continuesAfter"
-              @select="(i, el) => emit('selectEvent', i, el)"
+              class="cursor-grab active:cursor-grabbing"
+              @select="onSelectEvent"
             />
+            <div
+              v-if="!p.continuesAfter"
+              class="absolute inset-x-0 bottom-0 h-1.5 cursor-ns-resize"
+              data-testid="resize-handle"
+              @pointerdown="onResizePointerDown(p.instance, c.day, $event)"
+            ></div>
           </div>
           <div
             v-for="row in taskRows(c.tasks)"
@@ -305,6 +588,21 @@ function taskRows(tasks: Task[]): { top: number; tasks: Task[] }[] {
               class="min-w-0 flex-1"
               @select="(task, el) => emit('selectTask', task, el)"
             />
+          </div>
+          <div
+            v-if="dragPreview && dragPreview.dayKey === c.key"
+            class="pointer-events-none absolute inset-x-0.5 z-40 overflow-hidden rounded-lg px-2 py-1 text-xs text-white ring-2 ring-white"
+            :style="{
+              top: `${dragPreview.top}px`,
+              height: `${dragPreview.height}px`,
+              backgroundColor: dragPreview.color,
+            }"
+            data-testid="drag-preview"
+          >
+            <p class="truncate font-semibold">{{ dragPreview.title }}</p>
+            <p class="truncate text-[11px] text-white/80">
+              {{ formatTime(dragPreview.from) }}–{{ formatTime(dragPreview.to) }}
+            </p>
           </div>
           <div
             v-if="draftPlacement(c.day)"
