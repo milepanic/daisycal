@@ -10,6 +10,8 @@ export const HOUR_PX = 60
 export const DAY_PX = 24 * HOUR_PX
 /** Shortest chip in the grid (the mockup's 10-minute standup is `h-4`). */
 export const MIN_EVENT_PX = 16
+/** Length of a new event until the user picks something else (minutes). */
+export const DEFAULT_NEW_EVENT_MIN = 30
 /** Chips shorter than this render as a single line. */
 export const COMPACT_PX = 40
 /** Timed events this long or longer go to the all-day row. */

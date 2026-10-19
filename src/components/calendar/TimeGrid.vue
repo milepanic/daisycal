@@ -12,6 +12,7 @@ import { addDays, isSameDay, startOfDay, toDateKey } from '@/lib/dates'
 import { WEEKDAYS_LONG, formatTime } from '@/lib/format'
 import {
   DAY_PX,
+  DEFAULT_NEW_EVENT_MIN,
   HOUR_PX,
   isAllDayRow,
   layoutDay,
@@ -342,7 +343,7 @@ function onPointerUp(e: PointerEvent) {
       emit(
         'createAt',
         start,
-        new Date(start.getTime() + 60 * 60_000),
+        new Date(start.getTime() + DEFAULT_NEW_EVENT_MIN * 60_000),
         false,
         anchorAt(d.column, e.clientY),
       )
@@ -465,7 +466,7 @@ function onGridKeydown(e: KeyboardEvent) {
     const start = startOfDay(day)
     start.setHours(9)
     const r = column.getBoundingClientRect()
-    emit('createAt', start, new Date(start.getTime() + 60 * 60_000), false, {
+    emit('createAt', start, new Date(start.getTime() + DEFAULT_NEW_EVENT_MIN * 60_000), false, {
       x: r.left,
       y: r.top,
       width: r.width,

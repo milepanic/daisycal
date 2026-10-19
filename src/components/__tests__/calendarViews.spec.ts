@@ -130,7 +130,7 @@ describe('TimeGrid', () => {
     await pointer(col, 'pointerup', { clientX: 50, clientY: 635 })
     const [start, end, allDay] = wrapper.emitted('createAt')![0]!
     expect(start).toEqual(new Date(2026, 9, 13, 10, 30))
-    expect(end).toEqual(new Date(2026, 9, 13, 11, 30))
+    expect(end).toEqual(new Date(2026, 9, 13, 11, 0)) // 30-minute default
     expect(allDay).toBe(false)
     wrapper.unmount()
   })

@@ -30,6 +30,7 @@ import {
   taskToForm,
 } from '@/api/ical'
 import { addDays, parseDateKey, startOfDay, toDateKey } from '@/lib/dates'
+import { DEFAULT_NEW_EVENT_MIN } from '@/lib/layout'
 import { MONTHS_LONG, WEEKDAYS_LONG } from '@/lib/format'
 import { useFocusTrap } from '@/composables/useFocusTrap'
 import { useCalendarsStore } from '@/stores/calendars'
@@ -55,7 +56,7 @@ const form = reactive({
   date: '',
   endDate: '',
   startTime: '10:00',
-  endTime: '11:00',
+  endTime: '10:30',
   allDay: false,
   repeat: 'none' as string,
   alarm: null as number | null,
@@ -252,13 +253,13 @@ function init() {
       n.setMinutes(n.getMinutes() < 30 ? 30 : 60, 0, 0)
       return n
     })()
-  const e = d.end ?? new Date(s.getTime() + 60 * 60_000)
+  const e = d.end ?? new Date(s.getTime() + DEFAULT_NEW_EVENT_MIN * 60_000)
   form.title = d.title ?? ''
   form.allDay = d.allDay ?? false
   form.date = toDateKey(s)
   form.endDate = toDateKey(form.allDay ? addDays(e, -1) : e)
   form.startTime = form.allDay ? '10:00' : hhmm(s)
-  form.endTime = form.allDay ? '11:00' : hhmm(e)
+  form.endTime = form.allDay ? '10:30' : hhmm(e)
   form.dueDate = toDateKey(s)
   form.dueTime = d.allDay ? '' : hhmm(s)
   form.collectionUrl =
