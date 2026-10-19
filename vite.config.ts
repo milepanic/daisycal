@@ -12,6 +12,10 @@ export default defineConfig(({ mode }) => {
   const davBase = env.VITE_DAV_BASE || '/dav'
   // Where the dev proxy forwards CalDAV requests (local Radicale from docker-compose.dev.yml).
   const davTarget = env.DAV_PROXY_TARGET || 'http://localhost:5232'
+  // The proxy authenticates to Radicale; the app itself has no login (single-user setup).
+  const davUser = env.DAV_PROXY_USER ?? 'daisy'
+  const davPassword = env.DAV_PROXY_PASSWORD ?? 'daisy'
+  const basic = Buffer.from(`${davUser}:${davPassword}`).toString('base64')
 
   return {
     plugins: [vue(), vueDevTools(), tailwindcss()],
@@ -31,6 +35,7 @@ export default defineConfig(({ mode }) => {
             // collection and item URLs stay under /dav on the client side.
             proxy.on('proxyReq', (proxyReq) => {
               proxyReq.setHeader('X-Script-Name', davBase)
+              proxyReq.setHeader('Authorization', `Basic ${basic}`)
             })
           },
         },

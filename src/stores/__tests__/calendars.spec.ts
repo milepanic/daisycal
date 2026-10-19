@@ -48,7 +48,7 @@ describe('calendars store', () => {
     await store.load()
     store.updateCtags(new Map([[WORK.url, '"new"']]))
     expect(store.get(WORK.url)?.ctag).toBe('"new"')
-    auth.logout()
+    auth.disconnect()
     expect(store.collections).toEqual([])
     expect(store.status).toBe('idle')
   })

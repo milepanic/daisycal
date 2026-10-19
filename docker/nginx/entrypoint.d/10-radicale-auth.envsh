@@ -1,0 +1,12 @@
+#!/bin/sh
+# Sourced by the nginx entrypoint before envsubst. Turns RADICALE_USER / RADICALE_PASSWORD into
+# the Authorization header nginx sends to Radicale on behalf of the (single) user.
+mkdir -p /etc/nginx/conf.d/include
+if [ -n "${RADICALE_USER:-}" ]; then
+    RADICALE_BASIC=$(printf '%s:%s' "$RADICALE_USER" "${RADICALE_PASSWORD:-}" | base64 | tr -d '\n')
+    printf 'proxy_set_header Authorization "Basic %s";\n' "$RADICALE_BASIC" > /etc/nginx/conf.d/include/radicale-auth.conf
+    echo "daisycal: proxying to Radicale as '$RADICALE_USER'"
+else
+    echo "# RADICALE_USER not set: the browser must authenticate itself" > /etc/nginx/conf.d/include/radicale-auth.conf
+    echo "daisycal: WARNING RADICALE_USER is not set, requests to Radicale will be unauthenticated"
+fi

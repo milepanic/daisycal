@@ -209,6 +209,24 @@ describe('createCalDavClient', () => {
   })
 })
 
+describe('createCalDavClient without credentials (proxy adds them)', () => {
+  it('sends no Authorization header and derives the username from the principal', async () => {
+    const good = fakeFetch(
+      207,
+      { 'content-type': 'application/xml' },
+      `<?xml version="1.0"?><multistatus xmlns="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
+        <response><href>{{href}}</href><propstat><prop>
+          <current-user-principal><href>/dav/mile/</href></current-user-principal>
+          <C:calendar-home-set><href>/dav/mile/</href></C:calendar-home-set>
+        </prop><status>HTTP/1.1 200 OK</status></propstat></response></multistatus>`,
+    )
+    const c = createCalDavClient({ serverUrl: SERVER, fetch: good.fetch })
+    await c.login()
+    expect(good.calls[0]!.headers.has('authorization')).toBe(false)
+    expect(c.username).toBe('mile')
+  })
+})
+
 describe('toDavUtc', () => {
   it('formats as YYYYMMDDTHHMMSSZ', () => {
     expect(toDavUtc(new Date('2026-10-16T07:05:09.123Z'))).toBe('20261016T070509Z')

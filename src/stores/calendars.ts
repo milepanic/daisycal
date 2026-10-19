@@ -80,7 +80,7 @@ export const useCalendarsStore = defineStore('calendars', () => {
     error.value = null
   }
 
-  auth.onLogout(reset)
+  auth.onDisconnect(reset)
 
   return {
     collections,

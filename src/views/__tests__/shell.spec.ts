@@ -1,10 +1,10 @@
 /** Mounts the real router + layout with a fake client: login → calendar → navigation → tasks → logout. */
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import App from '@/App.vue'
-import router, { _resetRouterGuardState } from '@/router'
+import router from '@/router'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 import {
@@ -23,7 +23,6 @@ beforeEach(() => {
   setActivePinia(pinia)
   localStorage.clear()
   sessionStorage.clear()
-  _resetRouterGuardState()
   client = new FakeClient()
   client.seed(
     WORK,
@@ -40,27 +39,49 @@ async function routeIs(check: () => void) {
   await flushPromises()
 }
 
+const mounted: ReturnType<typeof mount>[] = []
+afterEach(() => {
+  // Earlier apps keep reacting to router changes otherwise and leak into later tests.
+  for (const w of mounted.splice(0)) w.unmount()
+})
+
 async function mountApp(path: string) {
   await router.push(path)
   const wrapper = mount(App, { global: { plugins: [router], stubs: { teleport: true } } })
+  mounted.push(wrapper)
   await flushPromises()
   return wrapper
 }
 
 describe('app shell', () => {
-  it('shows the login page and signs in', async () => {
-    const wrapper = await mountApp('/week/2026-10-12')
-    expect(wrapper.find('form').exists()).toBe(true)
+  it('connects on start and shows a retryable error screen when the proxy credentials are rejected', async () => {
     const auth = useAuthStore()
-    vi.spyOn(auth, 'login').mockImplementation(async () => auth._setClient(client))
-    await wrapper.find('input[name="username"]').setValue('daisy')
-    await wrapper.find('input[name="password"]').setValue('daisy')
-    await wrapper.find('form').trigger('submit')
-    await routeIs(() => expect(router.currentRoute.value.fullPath).toBe('/week/2026-10-12'))
-    expect(wrapper.find('h1').text()).toBe('October 12 – 18, 2026')
+    let attempts = 0
+    vi.spyOn(auth, 'connect').mockImplementation(async () => {
+      attempts++
+      if (attempts === 1) {
+        auth.status = 'error'
+        auth.error = new (await import('@/stores/auth')).ConnectError(
+          'credentials',
+          'The calendar server rejected the configured credentials',
+        )
+        return false
+      }
+      auth._setClient(client)
+      return true
+    })
+    const wrapper = await mountApp('/week/2026-10-12')
+    expect(wrapper.find('[data-testid="connect-screen"]').text()).toContain(
+      'rejected the configured credentials',
+    )
+    expect(wrapper.find('[data-testid="connect-screen"]').text()).toContain('RADICALE_USER')
+    await wrapper.find('[data-testid="connect-screen"] button').trigger('click')
+    await routeIs(() => expect(wrapper.find('h1').text()).toBe('October 12 – 18, 2026'))
+    expect(wrapper.find('[data-testid="connect-screen"]').exists()).toBe(false)
+    expect(wrapper.find('aside#sidebar').text()).toContain('Work')
   })
 
-  it('loads collections and events, navigates, toggles panels and logs out', async () => {
+  it('loads collections and events, navigates and toggles panels', async () => {
     useAuthStore()._setClient(client)
     const wrapper = await mountApp('/week/2026-10-12')
     await flushPromises()
@@ -118,11 +139,6 @@ describe('app shell', () => {
     expect(wrapper.find('[data-testid="create-popup"]').attributes('aria-label')).toBe('New task')
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
     expect(ui.createDraft).toBeNull()
-
-    // Logout returns to login with a redirect back.
-    await wrapper.find('button[title="Log out"]').trigger('click')
-    await routeIs(() => expect(router.currentRoute.value.name).toBe('login'))
-    expect(router.currentRoute.value.query.redirect).toBe('/tasks')
   })
 
   it('shows the offline banner when polling fails and clears it after a successful retry', async () => {
@@ -185,11 +201,16 @@ describe('app shell', () => {
     }
   })
 
-  it('redirects to login when the session expires', async () => {
+  it('drops to the error screen when the server starts rejecting the proxy credentials', async () => {
     useAuthStore()._setClient(client)
-    await mountApp('/day/2026-10-14')
-    useAuthStore().logout('expired')
-    await routeIs(() => expect(router.currentRoute.value.name).toBe('login'))
-    expect(router.currentRoute.value.query.redirect).toBe('/day/2026-10-14')
+    const wrapper = await mountApp('/day/2026-10-14')
+    client.listCollections.mockRejectedValueOnce(
+      new (await import('@/api/errors')).UnauthorizedError('u'),
+    )
+    useAuthStore().disconnect('unauthorized')
+    useAuthStore().status = 'error'
+    await flushPromises()
+    expect(wrapper.find('[data-testid="connect-screen"]').exists()).toBe(true)
+    expect(router.currentRoute.value.fullPath).toBe('/day/2026-10-14')
   })
 })

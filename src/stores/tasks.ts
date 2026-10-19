@@ -285,7 +285,7 @@ export const useTasksStore = defineStore('tasks', () => {
     lists.value = new Map()
   }
 
-  auth.onLogout(reset)
+  auth.onDisconnect(reset)
 
   return {
     docs,

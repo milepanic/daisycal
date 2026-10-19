@@ -71,7 +71,7 @@ export const useSyncStore = defineStore('sync', () => {
     lastSyncAt.value = new Date()
   }
 
-  auth.onLogout(stop)
+  auth.onDisconnect(stop)
 
   return { running, lastSyncAt, lastError, start, stop, syncNow }
 })

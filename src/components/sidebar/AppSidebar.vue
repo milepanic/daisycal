@@ -71,15 +71,6 @@ function pickDate(d: Date) {
 
     <div class="flex h-12 shrink-0 items-center gap-x-2 px-3 text-xs text-gray-500">
       <span class="truncate" :title="auth.serverUrl">{{ auth.username }}</span>
-      <button
-        type="button"
-        class="ml-auto flex size-8 items-center justify-center rounded-lg hover:bg-white/60 hover:text-gray-700"
-        title="Log out"
-        @click="auth.logout()"
-      >
-        <span class="sr-only">Log out</span>
-        <AppIcon name="logout" class="size-4" />
-      </button>
     </div>
   </aside>
 </template>

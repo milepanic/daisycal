@@ -14,12 +14,6 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
-      path: '/login',
-      name: 'login',
-      component: () => import('@/views/LoginView.vue'),
-      meta: { public: true },
-    },
-    {
       path: '/',
       component: () => import('@/layouts/AppShell.vue'),
       children: [
@@ -37,20 +31,10 @@ const router = createRouter({
   ],
 })
 
-let restoreAttempted = false
-
 router.beforeEach(async (to: RouteLocationNormalized) => {
   const auth = useAuthStore()
-  if (!auth.isAuthenticated && !restoreAttempted) {
-    restoreAttempted = true
-    await auth.restore()
-  }
-  if (to.meta.public) {
-    return auth.isAuthenticated ? (to.query.redirect as string) || '/' : true
-  }
-  if (!auth.isAuthenticated) {
-    return { name: 'login', query: to.fullPath !== '/' ? { redirect: to.fullPath } : {} }
-  }
+  // Connect through the proxy once; the shell shows an error screen (with Retry) if it fails.
+  if (auth.status === 'idle') await auth.connect()
   // Normalise a missing or invalid calendar date to today so the URL is always canonical.
   // (A global guard, because per-route beforeEnter does not run on param-only changes.)
   if (to.name === 'calendar' && !parseDateKey(to.params.date as string | undefined)) {
@@ -58,10 +42,5 @@ router.beforeEach(async (to: RouteLocationNormalized) => {
   }
   return true
 })
-
-/** Test hook: forget that a restore was tried. */
-export function _resetRouterGuardState() {
-  restoreAttempted = false
-}
 
 export default router

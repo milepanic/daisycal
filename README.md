@@ -20,7 +20,8 @@ npm run seed                     # test collections + sample events/tasks
 npm run dev                      # http://localhost:5173
 ```
 
-Log in with `daisy` / `daisy`.
+There is no login screen: the Vite proxy authenticates to the local Radicale as `daisy` / `daisy`
+(`DAV_PROXY_USER` / `DAV_PROXY_PASSWORD` in `.env`).
 
 The browser never talks to Radicale directly. Vite proxies `/dav/*` to the local Radicale
 (`vite.config.ts`), strips the prefix and sets `X-Script-Name: /dav` so the hrefs Radicale
@@ -68,10 +69,15 @@ with Docker Compose and seed it, lint, type-check, unit + integration tests, bui
 Target: `https://daisycal.home`, talking to Radicale at `https://calendar.home`.
 
 ```bash
+printf 'RADICALE_USER=you\nRADICALE_PASSWORD=secret\n' > .env   # the Radicale account to use
 # optional: TLS for daisycal.home itself
 cp /path/to/fullchain.pem /path/to/privkey.pem certs/
 docker compose up -d --build
 ```
+
+DaisyCal is single-user and has no login screen: nginx adds the Basic-auth header for the
+account above to every `/dav/` request, so anyone who can reach `https://daisycal.home` sees
+that account's calendars. Keep it on the home network (or put your own auth in front of it).
 
 The image (`Dockerfile`) builds the SPA and serves it with nginx, which also reverse-proxies
 `/dav/` to Radicale on the same origin (Radicale sends no CORS headers). nginx strips the prefix

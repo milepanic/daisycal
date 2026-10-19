@@ -15,6 +15,11 @@ services:
       - '443:443'
     environment:
       RADICALE_UPSTREAM: ${RADICALE_UPSTREAM:-https://calendar.home}
+      # The Radicale account the app uses. There is no login screen: whoever can open
+      # daisycal.home sees this account's calendars. Put these in a .env file next to this
+      # compose file.
+      RADICALE_USER: ${RADICALE_USER:?set RADICALE_USER in .env}
+      RADICALE_PASSWORD: ${RADICALE_PASSWORD:?set RADICALE_PASSWORD in .env}
       # Set to "on" and mount a CA bundle at /etc/nginx/radicale-ca.pem to verify the
       # Radicale certificate (self-signed .home certs fail verification otherwise).
       RADICALE_SSL_VERIFY: ${RADICALE_SSL_VERIFY:-off}

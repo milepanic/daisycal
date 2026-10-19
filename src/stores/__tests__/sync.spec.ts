@@ -81,7 +81,7 @@ describe('sync store', () => {
     client.fetchCtags.mockRejectedValueOnce(new Error('offline'))
     await vi.advanceTimersByTimeAsync(1000)
     expect(sync.lastError).toBe('offline')
-    useAuthStore().logout()
+    useAuthStore().disconnect()
     expect(sync.running).toBe(false)
   })
 })

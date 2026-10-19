@@ -4,7 +4,7 @@
  * sync loop; both are torn down by the stores themselves on logout. On narrow screens the
  * sidebar is a drawer over the page and the tasks panel starts closed.
  */
-import { onMounted, watch } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { RouterView, useRouter } from 'vue-router'
 
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
@@ -43,11 +43,8 @@ onMounted(async () => {
   if (auth.isAuthenticated) sync.start()
 })
 
-// A failed poll means the server is unreachable; a successful one clears the banner.
-watch(
-  () => sync.lastError,
-  (err) => notifications.setOffline(Boolean(err)),
-)
+// The banner shows while the ctag poll fails or a write hit a NetworkError.
+const offline = computed(() => notifications.offline || Boolean(sync.lastError))
 
 // Close the drawer after navigating on narrow screens.
 watch(
@@ -59,14 +56,22 @@ watch(
 
 watch(
   () => auth.isAuthenticated,
-  (ok) => {
-    if (!ok) {
-      notifications.clear()
-      const redirect = router.currentRoute.value.fullPath
-      void router.replace({ name: 'login', query: redirect !== '/' ? { redirect } : {} })
+  async (ok) => {
+    if (!ok) notifications.clear()
+    else {
+      await calendars
+        .load()
+        .catch((err) =>
+          notifications.reportError(err, 'Could not load calendars', () => calendars.load()),
+        )
+      sync.start()
     }
   },
 )
+
+async function reconnect() {
+  if (await auth.connect()) await router.replace(router.currentRoute.value.fullPath)
+}
 
 async function retrySync() {
   await sync.syncNow()
@@ -78,9 +83,37 @@ async function retrySync() {
 </script>
 
 <template>
-  <div class="flex h-screen flex-col px-2 pb-2">
+  <main
+    v-if="!auth.isAuthenticated"
+    class="flex min-h-screen items-center justify-center p-4"
+    data-testid="connect-screen"
+  >
+    <div class="w-full max-w-sm rounded-2xl bg-white p-8 text-center shadow-sm">
+      <span
+        class="mx-auto flex size-10 items-center justify-center rounded-xl bg-accent text-white"
+      >
+        <AppIcon name="calendar" class="size-6" />
+      </span>
+      <h1 class="mt-4 text-lg font-semibold text-gray-900">DaisyCal</h1>
+      <template v-if="auth.status === 'error'">
+        <p class="mt-2 text-sm text-red-700" role="alert">{{ auth.error?.message }}</p>
+        <p v-if="auth.error?.kind === 'credentials'" class="mt-1 text-xs text-gray-500">
+          Check RADICALE_USER / RADICALE_PASSWORD on the daisycal.home container.
+        </p>
+        <button
+          type="button"
+          class="mt-5 h-10 w-full rounded-lg bg-gray-900 text-sm font-semibold text-white hover:bg-gray-700"
+          @click="reconnect"
+        >
+          Retry
+        </button>
+      </template>
+      <p v-else class="mt-2 text-sm text-gray-500">Connecting to the calendar server…</p>
+    </div>
+  </main>
+  <div v-else class="flex h-screen flex-col px-2 pb-2">
     <div
-      v-if="notifications.offline"
+      v-if="offline"
       role="status"
       class="mt-2 flex items-center gap-x-3 rounded-lg bg-amber-100 px-3 py-2 text-sm text-amber-900"
       data-testid="offline-banner"

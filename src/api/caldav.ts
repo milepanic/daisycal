@@ -41,8 +41,9 @@ export interface DateRange {
 export interface CalDavClientOptions {
   /** Absolute URL of the CalDAV root, e.g. `https://daisycal.home/dav/`. */
   serverUrl: string
-  username: string
-  password: string
+  /** Basic-auth credentials. Omit when the reverse proxy adds the Authorization header. */
+  username?: string
+  password?: string
   /** Called once per rejected request after a successful login (session expired, password changed). */
   onUnauthorized?: () => void
   /** Injectable for tests. */
@@ -51,6 +52,7 @@ export interface CalDavClientOptions {
 
 export interface CalDavClient {
   readonly serverUrl: string
+  /** Login name; after `login()` the last segment of the principal URL when none was given. */
   readonly username: string
   /** Verifies the credentials and discovers the principal and calendar home URLs. */
   login(): Promise<{ principalUrl: string; homeUrl: string }>
@@ -99,10 +101,10 @@ function objectUrlFor(collection: Collection, uid: string): string {
 export function createCalDavClient(options: CalDavClientOptions): CalDavClient {
   const serverUrl = options.serverUrl.endsWith('/') ? options.serverUrl : `${options.serverUrl}/`
   const baseFetch = options.fetch ?? ((input, init) => globalThis.fetch(input, init))
-  const authHeaders = getBasicAuthHeaders({
-    username: options.username,
-    password: options.password,
-  })
+  const authHeaders =
+    options.username !== undefined
+      ? getBasicAuthHeaders({ username: options.username, password: options.password ?? '' })
+      : {}
 
   let loggedIn = false
   let homeUrl: string | null = null
@@ -179,9 +181,13 @@ export function createCalDavClient(options: CalDavClientOptions): CalDavClient {
     return fresh
   }
 
+  let username = options.username ?? ''
+
   const client: CalDavClient = {
     serverUrl,
-    username: options.username,
+    get username() {
+      return username
+    },
 
     async login() {
       loggedIn = false
@@ -189,6 +195,8 @@ export function createCalDavClient(options: CalDavClientOptions): CalDavClient {
       homeUrl = null
       const result = await discover()
       loggedIn = true
+      if (!username)
+        username = decodeURIComponent(result.principalUrl.replace(/\/$/, '').split('/').pop() ?? '')
       return result
     },
 

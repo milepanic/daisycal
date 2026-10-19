@@ -307,7 +307,7 @@ export const useEventsStore = defineStore('events', () => {
     chunks.value = new Map()
   }
 
-  auth.onLogout(reset)
+  auth.onDisconnect(reset)
 
   return {
     docs,

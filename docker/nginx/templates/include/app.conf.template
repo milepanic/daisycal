@@ -30,6 +30,9 @@ location ${DAV_BASE}/ {
     proxy_http_version 1.1;
     proxy_set_header Host $proxy_host;
     proxy_set_header X-Script-Name ${DAV_BASE};
+    # Basic auth for Radicale from RADICALE_USER / RADICALE_PASSWORD (single-user app, no login
+    # screen). Written by docker/nginx/entrypoint.d/10-radicale-auth.envsh.
+    include /etc/nginx/conf.d/include/radicale-auth.conf;
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;

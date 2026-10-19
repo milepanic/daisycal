@@ -98,8 +98,8 @@ samo objekata (događaja i zadataka) unutar postojećih kolekcija.
 ## 6. App shell i navigacija
 
 - [x] Vue Router rute: `/week/:date`, `/day/:date`, `/work-week/:date`, `/month/:date`, `/agenda/:date`, `/tasks`, `/login`
-- [x] Route guard: bez kredencijala → `/login`
-- [x] Login stranica (korisničko ime, lozinka, „zapamti me")
+- [x] ~~Route guard: bez kredencijala → `/login`~~ uklonjeno 2026-10-19: aplikacija je single-user, proxy (nginx / Vite) šalje Basic auth ka Radicale-u, nema login ekrana
+- [x] ~~Login stranica (korisničko ime, lozinka, „zapamti me")~~ zamenjeno ekranom za grešku konekcije sa Retry
 - [x] Layout: sidebar + glavna kolona (iz mockup-a), toggle sidebara (zameniti CSS `:has()` trik stanjem)
 - [x] Top nav tabovi Calendar / Tasks
 - [x] Toolbar: naslov opsega, Today, prethodno/sledeće, izbor prikaza, dugme Create, toggle tasks panela

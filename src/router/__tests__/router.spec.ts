@@ -1,11 +1,10 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import router, { _resetRouterGuardState, calendarPath } from '@/router'
+import router, { calendarPath } from '@/router'
 import { useAuthStore } from '@/stores/auth'
 import { FakeClient } from '@/stores/__tests__/fakeClient'
 
-vi.mock('@/views/LoginView.vue', () => ({ default: { template: '<p>login</p>' } }))
 vi.mock('@/layouts/AppShell.vue', () => ({ default: { template: '<router-view />' } }))
 vi.mock('@/views/CalendarView.vue', () => ({ default: { template: '<p>calendar</p>' } }))
 vi.mock('@/views/TasksView.vue', () => ({ default: { template: '<p>tasks</p>' } }))
@@ -14,22 +13,30 @@ beforeEach(() => {
   setActivePinia(createPinia())
   sessionStorage.clear()
   localStorage.clear()
-  _resetRouterGuardState()
 })
 
 describe('router', () => {
-  it('redirects anonymous users to /login with the target in the query', async () => {
+  it('connects through the proxy once before the first navigation', async () => {
+    const auth = useAuthStore()
+    const connect = vi.spyOn(auth, 'connect').mockImplementation(async () => {
+      auth._setClient(new FakeClient())
+      return true
+    })
     await router.push('/month/2026-10-01')
-    expect(router.currentRoute.value.name).toBe('login')
-    expect(router.currentRoute.value.query.redirect).toBe('/month/2026-10-01')
+    await router.push('/tasks')
+    expect(connect).toHaveBeenCalledTimes(1)
+    expect(router.currentRoute.value.name).toBe('tasks')
   })
 
-  it('tries to restore a stored session once', async () => {
+  it('still routes when the connection fails (the shell shows the error screen)', async () => {
     const auth = useAuthStore()
-    const restore = vi.spyOn(auth, 'restore').mockResolvedValue(false)
-    await router.push('/tasks')
-    await router.push('/week/2026-10-12')
-    expect(restore).toHaveBeenCalledTimes(1)
+    vi.spyOn(auth, 'connect').mockImplementation(async () => {
+      auth.status = 'error'
+      return false
+    })
+    await router.push('/month/2026-10-01')
+    expect(router.currentRoute.value.name).toBe('calendar')
+    expect(auth.isAuthenticated).toBe(false)
   })
 
   it('lets authenticated users through and normalises a missing date', async () => {
@@ -43,12 +50,6 @@ describe('router', () => {
     await router.push('/')
     expect(router.currentRoute.value.params.view).toBe('week')
     await router.push('/tasks')
-    expect(router.currentRoute.value.name).toBe('tasks')
-  })
-
-  it('sends authenticated users away from /login', async () => {
-    useAuthStore()._setClient(new FakeClient())
-    await router.push({ name: 'login', query: { redirect: '/tasks' } })
     expect(router.currentRoute.value.name).toBe('tasks')
   })
 

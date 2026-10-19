@@ -126,7 +126,7 @@ describe('tasks store', () => {
     const names = tasks.tasksFor(MY_TASKS.url).map((t) => t.summary)
     expect(names).toContain('From phone')
     expect(names).not.toContain('Undated low')
-    useAuthStore().logout()
+    useAuthStore().disconnect()
     expect(tasks.all.size).toBe(0)
     expect(tasks.isLoading()).toBe(false)
   })
