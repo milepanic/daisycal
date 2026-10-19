@@ -3,7 +3,7 @@
  * Tasks page (mockup tasks.html): one column per visible task list. Rows can be dragged
  * into another column to move the task to that list.
  */
-import { computed, ref, shallowRef, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 
 import type { Task } from '@/api/ical'
 import { markDragged } from '@/lib/dragGuard'
@@ -24,6 +24,8 @@ watch(
   },
   { immediate: true },
 )
+
+onBeforeUnmount(() => untrack())
 
 // ---- drag between lists ---------------------------------------------------------------------
 const DRAG_THRESHOLD_PX = 6
@@ -58,14 +60,9 @@ function onGrab(task: Task, e: PointerEvent) {
     moved: false,
     targetUrl: null,
   }
-  const el = e.currentTarget as HTMLElement
-  if (typeof el.setPointerCapture === 'function') {
-    try {
-      el.setPointerCapture(e.pointerId)
-    } catch {
-      /* ignore */
-    }
-  }
+  window.addEventListener('pointermove', onPointerMove)
+  window.addEventListener('pointerup', onPointerUp)
+  window.addEventListener('pointercancel', onPointerCancel)
 }
 
 function onPointerMove(e: PointerEvent) {
@@ -82,7 +79,19 @@ function onPointerMove(e: PointerEvent) {
   }
 }
 
+function onPointerCancel() {
+  untrack()
+  drag.value = null
+}
+
+function untrack() {
+  window.removeEventListener('pointermove', onPointerMove)
+  window.removeEventListener('pointerup', onPointerUp)
+  window.removeEventListener('pointercancel', onPointerCancel)
+}
+
 async function onPointerUp() {
+  untrack()
   const d = drag.value
   drag.value = null
   if (!d?.moved) return
@@ -108,9 +117,6 @@ async function onPointerUp() {
     ref="main"
     class="min-h-0 flex-1 overflow-x-auto px-2 pb-2"
     :class="drag?.moved ? 'cursor-grabbing select-none' : ''"
-    @pointermove="onPointerMove"
-    @pointerup="onPointerUp"
-    @pointercancel="drag = null"
   >
     <div class="flex h-full items-start gap-x-3">
       <TaskList

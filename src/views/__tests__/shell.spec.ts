@@ -47,7 +47,11 @@ afterEach(() => {
 
 async function mountApp(path: string) {
   await router.push(path)
-  const wrapper = mount(App, { global: { plugins: [router], stubs: { teleport: true } } })
+  // Attached so pointer events reach the window listeners the drag code uses.
+  const wrapper = mount(App, {
+    global: { plugins: [router], stubs: { teleport: true } },
+    attachTo: document.body,
+  })
   mounted.push(wrapper)
   await flushPromises()
   return wrapper
@@ -199,6 +203,44 @@ describe('app shell', () => {
     } finally {
       window.matchMedia = original
     }
+  })
+
+  it('saves a task dragged to a new time in the grid', async () => {
+    useAuthStore()._setClient(client)
+    const wrapper = await mountApp('/week/2026-10-12')
+    await flushPromises()
+    const cols = wrapper.findAll('[data-day]')
+    cols.forEach((c, i) => {
+      c.element.getBoundingClientRect = () => ({
+        top: 0,
+        left: i * 100,
+        width: 100,
+        height: 1440,
+        bottom: 1440,
+        right: (i + 1) * 100,
+        x: i * 100,
+        y: 0,
+        toJSON: () => ({}),
+      })
+    })
+    const chip = wrapper.find('[data-task-chip]') // "Send invoice", due Thu 2026-10-15 17:00
+    const fire = (type: string, init: PointerEventInit) =>
+      chip.element.dispatchEvent(
+        new PointerEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+          pointerType: 'mouse',
+          ...init,
+        }),
+      )
+    fire('pointerdown', { clientX: 350, clientY: 1025 })
+    fire('pointermove', { clientX: 350, clientY: 1145 })
+    fire('pointerup', { clientX: 350, clientY: 1145 })
+    await flushPromises()
+    const saved = client.objects.get(`${MY_TASKS.url}a.ics`)!.data
+    expect(saved).toContain('DUE;TZID=Europe/Belgrade:20261015T190000')
+    expect(wrapper.find('[data-testid="toasts"]').text()).toBe('')
   })
 
   it('drops to the error screen when the server starts rejecting the proxy credentials', async () => {

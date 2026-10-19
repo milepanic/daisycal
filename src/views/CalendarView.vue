@@ -5,7 +5,7 @@ import { computed, watch } from 'vue'
 import type { EventInstance, Task } from '@/api/ical'
 import { useCalendarRoute } from '@/composables/useCalendarRoute'
 import { eachDay } from '@/lib/dates'
-import { eventToForm } from '@/api/ical'
+import { eventToForm, taskToForm } from '@/api/ical'
 import { useCalendarsStore } from '@/stores/calendars'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useEventsStore } from '@/stores/events'
@@ -91,6 +91,16 @@ async function moveEvent(instance: EventInstance, start: Date, end: Date) {
   }
 }
 
+/** A task chip dragged in the grid gets the new due date and time. */
+async function moveTask(task: Task, due: Date) {
+  const run = () => tasks.updateTask(task, { ...taskToForm(task), due, dueAllDay: false })
+  try {
+    await run()
+  } catch (err) {
+    notifications.reportError(err, `Could not move "${task.summary}"`, run)
+  }
+}
+
 function createAt(start: Date, end: Date, allDay: boolean, anchor: Anchor) {
   ui.openCreate({ kind: 'event', start, end, allDay, anchor })
 }
@@ -136,6 +146,7 @@ const draftColor = computed(() =>
           @select-task="selectTask"
           @create-at="createAt"
           @move-event="moveEvent"
+          @move-task="moveTask"
         />
         <MonthView
           v-else-if="ui.view === 'month'"

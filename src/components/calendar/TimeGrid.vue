@@ -57,6 +57,7 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   if (tick) clearInterval(tick)
+  untrackPointer()
 })
 
 const gridCols = computed(() => `3.5rem repeat(${props.days.length}, minmax(0, 1fr))`)
@@ -190,15 +191,17 @@ function isPrimaryPointer(e: PointerEvent): boolean {
   return e.button === 0 && e.pointerType !== 'touch'
 }
 
-function capture(e: PointerEvent) {
-  const el = e.currentTarget as HTMLElement
-  if (typeof el.setPointerCapture === 'function') {
-    try {
-      el.setPointerCapture(e.pointerId)
-    } catch {
-      /* ignore */
-    }
-  }
+/** Follow the pointer on window for the rest of the gesture (no pointer capture: Chrome
+ * would retarget the click that ends a plain press to the capturing element). */
+function trackPointer() {
+  window.addEventListener('pointermove', onPointerMove)
+  window.addEventListener('pointerup', onPointerUp)
+  window.addEventListener('pointercancel', onPointerCancel)
+}
+function untrackPointer() {
+  window.removeEventListener('pointermove', onPointerMove)
+  window.removeEventListener('pointerup', onPointerUp)
+  window.removeEventListener('pointercancel', onPointerCancel)
 }
 
 /** Empty space: start a slot selection. */
@@ -215,7 +218,7 @@ function onColumnPointerDown(day: Date, e: PointerEvent) {
     moved: false,
     startY: e.clientY,
   }
-  capture(e)
+  trackPointer()
 }
 
 /** A chip: start moving it. The chip's own click still selects it when nothing moved. */
@@ -238,7 +241,7 @@ function onChipPointerDown(instance: EventInstance, day: Date, e: PointerEvent) 
     startX: e.clientX,
     startY: e.clientY,
   }
-  capture(e)
+  trackPointer()
 }
 
 /** A task chip: start moving its due time. */
@@ -258,7 +261,7 @@ function onTaskPointerDown(task: Task, day: Date, e: PointerEvent) {
     startX: e.clientX,
     startY: e.clientY,
   }
-  capture(e)
+  trackPointer()
 }
 
 /** Bottom edge of a chip: start resizing. */
@@ -280,7 +283,7 @@ function onResizePointerDown(instance: EventInstance, day: Date, e: PointerEvent
     moved: false,
     startY: e.clientY,
   }
-  capture(e)
+  trackPointer()
 }
 
 function onPointerMove(e: PointerEvent) {
@@ -329,6 +332,7 @@ function onPointerMove(e: PointerEvent) {
 }
 
 function onPointerUp(e: PointerEvent) {
+  untrackPointer()
   const d = drag.value
   if (!d) return
   drag.value = null
@@ -368,6 +372,7 @@ function onPointerUp(e: PointerEvent) {
 }
 
 function onPointerCancel() {
+  untrackPointer()
   drag.value = null
 }
 
@@ -519,9 +524,6 @@ function taskRows(tasks: Task[]): { top: number; tasks: Task[] }[] {
     "
     data-testid="time-grid"
     @keydown="onGridKeydown"
-    @pointermove="onPointerMove"
-    @pointerup="onPointerUp"
-    @pointercancel="onPointerCancel"
   >
     <div :class="days.length > 1 ? 'min-w-[640px]' : 'min-w-[320px]'">
       <!-- Day headers + all-day events (sticky) -->
