@@ -1,4 +1,5 @@
 import ICAL from 'ical.js'
+import { newUid } from '../stamp'
 
 /** Minutes before the start, or null for "no notification". */
 export type AlarmMinutes = number | null
@@ -57,6 +58,6 @@ export function applyAlarm(comp: ICAL.Component, minutes: AlarmMinutes): void {
   alarm.addPropertyWithValue('action', 'DISPLAY')
   alarm.addPropertyWithValue('description', 'Reminder')
   alarm.addPropertyWithValue('trigger', trigger)
-  alarm.addPropertyWithValue('uid', crypto.randomUUID().toUpperCase())
+  alarm.addPropertyWithValue('uid', newUid().toUpperCase())
   comp.addSubcomponent(alarm)
 }

@@ -6,6 +6,7 @@
 import ICAL from 'ical.js'
 
 import type { CalendarObject } from '../caldav'
+import { newUid } from '../stamp'
 import { createCalendar, nowUtc, parseCalendar, setText, text } from './common'
 import { type AlarmMinutes, applyAlarm, parseAlarm } from './alarms'
 import { type RepeatRule, applyRepeat, parseRepeat } from './recurrence'
@@ -262,7 +263,7 @@ function ensureVtimezone(vcalendar: ICAL.Component, tzid: string | null | undefi
 /** Builds a brand-new `.ics` for the form. Returns the text and the UID used as file name. */
 export function buildEventIcs(
   form: EventForm,
-  uid = crypto.randomUUID(),
+  uid = newUid(),
 ): { uid: string; ics: string } {
   const vcalendar = createCalendar()
   const vevent = new ICAL.Component('vevent')

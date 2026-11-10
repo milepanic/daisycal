@@ -2,6 +2,7 @@
 import ICAL from 'ical.js'
 
 import type { CalendarObject } from '../caldav'
+import { newUid } from '../stamp'
 import { createCalendar, nowUtc, parseCalendar, setText, text } from './common'
 import { type AlarmMinutes, applyAlarm, parseAlarm } from './alarms'
 import {
@@ -193,7 +194,7 @@ function ensureVtimezone(vcalendar: ICAL.Component, due: ICAL.Time | null) {
 
 export function buildTaskIcs(
   form: TaskForm,
-  uid = crypto.randomUUID(),
+  uid = newUid(),
 ): { uid: string; ics: string } {
   const vcalendar = createCalendar()
   const vtodo = new ICAL.Component('vtodo')

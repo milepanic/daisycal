@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { newUid, stampForWrite } from '../stamp'
 
@@ -56,5 +56,18 @@ describe('newUid', () => {
     const b = newUid()
     expect(a).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
     expect(a).not.toBe(b)
+  })
+
+  it('works without crypto.randomUUID (plain HTTP is not a secure context)', () => {
+    const real = globalThis.crypto
+    vi.stubGlobal('crypto', { getRandomValues: real.getRandomValues.bind(real) })
+    try {
+      const a = newUid()
+      const b = newUid()
+      expect(a).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
+      expect(a).not.toBe(b)
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })
