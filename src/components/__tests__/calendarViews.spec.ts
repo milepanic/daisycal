@@ -9,7 +9,8 @@ import EventPopover from '@/components/calendar/EventPopover.vue'
 import MonthView from '@/components/calendar/MonthView.vue'
 import TasksPanel from '@/components/calendar/TasksPanel.vue'
 import TimeGrid from '@/components/calendar/TimeGrid.vue'
-import { eachDay } from '@/lib/dates'
+import { addDays, eachDay, startOfDay, toDateKey } from '@/lib/dates'
+import { markDragged } from '@/lib/dragGuard'
 import { useAuthStore } from '@/stores/auth'
 import { useCalendarsStore } from '@/stores/calendars'
 import { useEventsStore } from '@/stores/events'
@@ -100,10 +101,10 @@ describe('TimeGrid', () => {
     const chips = wed.findAll('.absolute.z-10')
     const review = chips.find((c) => c.text().includes('Design review'))!
     expect(review.attributes('style')).toContain('top: 600px')
-    expect(review.attributes('style')).toContain('height: 90px')
+    expect(review.attributes('style')).toContain('height: 88px')
     expect(review.attributes('style')).toContain('width: calc(50% - 4px)')
     const standup = chips.find((c) => c.text().includes('Daily Standup'))!
-    expect(standup.attributes('style')).toContain('height: 16px')
+    expect(standup.attributes('style')).toContain('height: 14px')
     expect(standup.text()).toContain('10:00')
     expect(wed.text()).toContain('Prepare slides')
     expect(wrapper.find('[data-day="2026-10-16"]').text()).toContain('Gym')
@@ -249,6 +250,119 @@ describe('TimeGrid', () => {
     })
     expect(other.find('[data-testid="now-line"]').exists()).toBe(false)
   })
+
+  it('shows "N pending tasks" under today\'s all-day events and drags one onto the grid', async () => {
+    setActivePinia(createPinia())
+    const today = startOfDay(new Date())
+    const days = eachDay({ start: addDays(today, -1), end: addDays(today, 2) })
+    const { instances } = seeded()
+    const allDayToday = {
+      ...instances.find((i) => i.summary === 'Offsite')!,
+      start: today,
+      end: addDays(today, 1),
+    }
+    const late = parseTask(
+      new FakeClient().seed(
+        MY_TASKS,
+        'late',
+        todoIcs('late', 'Late report', 'DUE:20200105T100000Z\r\n'),
+      ),
+    )
+    const wrapper = mount(TimeGrid, {
+      props: { days, instances: [allDayToday], tasks: [], colorFor, pendingTasks: [late] },
+      attachTo: document.body,
+    })
+    // Today is the second column; its all-day event takes lane 1, so the item goes to lane 2.
+    const item = wrapper.find('[data-testid="pending-tasks"]')
+    expect(item.text()).toBe('1 pending task')
+    expect(item.element.parentElement!.getAttribute('style')).toContain(
+      'grid-column: 2; grid-row: 2',
+    )
+
+    await item.trigger('click')
+    const popover = () => document.querySelector('[data-testid="pending-popover"]')
+    expect(popover()!.textContent).toContain('Late report')
+    expect(popover()!.textContent).toContain('Drag one onto the calendar')
+
+    const rect = (left: number, width: number, height: number) => () => ({
+      top: 0,
+      left,
+      width,
+      height,
+      bottom: height,
+      right: left + width,
+      x: left,
+      y: 0,
+      toJSON: () => ({}),
+    })
+    wrapper.element.getBoundingClientRect = rect(0, 300, 2000)
+    wrapper.findAll('[data-day]').forEach((c, i) => {
+      c.element.getBoundingClientRect = rect(i * 100, 100, 1440)
+    })
+    const row = { element: popover()!.querySelector('li')! }
+    await pointer(row, 'pointerdown', { clientX: 500, clientY: 500 })
+    // The row leaves the DOM with the popover; later events go to whatever is under the pointer.
+    const body = { element: document.body }
+    // Off the grid: the popover closes and a ghost follows the pointer.
+    await pointer(body, 'pointermove', { clientX: 500, clientY: 600 })
+    expect(popover()).toBeNull()
+    expect(document.querySelector('[data-testid="pending-drag-ghost"]')!.textContent).toContain(
+      'Late report',
+    )
+    // Over today's column at 15:00 (900px + half the chip height).
+    await pointer(body, 'pointermove', { clientX: 150, clientY: 911 })
+    expect(document.querySelector('[data-testid="pending-drag-ghost"]')).toBeNull()
+    expect(wrapper.find('[data-testid="drag-preview"]').text()).toContain('Late report')
+    expect(wrapper.find('[data-testid="drag-preview"]').text()).toContain('15:00')
+    await pointer(body, 'pointerup', { clientX: 150, clientY: 911 })
+    const [task, due] = wrapper.emitted('moveTask')![0]!
+    expect(task).toMatchObject({ summary: 'Late report' })
+    expect(due).toEqual(new Date(today.getFullYear(), today.getMonth(), today.getDate(), 15))
+    wrapper.unmount()
+  })
+
+  it('opens a pending task for editing on a plain click and hides the item without pending tasks', async () => {
+    setActivePinia(createPinia())
+    markDragged(0) // the previous test ended with a real drag
+    const today = startOfDay(new Date())
+    const late = parseTask(
+      new FakeClient().seed(
+        MY_TASKS,
+        'late',
+        todoIcs('late', 'Late', 'DUE;VALUE=DATE:20200105\r\n'),
+      ),
+    )
+    const wrapper = mount(TimeGrid, {
+      props: { days: [today], instances: [], tasks: [], colorFor, pendingTasks: [late] },
+      attachTo: document.body,
+    })
+    await wrapper.find('[data-testid="pending-tasks"]').trigger('click')
+    const row = { element: document.querySelector('[data-testid="pending-popover"] li')! }
+    await pointer(row, 'pointerdown', { clientX: 10, clientY: 10 })
+    await pointer(row, 'pointerup', { clientX: 10, clientY: 10 })
+    ;(row.element.querySelector('button') as HTMLButtonElement).click()
+    await nextTick()
+    expect(useUiStore().createDraft).toMatchObject({
+      kind: 'task',
+      edit: { objectUrl: late.objectUrl },
+    })
+    expect(document.querySelector('[data-testid="pending-popover"]')).toBeNull()
+    expect(wrapper.emitted('moveTask')).toBeUndefined()
+
+    await wrapper.setProps({ pendingTasks: [] })
+    expect(wrapper.find('[data-testid="pending-tasks"]').exists()).toBe(false)
+    const past = mount(TimeGrid, {
+      props: {
+        days: [addDays(today, -7)],
+        instances: [],
+        tasks: [],
+        colorFor,
+        pendingTasks: [late],
+      },
+    })
+    expect(past.find('[data-testid="pending-tasks"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
 })
 
 describe('MonthView', () => {
@@ -282,6 +396,51 @@ describe('MonthView', () => {
       new Date(2026, 9, 21),
       true,
     ])
+  })
+
+  it("shows pending tasks in today's cell and keeps the 3-row limit", async () => {
+    setActivePinia(createPinia())
+    const today = startOfDay(new Date())
+    const range = { start: addDays(today, -14), end: addDays(today, 28) }
+    const { instances } = seeded()
+    const gym = instances.find((i) => i.summary === 'Gym')!
+    const at = (h: number, n: number) => ({
+      ...gym,
+      objectUrl: `https://x/${n}.ics`,
+      summary: `Item ${n}`,
+      start: new Date(today.getFullYear(), today.getMonth(), today.getDate(), h),
+      end: new Date(today.getFullYear(), today.getMonth(), today.getDate(), h + 1),
+    })
+    const late = parseTask(
+      new FakeClient().seed(
+        MY_TASKS,
+        'late',
+        todoIcs('late', 'Late', 'DUE;VALUE=DATE:20200105\r\n'),
+      ),
+    )
+    const wrapper = mount(MonthView, {
+      props: {
+        range,
+        month: today.getMonth(),
+        instances: [at(9, 1), at(10, 2), at(11, 3)],
+        tasks: [],
+        colorFor,
+        pendingTasks: [late],
+      },
+      attachTo: document.body,
+    })
+    const cell = wrapper.find(`[data-date="${toDateKey(today)}"]`)
+    expect(cell.find('[data-testid="pending-tasks"]').text()).toBe('1 pending task')
+    // Pending item + one chip + "+2 more" instead of three chips.
+    expect(cell.text()).toContain('Item 1')
+    expect(cell.text()).not.toContain('Item 2')
+    expect(cell.text()).toContain('+2 more')
+    await cell.find('[data-testid="pending-tasks"]').trigger('click')
+    expect(wrapper.emitted('createAt')).toBeUndefined()
+    const popover = document.querySelector('[data-testid="pending-popover"]')!
+    expect(popover.textContent).toContain('Late')
+    expect(popover.textContent).not.toContain('Drag one')
+    wrapper.unmount()
   })
 })
 
@@ -334,6 +493,36 @@ describe('TasksPanel and EventPopover', () => {
     expect(wrapper.text()).toContain('Completed (2)')
     await wrapper.find('button.text-accent').trigger('click')
     expect(useUiStore().createDraft).toMatchObject({ kind: 'task', collectionUrl: MY_TASKS.url })
+  })
+
+  it('remembers the picked task list, also while it is hidden', async () => {
+    const shopping = { ...MY_TASKS, url: MY_TASKS.url.replace('my-tasks', 'shopping') }
+    client.collections.push({ ...shopping, displayName: 'Shopping', color: '#0ea5e9' })
+    const calendars = useCalendarsStore()
+    await calendars.load()
+    const wrapper = mount(TasksPanel)
+    const current = () => wrapper.find('button[aria-haspopup="listbox"]').text()
+    expect(current()).toContain('My tasks')
+
+    await wrapper.find('button[aria-haspopup="listbox"]').trigger('click')
+    const option = wrapper.findAll('[role="option"]').find((o) => o.text().includes('Shopping'))!
+    await option.trigger('click')
+    expect(current()).toContain('Shopping')
+    expect(useUiStore().tasksPanelList).toBe(shopping.url)
+
+    // Hidden in the sidebar: the panel falls back without forgetting the choice.
+    calendars.setVisible(shopping.url, false)
+    await nextTick()
+    expect(current()).toContain('My tasks')
+    calendars.setVisible(shopping.url, true)
+    await nextTick()
+    expect(current()).toContain('Shopping')
+    wrapper.unmount()
+
+    // Survives a reload (layout in localStorage).
+    await nextTick()
+    setActivePinia(createPinia())
+    expect(useUiStore().tasksPanelList).toBe(shopping.url)
   })
 
   it('shows event details, opens edit and deletes with scope', async () => {

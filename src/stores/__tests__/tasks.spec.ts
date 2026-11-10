@@ -57,6 +57,16 @@ describe('tasks store', () => {
     expect(client.fetchTasks).toHaveBeenCalledTimes(1)
   })
 
+  it('lists pending (overdue) tasks: open, due before today, oldest first', async () => {
+    const tasks = useTasksStore()
+    await tasks.ensureLoaded()
+    const pending = (now: Date) => tasks.overdueTasks(now).map((t) => t.summary)
+    // Due earlier today is not pending yet; undated and completed tasks never are.
+    expect(pending(new Date(2026, 9, 16, 15))).toEqual([])
+    expect(pending(new Date(2026, 9, 17, 9))).toEqual(['Due soon high'])
+    expect(pending(new Date(2026, 9, 21))).toEqual(['Due soon high', 'Due later'])
+  })
+
   it('creates, updates, completes and deletes optimistically', async () => {
     const tasks = useTasksStore()
     await tasks.ensureLoaded()

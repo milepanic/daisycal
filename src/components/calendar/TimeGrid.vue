@@ -4,6 +4,8 @@
  * per day with positioned events, due tasks, the current-time line and pointer interactions:
  *  - click or drag on empty space selects a time slot and opens the create popup
  *  - drag a chip to move it (also across days), drag its bottom edge to resize
+ *  - "N pending tasks" under today's all-day events opens the overdue tasks, which can be
+ *    dragged onto the grid to reschedule them
  */
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 
@@ -22,7 +24,10 @@ import {
 } from '@/lib/layout'
 import { markDragged, wasJustDragged } from '@/lib/dragGuard'
 import type { Anchor, CreateDraft } from '@/stores/ui'
+import AppIcon from '@/components/ui/AppIcon.vue'
+import TaskDot from '@/components/ui/TaskDot.vue'
 import EventChip from './EventChip.vue'
+import PendingTasksPopover from './PendingTasksPopover.vue'
 import TaskChip from './TaskChip.vue'
 
 const props = defineProps<{
@@ -36,6 +41,8 @@ const props = defineProps<{
   /** Event/task being created: previewed in the grid (mockup #draft-event / #draft-task). */
   draft?: CreateDraft | null
   draftColor?: string
+  /** Overdue open tasks, shown as "N pending tasks" on today's column. */
+  pendingTasks?: Task[]
 }>()
 const emit = defineEmits<{
   selectEvent: [instance: EventInstance, el: HTMLElement]
@@ -48,6 +55,7 @@ const emit = defineEmits<{
 }>()
 
 const root = ref<HTMLElement | null>(null)
+const header = ref<HTMLElement | null>(null)
 const now = ref(new Date())
 let tick: ReturnType<typeof setInterval> | null = null
 
@@ -68,6 +76,10 @@ const PX_PER_MIN = HOUR_PX / 60
 const SNAP = 15
 /** Pointer travel before a press counts as a drag rather than a click. */
 const DRAG_THRESHOLD_PX = 6
+/** Space under every chip so back-to-back events and tasks do not touch (Google Calendar). */
+const CHIP_GAP_PX = 2
+/** Task chips: one fixed-height row. */
+const TASK_CHIP_PX = 20
 
 const allDayPlacements = computed(() =>
   layoutSpans(props.instances.filter(isAllDayRow), props.days, (i) => ({
@@ -75,7 +87,31 @@ const allDayPlacements = computed(() =>
     end: i.end,
   })),
 )
-const allDayLanes = computed(() => Math.max(1, ...allDayPlacements.value.map((p) => p.lane + 1)))
+const todayIndex = computed(() => props.days.findIndex((d) => isSameDay(d, now.value)))
+const pendingCount = computed(() => props.pendingTasks?.length ?? 0)
+/** 1-based all-day lane of "N pending tasks": below today's all-day events (null = hidden). */
+const pendingLane = computed(() => {
+  const ti = todayIndex.value
+  if (ti < 0 || pendingCount.value === 0) return null
+  const used = allDayPlacements.value
+    .filter((p) => p.startCol <= ti && ti < p.startCol + p.span)
+    .map((p) => p.lane + 1)
+  return Math.max(0, ...used) + 1
+})
+const allDayLanes = computed(() =>
+  Math.max(1, pendingLane.value ?? 0, ...allDayPlacements.value.map((p) => p.lane + 1)),
+)
+
+/** Where the pending popover is anchored (null = closed). */
+const pendingAnchor = ref<Anchor | null>(null)
+function togglePending(e: MouseEvent) {
+  if (pendingAnchor.value) {
+    pendingAnchor.value = null
+    return
+  }
+  const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  pendingAnchor.value = { x: r.left, y: r.top, width: r.width, height: r.height }
+}
 
 const columns = computed(() =>
   props.days.map((day) => {
@@ -159,6 +195,19 @@ type Drag =
       moved: boolean
       startX: number
       startY: number
+    }
+  | {
+      /** A task dragged out of the pending popover; column/day are null off the grid. */
+      kind: 'pending'
+      task: Task
+      column: HTMLElement | null
+      day: Date | null
+      startMin: number
+      moved: boolean
+      startX: number
+      startY: number
+      x: number
+      y: number
     }
 
 const drag = shallowRef<Drag | null>(null)
@@ -265,6 +314,31 @@ function onTaskPointerDown(task: Task, day: Date, e: PointerEvent) {
   trackPointer()
 }
 
+/** A row of the pending popover: start dragging it towards the grid. */
+function onPendingGrab(task: Task, e: PointerEvent) {
+  drag.value = {
+    kind: 'pending',
+    task,
+    column: null,
+    day: null,
+    startMin: 0,
+    moved: false,
+    startX: e.clientX,
+    startY: e.clientY,
+    x: e.clientX,
+    y: e.clientY,
+  }
+  trackPointer()
+}
+
+/** Day column under the pointer, only inside the scrolled time area (not under the header). */
+function timeColumnAt(clientX: number, clientY: number): { el: HTMLElement; day: Date } | null {
+  const box = root.value?.getBoundingClientRect()
+  const top = header.value?.getBoundingClientRect().bottom ?? box?.top ?? 0
+  if (!box || clientY < top || clientY > box.bottom) return null
+  return columnAt(clientX)
+}
+
 /** Bottom edge of a chip: start resizing. */
 function onResizePointerDown(instance: EventInstance, day: Date, e: PointerEvent) {
   if (!isPrimaryPointer(e)) return
@@ -295,6 +369,28 @@ function onPointerMove(e: PointerEvent) {
       ...d,
       curMin: minutesAt(d.column, e.clientY),
       moved: d.moved || Math.abs(e.clientY - d.startY) >= DRAG_THRESHOLD_PX,
+    }
+  } else if (d.kind === 'pending') {
+    const moved =
+      d.moved ||
+      Math.abs(e.clientX - d.startX) + Math.abs(e.clientY - d.startY) >= DRAG_THRESHOLD_PX
+    // The popover gets out of the way once the row is really being dragged.
+    if (moved) pendingAnchor.value = null
+    const target = moved ? timeColumnAt(e.clientX, e.clientY) : null
+    drag.value = {
+      ...d,
+      moved,
+      x: e.clientX,
+      y: e.clientY,
+      column: target?.el ?? null,
+      day: target?.day ?? null,
+      // Pointer on the middle of the task chip.
+      startMin: target
+        ? Math.min(
+            24 * 60 - SNAP,
+            clampMin(snap(minutesAt(target.el, e.clientY) - TASK_CHIP_PX / 2)),
+          )
+        : 0,
     }
   } else if (d.kind === 'task') {
     const target = columnAt(e.clientX) ?? { el: d.column, day: d.day }
@@ -356,6 +452,10 @@ function onPointerUp(e: PointerEvent) {
   }
   if (!d.moved) return
   markDragged()
+  if (d.kind === 'pending') {
+    if (d.day) emit('moveTask', d.task, dateAt(d.day, d.startMin))
+    return
+  }
   if (d.kind === 'task') {
     const due = dateAt(d.day, d.startMin)
     if (due.getTime() !== d.task.due!.getTime()) emit('moveTask', d.task, due)
@@ -406,11 +506,24 @@ const dragPreview = computed(() => {
     }
   }
   if (!d.moved) return null
+  if (d.kind === 'pending') {
+    if (!d.day) return null
+    return {
+      dayKey: toDateKey(d.day),
+      top: d.startMin * PX_PER_MIN,
+      height: TASK_CHIP_PX,
+      title: d.task.summary,
+      from: dateAt(d.day, d.startMin),
+      to: dateAt(d.day, d.startMin),
+      color: props.colorFor(d.task.collectionUrl),
+      task: true,
+    }
+  }
   if (d.kind === 'task') {
     return {
       dayKey: toDateKey(d.day),
       top: d.startMin * PX_PER_MIN,
-      height: 22,
+      height: TASK_CHIP_PX,
       title: d.task.summary,
       from: dateAt(d.day, d.startMin),
       to: dateAt(d.day, d.startMin),
@@ -423,7 +536,7 @@ const dragPreview = computed(() => {
   return {
     dayKey: toDateKey(d.day),
     top: startMin * PX_PER_MIN,
-    height: Math.max((endMin - startMin) * PX_PER_MIN, 16),
+    height: Math.max((endMin - startMin) * PX_PER_MIN - CHIP_GAP_PX, 14),
     title: d.instance.summary || '(No title)',
     from: dateAt(d.day, startMin),
     to: dateAt(d.day, endMin),
@@ -434,7 +547,7 @@ const dragPreview = computed(() => {
 const draggingKey = computed(() => {
   const d = drag.value
   if (!d || !d.moved || d.kind === 'create') return null
-  return d.kind === 'task' ? d.task.objectUrl : eventKey(d.instance)
+  return d.kind === 'task' || d.kind === 'pending' ? d.task.objectUrl : eventKey(d.instance)
 })
 
 /** Where the draft chip goes in each column (null when it is not a timed draft on that day). */
@@ -446,7 +559,10 @@ function draftPlacement(day: Date) {
   if (!(d.start < dayEnd && d.end > dayStart)) return null
   const top = (Math.max(d.start.getTime(), dayStart.getTime()) - dayStart.getTime()) / 60_000
   const bottom = (Math.min(d.end.getTime(), dayEnd.getTime()) - dayStart.getTime()) / 60_000
-  return { top, height: Math.max(bottom - top, d.kind === 'task' ? 22 : 16) }
+  return {
+    top,
+    height: d.kind === 'task' ? TASK_CHIP_PX : Math.max(bottom - top - CHIP_GAP_PX, 14),
+  }
 }
 
 /**
@@ -518,7 +634,7 @@ function taskRows(tasks: Task[]): { top: number; tasks: Task[] }[] {
       drag
         ? drag.kind === 'resize'
           ? 'cursor-ns-resize select-none'
-          : drag.kind === 'move'
+          : drag.kind === 'move' || (drag.kind === 'pending' && drag.moved)
             ? 'cursor-grabbing select-none'
             : 'select-none'
         : ''
@@ -528,7 +644,7 @@ function taskRows(tasks: Task[]): { top: number; tasks: Task[] }[] {
   >
     <div :class="days.length > 1 ? 'min-w-[640px]' : 'min-w-[320px]'">
       <!-- Day headers + all-day events (sticky) -->
-      <div class="sticky top-0 z-20 border-b border-gray-200 bg-white pb-0.5">
+      <div ref="header" class="sticky top-0 z-20 border-b border-gray-200 bg-white pb-0.5">
         <div class="grid" :style="{ gridTemplateColumns: gridCols }">
           <div></div>
           <div v-for="c in columns" :key="c.key" class="flex flex-col items-center py-2">
@@ -586,6 +702,26 @@ function taskRows(tasks: Task[]): { top: number; tasks: Task[] }[] {
                 @select="onSelectEvent"
               />
             </div>
+            <div
+              v-if="pendingLane"
+              class="min-w-0 px-0.5"
+              :style="{ gridColumn: `${todayIndex + 1}`, gridRow: `${pendingLane}` }"
+            >
+              <button
+                type="button"
+                class="flex h-full w-full items-center gap-x-1.5 truncate rounded-md px-1.5 text-left text-xs text-gray-700 hover:bg-gray-100"
+                :class="pendingAnchor ? 'bg-gray-100' : ''"
+                :aria-expanded="pendingAnchor ? 'true' : 'false'"
+                aria-haspopup="dialog"
+                data-testid="pending-tasks"
+                @click.stop="togglePending"
+              >
+                <AppIcon name="tasks" class="size-3.5 shrink-0 text-red-500" />
+                <span class="truncate"
+                  >{{ pendingCount }} pending {{ pendingCount === 1 ? 'task' : 'tasks' }}</span
+                >
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -622,7 +758,7 @@ function taskRows(tasks: Task[]): { top: number; tasks: Task[] }[] {
             ]"
             :style="{
               top: `${p.top}px`,
-              height: `${p.height}px`,
+              height: `${p.continuesAfter ? p.height : p.height - CHIP_GAP_PX}px`,
               left: `calc(${p.left * 100}% + 2px)`,
               width: `calc(${p.width * 100}% - 4px)`,
             }"
@@ -650,8 +786,8 @@ function taskRows(tasks: Task[]): { top: number; tasks: Task[] }[] {
           <div
             v-for="row in taskRows(c.tasks)"
             :key="row.top"
-            class="absolute inset-x-0.5 z-10 flex h-[22px] gap-x-0.5"
-            :style="{ top: `${row.top}px` }"
+            class="absolute inset-x-0.5 z-10 flex gap-x-0.5"
+            :style="{ top: `${row.top}px`, height: `${TASK_CHIP_PX}px` }"
           >
             <TaskChip
               v-for="t in row.tasks"
@@ -681,10 +817,7 @@ function taskRows(tasks: Task[]): { top: number; tasks: Task[] }[] {
             data-testid="drag-preview"
           >
             <template v-if="dragPreview.task">
-              <span
-                class="size-3 shrink-0 rounded-sm"
-                :style="{ backgroundColor: dragPreview.color + '33' }"
-              ></span>
+              <TaskDot :color="dragPreview.color ?? '#7c3aed'" />
               <span class="truncate font-medium text-gray-800">{{ dragPreview.title }}</span>
               <span class="ml-auto shrink-0 text-[11px] text-gray-500">{{
                 formatTime(dragPreview.from)
@@ -713,10 +846,7 @@ function taskRows(tasks: Task[]): { top: number; tasks: Task[] }[] {
             data-testid="draft-chip"
           >
             <template v-if="draft?.kind === 'task'">
-              <span
-                class="size-3 shrink-0 rounded-sm"
-                :style="{ backgroundColor: (draftColor ?? '#7c3aed') + '33' }"
-              ></span>
+              <TaskDot :color="draftColor ?? '#7c3aed'" />
               <span class="truncate font-medium text-gray-800">{{
                 draft?.title || '(No title)'
               }}</span>
@@ -740,5 +870,27 @@ function taskRows(tasks: Task[]): { top: number; tasks: Task[] }[] {
         </div>
       </div>
     </div>
+
+    <Transition name="pop">
+      <PendingTasksPopover
+        v-if="pendingAnchor && pendingTasks?.length"
+        :tasks="pendingTasks"
+        :anchor="pendingAnchor"
+        :color-for="colorFor"
+        draggable
+        @close="pendingAnchor = null"
+        @grab="onPendingGrab"
+      />
+    </Transition>
+    <Teleport to="body">
+      <div
+        v-if="drag?.kind === 'pending' && drag.moved && !drag.day"
+        class="pointer-events-none fixed z-50 max-w-xs truncate rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white shadow-lg"
+        :style="{ left: `${drag.x + 12}px`, top: `${drag.y + 12}px` }"
+        data-testid="pending-drag-ghost"
+      >
+        {{ drag.task.summary }}
+      </div>
+    </Teleport>
   </div>
 </template>

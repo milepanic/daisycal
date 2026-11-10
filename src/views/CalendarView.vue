@@ -38,6 +38,7 @@ watch(
 
 const instances = computed(() => events.instancesFor(ui.visibleRange))
 const dueTasks = computed(() => tasks.tasksDueIn(ui.visibleRange))
+const pendingTasks = computed(() => tasks.overdueTasks())
 const loading = computed(() => calendars.status === 'loading' || events.isLoading(ui.visibleRange))
 const loadError = computed(() => events.loadError(ui.visibleRange))
 const days = computed(() => eachDay(ui.visibleRange))
@@ -142,6 +143,7 @@ const draftColor = computed(() =>
           :selected-key="selectedKey"
           :draft="ui.createDraft"
           :draft-color="draftColor"
+          :pending-tasks="pendingTasks"
           @select-event="selectEvent"
           @select-task="selectTask"
           @create-at="createAt"
@@ -154,6 +156,7 @@ const draftColor = computed(() =>
           :month="ui.currentDate.getMonth()"
           :instances="instances"
           :tasks="dueTasks"
+          :pending-tasks="pendingTasks"
           :color-for="colorFor"
           :selected-key="selectedKey"
           @select-event="selectEvent"

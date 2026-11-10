@@ -14,6 +14,7 @@ import { useNotificationsStore } from '@/stores/notifications'
 import { useTasksStore } from '@/stores/tasks'
 import { useUiStore } from '@/stores/ui'
 import AppIcon from '@/components/ui/AppIcon.vue'
+import TaskDot from '@/components/ui/TaskDot.vue'
 import TimeSelect from '@/components/ui/TimeSelect.vue'
 import TaskRow from './TaskRow.vue'
 
@@ -142,10 +143,7 @@ function openDetailed() {
       @submit.prevent="submitAdd"
     >
       <div class="flex items-center gap-x-3">
-        <span
-          class="size-4 shrink-0 rounded-full"
-          :style="{ backgroundColor: color + '33' }"
-        ></span>
+        <span class="grid size-4 shrink-0 place-items-center"><TaskDot :color="color" /></span>
         <input
           ref="newInput"
           v-model="newTitle"

@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 import type { EventInstance, Task } from '@/api/ical'
 import { type DateRange, addDays, startOfDay } from '@/lib/dates'
 import { MONTHS_SHORT, WEEKDAYS_LONG } from '@/lib/format'
 import { buildMonthCells } from '@/lib/layout'
 import type { Anchor } from '@/stores/ui'
+import AppIcon from '@/components/ui/AppIcon.vue'
 import EventChip from './EventChip.vue'
+import PendingTasksPopover from './PendingTasksPopover.vue'
 import TaskChip from './TaskChip.vue'
 
 const props = defineProps<{
@@ -16,6 +18,8 @@ const props = defineProps<{
   tasks: Task[]
   colorFor: (collectionUrl: string) => string
   selectedKey?: string | null
+  /** Overdue open tasks, shown as "N pending tasks" in today's cell. */
+  pendingTasks?: Task[]
 }>()
 const emit = defineEmits<{
   selectEvent: [instance: EventInstance, el: HTMLElement]
@@ -24,9 +28,27 @@ const emit = defineEmits<{
   showMore: [date: Date]
 }>()
 
+const MAX_ROWS = 3
+const pendingCount = computed(() => props.pendingTasks?.length ?? 0)
 const cells = computed(() =>
-  buildMonthCells(props.range, props.month, props.instances, props.tasks),
+  buildMonthCells(props.range, props.month, props.instances, props.tasks, MAX_ROWS).map((c) => {
+    // "N pending tasks" takes one of today's rows.
+    if (!c.isToday || pendingCount.value === 0) return c
+    const rows = MAX_ROWS - 1
+    const hiddenCount = c.items.length > rows ? c.items.length - (rows - 1) : 0
+    return { ...c, visible: hiddenCount ? c.items.slice(0, rows - 1) : c.items, hiddenCount }
+  }),
 )
+
+const pendingAnchor = ref<Anchor | null>(null)
+function togglePending(e: MouseEvent) {
+  if (pendingAnchor.value) {
+    pendingAnchor.value = null
+    return
+  }
+  const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  pendingAnchor.value = { x: r.left, y: r.top, width: r.width, height: r.height }
+}
 const headers = computed(() =>
   Array.from({ length: 7 }, (_, i) => props.range.start.getDay() + i).map((d) => d % 7),
 )
@@ -92,6 +114,21 @@ function onCellClick(date: Date, e: MouseEvent) {
             </span>
           </div>
           <div class="mt-1 min-h-0 flex-1 space-y-0.5 overflow-hidden">
+            <button
+              v-if="cell.isToday && pendingCount"
+              type="button"
+              class="flex w-full items-center gap-x-1.5 truncate rounded-md px-1.5 py-0.5 text-left text-xs text-gray-700 hover:bg-gray-100"
+              :class="pendingAnchor ? 'bg-gray-100' : ''"
+              :aria-expanded="pendingAnchor ? 'true' : 'false'"
+              aria-haspopup="dialog"
+              data-testid="pending-tasks"
+              @click.stop="togglePending"
+            >
+              <AppIcon name="tasks" class="size-3.5 shrink-0 text-red-500" />
+              <span class="truncate"
+                >{{ pendingCount }} pending {{ pendingCount === 1 ? 'task' : 'tasks' }}</span
+              >
+            </button>
             <template
               v-for="item in cell.visible"
               :key="item.event ? eventKey(item.event) : item.task!.objectUrl"
@@ -124,5 +161,15 @@ function onCellClick(date: Date, e: MouseEvent) {
         </div>
       </div>
     </div>
+
+    <Transition name="pop">
+      <PendingTasksPopover
+        v-if="pendingAnchor && pendingTasks?.length"
+        :tasks="pendingTasks"
+        :anchor="pendingAnchor"
+        :color-for="colorFor"
+        @close="pendingAnchor = null"
+      />
+    </Transition>
   </div>
 </template>

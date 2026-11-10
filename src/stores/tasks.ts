@@ -15,7 +15,7 @@ import {
   toggleTaskIcs,
   updateTaskIcs,
 } from '@/api/ical'
-import type { DateRange } from '@/lib/dates'
+import { type DateRange, startOfDay } from '@/lib/dates'
 import { useAuthStore } from './auth'
 import { useCalendarsStore } from './calendars'
 import { useUiStore } from './ui'
@@ -173,6 +173,17 @@ export const useTasksStore = defineStore('tasks', () => {
     return openTasks.value.filter((t) => t.due && t.due >= range.start && t.due < range.end)
   }
 
+  /**
+   * "Pending" tasks (Google Calendar style): open tasks of visible lists whose due date is
+   * before today, oldest first. Tasks due later today are not pending yet.
+   */
+  function overdueTasks(now: Date = new Date()): Task[] {
+    const today = startOfDay(now)
+    return openTasks.value
+      .filter((t) => t.due && t.due < today)
+      .sort((a, b) => a.due!.getTime() - b.due!.getTime())
+  }
+
   function get(objectUrl: string): Task | undefined {
     return all.value.get(objectUrl)
   }
@@ -300,6 +311,7 @@ export const useTasksStore = defineStore('tasks', () => {
     listError,
     tasksFor,
     tasksDueIn,
+    overdueTasks,
     get,
     createTask,
     updateTask,

@@ -5,6 +5,7 @@ import type { EventInstance, Task } from '@/api/ical'
 import type { DateRange } from '@/lib/dates'
 import { MONTHS_LONG, WEEKDAYS_LONG, spanTitle } from '@/lib/format'
 import { buildAgendaDays } from '@/lib/layout'
+import TaskDot from '@/components/ui/TaskDot.vue'
 
 const props = defineProps<{
   range: DateRange
@@ -97,33 +98,10 @@ function eventKey(i: EventInstance) {
                 <span class="w-24 shrink-0 text-xs text-gray-500 tabular-nums">{{
                   entry.timeLabel
                 }}</span>
-                <span
-                  class="flex size-2.5 shrink-0 items-center justify-center rounded-sm"
-                  :style="
-                    entry.task.completed
-                      ? { backgroundColor: colorFor(entry.task.collectionUrl), color: 'white' }
-                      : {
-                          backgroundColor: colorFor(entry.task.collectionUrl) + '0d',
-                          boxShadow: `inset 0 0 0 1px ${colorFor(entry.task.collectionUrl)}99`,
-                        }
-                  "
-                >
-                  <svg
-                    v-if="entry.task.completed"
-                    class="size-2.5"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2.5"
-                    viewBox="0 0 14 14"
-                    aria-hidden="true"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M3 7.5 5.75 10.25 11 4"
-                    />
-                  </svg>
-                </span>
+                <TaskDot
+                  :color="colorFor(entry.task.collectionUrl)"
+                  :checked="entry.task.completed"
+                />
                 <span
                   class="truncate text-sm"
                   :class="entry.task.completed ? 'text-gray-400 line-through' : 'text-gray-900'"
