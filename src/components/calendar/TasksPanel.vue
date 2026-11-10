@@ -57,7 +57,7 @@ async function toggle(t: Task, done: boolean) {
     <div class="relative flex h-16 shrink-0 items-center px-4">
       <button
         type="button"
-        class="flex items-center gap-x-2 rounded-lg bg-gray-100 px-3 py-1.5 text-sm font-semibold text-gray-900 hover:bg-gray-200"
+        class="flex items-center gap-x-2 rounded-md bg-gray-100 px-3 py-1.5 text-sm font-semibold text-gray-900 hover:bg-gray-200"
         aria-haspopup="listbox"
         :aria-expanded="pickerOpen"
         @click="pickerOpen = !pickerOpen"
@@ -69,14 +69,14 @@ async function toggle(t: Task, done: boolean) {
       <ul
         v-if="pickerOpen"
         role="listbox"
-        class="absolute top-14 left-4 z-30 min-w-40 rounded-lg bg-white p-1 shadow-lg ring-1 ring-gray-200"
+        class="absolute top-14 left-4 z-30 min-w-40 rounded-md bg-white p-1 shadow-lg ring-1 ring-gray-200"
       >
         <li v-for="l in calendars.visibleTaskLists" :key="l.url">
           <button
             type="button"
             role="option"
             :aria-selected="l.url === listUrl"
-            class="flex w-full items-center gap-x-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-gray-100"
+            class="flex w-full items-center gap-x-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-gray-100"
             :class="l.url === listUrl ? 'font-semibold text-gray-900' : 'text-gray-700'"
             @click="((listUrl = l.url), (pickerOpen = false))"
           >
@@ -93,7 +93,7 @@ async function toggle(t: Task, done: boolean) {
     <div class="flex-1 overflow-y-auto px-2 pb-4">
       <button
         type="button"
-        class="flex w-full items-center gap-x-3 rounded-lg px-2 py-2 text-sm font-semibold text-accent hover:bg-accent/10"
+        class="flex w-full items-center gap-x-3 rounded-md px-2 py-2 text-sm font-semibold text-accent hover:bg-accent/10"
         :disabled="!listUrl"
         @click="ui.openCreate({ kind: 'task', collectionUrl: listUrl ?? undefined })"
       >
@@ -123,7 +123,7 @@ async function toggle(t: Task, done: boolean) {
 
       <details v-if="completed.length && ui.showCompletedTasks" class="group mt-2">
         <summary
-          class="flex cursor-pointer list-none items-center gap-x-2 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 [&::-webkit-details-marker]:hidden"
+          class="flex cursor-pointer list-none items-center gap-x-2 rounded-md px-2 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 [&::-webkit-details-marker]:hidden"
         >
           <AppIcon
             name="chevron-down"

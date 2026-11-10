@@ -118,7 +118,7 @@ const draftColor = computed(() =>
     <div class="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl bg-white">
       <p
         v-if="loadError"
-        class="mx-2 mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+        class="mx-2 mt-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700"
         role="alert"
       >
         {{ loadError }}

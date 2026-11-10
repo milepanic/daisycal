@@ -539,7 +539,7 @@ function taskRows(tasks: Task[]): { top: number; tasks: Task[] }[] {
             >
             <span
               class="mx-auto mt-1 flex size-8 items-center justify-center text-base font-semibold"
-              :class="c.isToday ? 'rounded-full bg-accent text-white' : 'rounded-lg text-gray-900'"
+              :class="c.isToday ? 'rounded-full bg-accent text-white' : 'rounded-md text-gray-900'"
               :aria-current="c.isToday ? 'date' : undefined"
             >
               {{ c.day.getDate() }}
@@ -667,7 +667,7 @@ function taskRows(tasks: Task[]): { top: number; tasks: Task[] }[] {
           </div>
           <div
             v-if="dragPreview && dragPreview.dayKey === c.key"
-            class="pointer-events-none absolute inset-x-0.5 z-40 overflow-hidden rounded-lg text-xs ring-2 ring-white"
+            class="pointer-events-none absolute inset-x-0.5 z-40 overflow-hidden rounded-md text-xs ring-2 ring-white"
             :class="
               dragPreview.task
                 ? 'flex items-center gap-x-1.5 bg-gray-100 px-2'
@@ -699,7 +699,7 @@ function taskRows(tasks: Task[]): { top: number; tasks: Task[] }[] {
           </div>
           <div
             v-if="draftPlacement(c.day)"
-            class="pointer-events-none absolute inset-x-0.5 z-40 overflow-hidden rounded-lg text-xs ring-2 ring-white"
+            class="pointer-events-none absolute inset-x-0.5 z-40 overflow-hidden rounded-md text-xs ring-2 ring-white"
             :class="
               draft?.kind === 'task'
                 ? 'flex items-center gap-x-1.5 bg-gray-100 px-2'
@@ -734,7 +734,7 @@ function taskRows(tasks: Task[]): { top: number; tasks: Task[] }[] {
             :style="{ top: `${nowTop}px` }"
             data-testid="now-line"
           >
-            <span class="-ml-1 size-2 rounded-lg bg-accent"></span>
+            <span class="-ml-1 size-2 rounded-md bg-accent"></span>
             <span class="h-0.5 flex-1 bg-accent"></span>
           </div>
         </div>

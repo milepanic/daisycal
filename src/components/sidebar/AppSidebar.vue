@@ -17,8 +17,8 @@ const nav = useCalendarRoute()
 
 const tabClass = (active: boolean) =>
   active
-    ? 'flex items-center justify-center gap-x-2 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-gray-900'
-    : 'flex items-center justify-center gap-x-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-white/60 hover:text-gray-900'
+    ? 'flex items-center justify-center gap-x-2 rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900'
+    : 'flex items-center justify-center gap-x-2 rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:bg-white/60 hover:text-gray-900'
 
 function pickDate(d: Date) {
   if (route.name === 'calendar') void nav.setDate(d)

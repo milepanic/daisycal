@@ -139,7 +139,7 @@ async function onPointerUp() {
     </div>
     <div
       v-if="drag?.moved"
-      class="pointer-events-none fixed z-50 max-w-xs truncate rounded-lg bg-gray-900 px-3 py-1.5 text-sm font-medium text-white shadow-lg"
+      class="pointer-events-none fixed z-50 max-w-xs truncate rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white shadow-lg"
       :style="{ left: `${drag.x + 12}px`, top: `${drag.y + 12}px` }"
       data-testid="task-drag-ghost"
     >

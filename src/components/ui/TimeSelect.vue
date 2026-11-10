@@ -25,7 +25,7 @@ const options = computed(() => {
     :id="id"
     :value="modelValue"
     :aria-label="label"
-    class="cursor-pointer appearance-none rounded-lg bg-gray-100 px-2.5 py-1.5 text-sm font-medium text-gray-900 tabular-nums hover:bg-gray-200 focus:outline-2 focus:outline-accent"
+    class="cursor-pointer appearance-none rounded-md bg-gray-100 px-2.5 py-1.5 text-sm font-medium text-gray-900 tabular-nums hover:bg-gray-200 focus:outline-2 focus:outline-accent"
     @change="emit('update:modelValue', ($event.target as HTMLSelectElement).value)"
   >
     <option v-for="t in options" :key="t" :value="t">{{ t }}</option>

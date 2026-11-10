@@ -14,14 +14,14 @@ const OPTIONS: { view: CalendarView; label: string }[] = [
 </script>
 
 <template>
-  <div class="flex h-9 rounded-lg bg-white/60 p-0.5" role="tablist" aria-label="Calendar view">
+  <div class="flex h-9 rounded-md bg-white/60 p-0.5" role="tablist" aria-label="Calendar view">
     <button
       v-for="o in OPTIONS"
       :key="o.view"
       type="button"
       role="tab"
       :aria-selected="o.view === view"
-      class="flex items-center rounded-lg px-3 text-sm font-medium whitespace-nowrap"
+      class="flex items-center rounded-md px-3 text-sm font-medium whitespace-nowrap"
       :class="o.view === view ? 'bg-white text-gray-900' : 'text-gray-600 hover:text-gray-900'"
       @click="emit('change', o.view)"
     >

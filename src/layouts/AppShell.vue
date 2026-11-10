@@ -102,7 +102,7 @@ async function retrySync() {
         </p>
         <button
           type="button"
-          class="mt-5 h-10 w-full rounded-lg bg-gray-900 text-sm font-semibold text-white hover:bg-gray-700"
+          class="mt-5 h-10 w-full rounded-md bg-gray-900 text-sm font-semibold text-white hover:bg-gray-700"
           @click="reconnect"
         >
           Retry
@@ -115,7 +115,7 @@ async function retrySync() {
     <div
       v-if="offline"
       role="status"
-      class="mt-2 flex items-center gap-x-3 rounded-lg bg-amber-100 px-3 py-2 text-sm text-amber-900"
+      class="mt-2 flex items-center gap-x-3 rounded-md bg-amber-100 px-3 py-2 text-sm text-amber-900"
       data-testid="offline-banner"
     >
       <AppIcon name="warning" class="size-4 shrink-0" />
@@ -124,7 +124,7 @@ async function retrySync() {
       >
       <button
         type="button"
-        class="rounded-lg bg-white/70 px-2 py-1 text-xs font-semibold hover:bg-white"
+        class="rounded-md bg-white/70 px-2 py-1 text-xs font-semibold hover:bg-white"
         @click="retrySync"
       >
         Retry

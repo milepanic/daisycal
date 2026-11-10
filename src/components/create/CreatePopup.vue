@@ -492,12 +492,12 @@ async function remove(deleteScope: EditScope) {
       data-testid="create-popup"
     >
       <div class="flex items-center justify-between px-4 pt-3">
-        <fieldset v-if="!isEdit" class="flex h-9 rounded-lg bg-gray-100 p-0.5">
+        <fieldset v-if="!isEdit" class="flex h-9 rounded-md bg-gray-100 p-0.5">
           <legend class="sr-only">Type</legend>
           <label
             v-for="t in ['event', 'task'] as const"
             :key="t"
-            class="flex cursor-pointer items-center gap-x-1.5 rounded-lg px-3 text-sm font-medium text-gray-600 hover:text-gray-900 has-checked:bg-white has-checked:text-gray-900 has-focus-visible:outline-2 has-focus-visible:outline-accent"
+            class="flex cursor-pointer items-center gap-x-1.5 rounded-md px-3 text-sm font-medium text-gray-600 hover:text-gray-900 has-checked:bg-white has-checked:text-gray-900 has-focus-visible:outline-2 has-focus-visible:outline-accent"
           >
             <input v-model="kind" type="radio" name="create-type" :value="t" class="sr-only" />
             <AppIcon :name="t === 'event' ? 'calendar' : 'tasks'" class="size-4" />
@@ -510,7 +510,7 @@ async function remove(deleteScope: EditScope) {
         <button
           type="button"
           title="Close"
-          class="flex size-9 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+          class="flex size-9 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-900"
           @click="ui.closeCreate()"
         >
           <span class="sr-only">Close</span>
@@ -542,7 +542,7 @@ async function remove(deleteScope: EditScope) {
                   v-model="form.date"
                   type="date"
                   aria-label="Start date"
-                  class="rounded-lg bg-gray-100 px-2.5 py-1.5 font-medium text-gray-900 hover:bg-gray-200"
+                  class="rounded-md bg-gray-100 px-2.5 py-1.5 font-medium text-gray-900 hover:bg-gray-200"
                 />
                 <template v-if="form.allDay">
                   <span class="text-gray-400">–</span>
@@ -550,7 +550,7 @@ async function remove(deleteScope: EditScope) {
                     v-model="form.endDate"
                     type="date"
                     aria-label="End date"
-                    class="rounded-lg bg-gray-100 px-2.5 py-1.5 font-medium text-gray-900 hover:bg-gray-200"
+                    class="rounded-md bg-gray-100 px-2.5 py-1.5 font-medium text-gray-900 hover:bg-gray-200"
                   />
                 </template>
                 <template v-else>
@@ -589,7 +589,7 @@ async function remove(deleteScope: EditScope) {
                   <select
                     id="event-repeat"
                     v-model="form.repeat"
-                    class="cursor-pointer appearance-none rounded-lg py-1.5 pr-7 pl-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:outline-2 focus:outline-accent"
+                    class="cursor-pointer appearance-none rounded-md py-1.5 pr-7 pl-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:outline-2 focus:outline-accent"
                   >
                     <option v-for="o in repeatOptions" :key="o.value" :value="o.value">
                       {{ o.label }}
@@ -630,7 +630,7 @@ async function remove(deleteScope: EditScope) {
               <select
                 id="event-calendar"
                 v-model="form.collectionUrl"
-                class="w-full cursor-pointer appearance-none rounded-lg bg-gray-100 py-2 pr-8 pl-7 text-sm font-medium text-gray-900 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
+                class="w-full cursor-pointer appearance-none rounded-md bg-gray-100 py-2 pr-8 pl-7 text-sm font-medium text-gray-900 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
               >
                 <option v-for="c in eventCalendars" :key="c.url" :value="c.url">
                   {{ c.displayName }}
@@ -652,7 +652,7 @@ async function remove(deleteScope: EditScope) {
               type="text"
               placeholder="Add location"
               autocomplete="off"
-              class="w-full rounded-lg bg-gray-100 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
+              class="w-full rounded-md bg-gray-100 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
             />
           </div>
 
@@ -665,7 +665,7 @@ async function remove(deleteScope: EditScope) {
                   <select
                     id="event-reminder"
                     v-model.number="form.alarm"
-                    class="cursor-pointer appearance-none rounded-lg bg-gray-100 py-2 pr-8 pl-3 text-sm font-medium text-gray-900 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
+                    class="cursor-pointer appearance-none rounded-md bg-gray-100 py-2 pr-8 pl-3 text-sm font-medium text-gray-900 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
                   >
                     <option v-for="o in alarmOptions" :key="o.value" :value="o.value">
                       {{ o.label }}
@@ -681,7 +681,7 @@ async function remove(deleteScope: EditScope) {
                 </div>
                 <button
                   type="button"
-                  class="flex size-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                  class="flex size-8 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700"
                   @click="form.alarm = null"
                 >
                   <span class="sr-only">Remove notification</span>
@@ -691,7 +691,7 @@ async function remove(deleteScope: EditScope) {
               <button
                 v-else
                 type="button"
-                class="inline-flex items-center gap-x-1 rounded-lg px-2 py-1 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                class="inline-flex items-center gap-x-1 rounded-md px-2 py-1 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                 @click="form.alarm = 30"
               >
                 <AppIcon name="plus" class="size-4" />
@@ -708,7 +708,7 @@ async function remove(deleteScope: EditScope) {
               v-model="form.description"
               rows="2"
               placeholder="Add description"
-              class="w-full resize-none rounded-lg bg-gray-100 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
+              class="w-full resize-none rounded-md bg-gray-100 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
             ></textarea>
           </div>
         </div>
@@ -723,13 +723,13 @@ async function remove(deleteScope: EditScope) {
                   v-model="form.dueDate"
                   type="date"
                   aria-label="Due date"
-                  class="rounded-lg bg-gray-100 px-2.5 py-1.5 font-medium text-gray-900 hover:bg-gray-200"
+                  class="rounded-md bg-gray-100 px-2.5 py-1.5 font-medium text-gray-900 hover:bg-gray-200"
                 />
                 <TimeSelect v-if="form.dueTime" v-model="form.dueTime" label="Due time" />
                 <button
                   v-if="!form.dueTime"
                   type="button"
-                  class="rounded-lg px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                  class="rounded-md px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-900"
                   @click="form.dueTime = '09:00'"
                 >
                   Add time
@@ -737,7 +737,7 @@ async function remove(deleteScope: EditScope) {
                 <button
                   v-if="form.dueTime"
                   type="button"
-                  class="flex size-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                  class="flex size-8 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700"
                   @click="form.dueTime = ''"
                 >
                   <span class="sr-only">Remove time</span>
@@ -746,7 +746,7 @@ async function remove(deleteScope: EditScope) {
                 <button
                   v-if="form.dueDate"
                   type="button"
-                  class="rounded-lg px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                  class="rounded-md px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-900"
                   @click="((form.dueDate = ''), (form.dueTime = ''))"
                 >
                   No due date
@@ -766,7 +766,7 @@ async function remove(deleteScope: EditScope) {
               <select
                 id="task-list"
                 v-model="form.collectionUrl"
-                class="w-full cursor-pointer appearance-none rounded-lg bg-gray-100 py-2 pr-8 pl-7 text-sm font-medium text-gray-900 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
+                class="w-full cursor-pointer appearance-none rounded-md bg-gray-100 py-2 pr-8 pl-7 text-sm font-medium text-gray-900 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
               >
                 <option v-for="c in taskLists" :key="c.url" :value="c.url">
                   {{ c.displayName }}
@@ -786,7 +786,7 @@ async function remove(deleteScope: EditScope) {
               <select
                 id="task-priority"
                 v-model="form.priority"
-                class="cursor-pointer appearance-none rounded-lg bg-gray-100 py-2 pr-8 pl-3 text-sm font-medium text-gray-900 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
+                class="cursor-pointer appearance-none rounded-md bg-gray-100 py-2 pr-8 pl-3 text-sm font-medium text-gray-900 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
               >
                 <option :value="null">No priority</option>
                 <option value="high">High</option>
@@ -808,7 +808,7 @@ async function remove(deleteScope: EditScope) {
               v-model="form.description"
               rows="2"
               placeholder="Add description"
-              class="w-full resize-none rounded-lg bg-gray-100 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
+              class="w-full resize-none rounded-md bg-gray-100 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
             ></textarea>
           </div>
         </div>
@@ -816,14 +816,14 @@ async function remove(deleteScope: EditScope) {
         <p
           v-if="error"
           role="alert"
-          class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+          class="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700"
         >
           {{ error }}
         </p>
         <div
           v-if="conflict"
           role="alert"
-          class="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800"
+          class="mt-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800"
           data-testid="conflict"
         >
           <p class="font-medium">Changed on another device.</p>
@@ -835,7 +835,7 @@ async function remove(deleteScope: EditScope) {
 
         <div
           v-if="confirmingDelete"
-          class="mt-4 rounded-lg bg-gray-50 p-3 text-sm"
+          class="mt-4 rounded-md bg-gray-50 p-3 text-sm"
           data-testid="confirm-delete"
         >
           <p class="font-medium text-gray-900">
@@ -852,7 +852,7 @@ async function remove(deleteScope: EditScope) {
               v-if="editingInstance?.isRecurring"
               type="button"
               :disabled="busy"
-              class="rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-700 disabled:opacity-60"
+              class="rounded-md bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-700 disabled:opacity-60"
               @click="remove('this')"
             >
               Only this occurrence
@@ -860,14 +860,14 @@ async function remove(deleteScope: EditScope) {
             <button
               type="button"
               :disabled="busy"
-              class="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-60"
+              class="rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-60"
               @click="remove('all')"
             >
               {{ editingInstance?.isRecurring ? 'All occurrences' : 'Delete' }}
             </button>
             <button
               type="button"
-              class="rounded-lg px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200"
+              class="rounded-md px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200"
               @click="confirmingDelete = false"
             >
               Cancel
@@ -879,14 +879,14 @@ async function remove(deleteScope: EditScope) {
           <button
             v-if="isEdit && !confirmingDelete"
             type="button"
-            class="rounded-lg px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+            class="rounded-md px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
             @click="confirmingDelete = true"
           >
             Delete
           </button>
           <button
             type="button"
-            class="ml-auto cursor-pointer rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+            class="ml-auto cursor-pointer rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
             @click="ui.closeCreate()"
           >
             Cancel
@@ -894,7 +894,7 @@ async function remove(deleteScope: EditScope) {
           <button
             type="submit"
             :disabled="busy"
-            class="inline-flex h-9 items-center rounded-lg bg-gray-900 px-4 text-sm font-semibold text-white hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900 disabled:opacity-60"
+            class="inline-flex h-9 items-center rounded-md bg-gray-900 px-4 text-sm font-semibold text-white hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900 disabled:opacity-60"
           >
             {{ busy ? 'Saving…' : conflict ? 'Save again' : 'Save' }}
           </button>

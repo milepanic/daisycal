@@ -36,7 +36,7 @@ const priorityClass = computed(() =>
 
 <template>
   <li
-    class="group/task flex items-start gap-x-3 rounded-lg p-2 hover:bg-gray-50"
+    class="group/task flex items-start gap-x-3 rounded-md p-2 hover:bg-gray-50"
     :data-task="task.uid"
     @pointerdown="onPointerDown"
   >
@@ -57,7 +57,7 @@ const priorityClass = computed(() =>
     >
       <p
         class="flex items-center gap-x-1.5 text-sm"
-        :class="task.completed ? 'text-gray-400 line-through' : 'font-medium text-gray-900'"
+        :class="task.completed ? 'text-gray-400 line-through' : 'text-gray-900'"
       >
         <AppIcon
           v-if="task.priority && !task.completed"
@@ -73,7 +73,7 @@ const priorityClass = computed(() =>
       </p>
       <p v-else-if="badge" class="mt-1.5">
         <span
-          class="inline-flex items-center gap-x-1 rounded-lg px-1.5 py-0.5 text-[11px] font-medium"
+          class="inline-flex items-center gap-x-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium"
           :class="badge.cls"
           >{{ badge.label }}</span
         >

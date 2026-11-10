@@ -126,7 +126,7 @@ function openDetailed() {
       <span v-if="open.length" class="text-xs text-gray-400">{{ open.length }}</span>
       <button
         type="button"
-        class="ml-auto rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+        class="ml-auto rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
         title="New task with details"
         @click="openDetailed"
       >
@@ -137,7 +137,7 @@ function openDetailed() {
 
     <form
       v-if="adding"
-      class="mt-1 rounded-lg bg-gray-50 px-2 py-1.5"
+      class="mt-1 rounded-md bg-gray-50 px-2 py-1.5"
       data-testid="inline-add"
       @submit.prevent="submitAdd"
     >
@@ -161,7 +161,7 @@ function openDetailed() {
           v-model="newDate"
           type="date"
           aria-label="New task due date"
-          class="rounded-lg bg-white px-2 py-1 font-medium text-gray-900 ring-1 ring-gray-200"
+          class="rounded-md bg-white px-2 py-1 font-medium text-gray-900 ring-1 ring-gray-200"
         />
         <TimeSelect
           v-if="newDate && newTime"
@@ -172,7 +172,7 @@ function openDetailed() {
         <button
           v-if="newDate && !newTime"
           type="button"
-          class="rounded-lg px-2 py-1 font-medium text-gray-500 hover:bg-white hover:text-gray-900"
+          class="rounded-md px-2 py-1 font-medium text-gray-500 hover:bg-white hover:text-gray-900"
           @click="newTime = '09:00'"
         >
           Add time
@@ -180,7 +180,7 @@ function openDetailed() {
         <button
           v-if="newTime"
           type="button"
-          class="rounded-lg px-2 py-1 font-medium text-gray-500 hover:bg-white hover:text-gray-900"
+          class="rounded-md px-2 py-1 font-medium text-gray-500 hover:bg-white hover:text-gray-900"
           @click="newTime = ''"
         >
           No time
@@ -188,14 +188,14 @@ function openDetailed() {
         <span class="ml-auto flex gap-x-1">
           <button
             type="button"
-            class="rounded-lg px-2 py-1 font-medium text-gray-500 hover:bg-white hover:text-gray-900"
+            class="rounded-md px-2 py-1 font-medium text-gray-500 hover:bg-white hover:text-gray-900"
             @click="cancelAdd"
           >
             Cancel
           </button>
           <button
             type="submit"
-            class="rounded-lg bg-gray-900 px-2.5 py-1 font-semibold text-white hover:bg-gray-700"
+            class="rounded-md bg-gray-900 px-2.5 py-1 font-semibold text-white hover:bg-gray-700"
           >
             Add
           </button>
@@ -205,7 +205,7 @@ function openDetailed() {
     <button
       v-else
       type="button"
-      class="mt-1 flex w-full items-center gap-x-3 rounded-lg px-2 py-2 text-sm font-semibold text-accent hover:bg-accent/10"
+      class="mt-1 flex w-full items-center gap-x-3 rounded-md px-2 py-2 text-sm font-semibold text-accent hover:bg-accent/10"
       @click="startAdd"
     >
       <AppIcon name="plus" class="size-5" />
@@ -214,7 +214,7 @@ function openDetailed() {
 
     <p
       v-if="listError"
-      class="mx-2 mt-1 rounded-lg bg-red-50 px-2 py-1 text-xs text-red-700"
+      class="mx-2 mt-1 rounded-md bg-red-50 px-2 py-1 text-xs text-red-700"
       role="alert"
     >
       {{ listError }}
@@ -239,7 +239,7 @@ function openDetailed() {
 
       <details v-if="completed.length && ui.showCompletedTasks" class="group mt-2">
         <summary
-          class="flex cursor-pointer list-none items-center gap-x-2 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 [&::-webkit-details-marker]:hidden"
+          class="flex cursor-pointer list-none items-center gap-x-2 rounded-md px-2 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 [&::-webkit-details-marker]:hidden"
         >
           <AppIcon
             name="chevron-down"

@@ -49,7 +49,7 @@ function eventKey(i: EventInstance) {
             <span
               class="flex size-8 shrink-0 items-center justify-center text-base font-semibold"
               :class="
-                day.isToday ? 'rounded-full bg-accent text-white' : 'rounded-lg text-gray-900'
+                day.isToday ? 'rounded-full bg-accent text-white' : 'rounded-md text-gray-900'
               "
               :aria-current="day.isToday ? 'date' : undefined"
             >
@@ -70,7 +70,7 @@ function eventKey(i: EventInstance) {
               <button
                 v-if="entry.event"
                 type="button"
-                class="flex w-full items-center gap-x-3 rounded-lg px-2 py-1.5 text-left hover:bg-gray-50"
+                class="flex w-full items-center gap-x-3 rounded-md px-2 py-1.5 text-left hover:bg-gray-50"
                 :class="selectedKey === eventKey(entry.event) ? 'bg-gray-100' : ''"
                 @click="emit('selectEvent', entry.event, $event.currentTarget as HTMLElement)"
               >
@@ -91,7 +91,7 @@ function eventKey(i: EventInstance) {
               <button
                 v-else-if="entry.task"
                 type="button"
-                class="flex w-full items-center gap-x-3 rounded-lg px-2 py-1.5 text-left hover:bg-gray-50"
+                class="flex w-full items-center gap-x-3 rounded-md px-2 py-1.5 text-left hover:bg-gray-50"
                 @click="emit('selectTask', entry.task, $event.currentTarget as HTMLElement)"
               >
                 <span class="w-24 shrink-0 text-xs text-gray-500 tabular-nums">{{
@@ -126,11 +126,7 @@ function eventKey(i: EventInstance) {
                 </span>
                 <span
                   class="truncate text-sm"
-                  :class="
-                    entry.task.completed
-                      ? 'text-gray-400 line-through'
-                      : 'font-medium text-gray-900'
-                  "
+                  :class="entry.task.completed ? 'text-gray-400 line-through' : 'text-gray-900'"
                   >{{ entry.task.summary }}</span
                 >
                 <span class="ml-auto hidden shrink-0 pl-3 text-xs text-gray-400 md:inline">{{

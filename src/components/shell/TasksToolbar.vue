@@ -21,7 +21,7 @@ const sync = useSyncStore()
         @click="sync.syncNow()"
       />
       <label
-        class="flex h-9 cursor-pointer items-center gap-x-2 rounded-lg px-2 text-sm text-gray-600 hover:bg-white/60"
+        class="flex h-9 cursor-pointer items-center gap-x-2 rounded-md px-2 text-sm text-gray-600 hover:bg-white/60"
       >
         <input
           v-model="ui.showCompletedTasks"
@@ -32,7 +32,7 @@ const sync = useSyncStore()
       </label>
       <button
         type="button"
-        class="inline-flex h-9 items-center gap-x-1.5 rounded-lg bg-gray-900 px-3 text-sm font-semibold text-white hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
+        class="inline-flex h-9 items-center gap-x-1.5 rounded-md bg-gray-900 px-3 text-sm font-semibold text-white hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
         @click="ui.openCreate({ kind: 'task' })"
       >
         <AppIcon name="plus" class="-ml-0.5 size-5" />

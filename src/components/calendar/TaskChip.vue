@@ -15,7 +15,7 @@ function onClick(e: MouseEvent) {
   <button
     type="button"
     :title="task.summary"
-    class="flex w-full min-w-0 cursor-pointer items-center overflow-hidden rounded-lg bg-gray-100 text-left text-xs hover:bg-gray-200"
+    class="flex w-full min-w-0 cursor-pointer items-center overflow-hidden rounded-md bg-gray-100 text-left text-xs hover:bg-gray-200"
     :class="size === 'month' ? 'gap-x-1.5 px-1.5 py-0.5' : 'h-full gap-x-1.5 px-2'"
     @click="onClick"
   >
@@ -41,7 +41,7 @@ function onClick(e: MouseEvent) {
       </svg>
     </span>
     <span
-      class="truncate font-medium"
+      class="truncate"
       :class="task.completed ? 'text-gray-400 line-through' : 'text-gray-800'"
       >{{ task.summary }}</span
     >
