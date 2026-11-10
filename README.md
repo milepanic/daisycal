@@ -64,9 +64,43 @@ with Docker Compose and seed it, lint, type-check, unit + integration tests, bui
 `master` it also builds the production image and pushes it to `ghcr.io/<owner>/daisycal`
 (`:latest` and `:<sha>`), so the server can `docker compose pull` instead of building.
 
-## Production
+## Homelab (Portainer)
 
-Target: `https://daisycal.home`, talking to Radicale at `https://calendar.home`.
+The homelab already runs Radicale 3.8 on the Docker host `192.168.1.9` (Portainer stack
+`calendar`, container `radicale`, network `proxy`, account `mile`). `https://calendar.home` is
+Caddy on `192.168.1.23` in front of it. DaisyCal joins the same Docker network and talks to
+Radicale directly over HTTP, so no certificate or DNS dependency is involved on that side.
+
+`docker-compose.portainer.yml` is the stack for this setup: it pulls `ghcr.io/milepanic/daisycal:latest`
+(built by CI on every push to `master`), publishes HTTP on port `3035` and leaves TLS to Caddy.
+
+1. **Portainer** → Stacks → Add stack → _Repository_: URL `https://github.com/milepanic/daisycal`,
+   reference `refs/heads/master`, compose path `docker-compose.portainer.yml`. Environment
+   variables: `RADICALE_USER=mile`, `RADICALE_PASSWORD=<its password>`. Deploy. Check
+   `http://192.168.1.9:3035/healthz` returns `ok` and `http://192.168.1.9:3035/` shows the
+   calendars. (Optional: enable GitOps updates so a push to `master` redeploys the stack.)
+2. **DNS** (Technitium, `http://dns.home:5380`): add an A record `daisycal.home → 192.168.1.23`,
+   same as the other `.home` names.
+3. **Caddy** on `192.168.1.23` (`/opt/caddy/Caddyfile`): add a site block in the same style as the
+   existing ones, then reload Caddy:
+
+   ```caddyfile
+   daisycal.home {
+       reverse_proxy 192.168.1.9:3035
+   }
+   ```
+
+4. Open `https://daisycal.home`. Updating later: Portainer → stack → _Pull and redeploy_ (or
+   `docker compose pull && docker compose up -d` on the host).
+
+The app is single-user and unauthenticated towards the browser; it is meant for the home network
+(and Tailscale) only. Do not expose port 3035 or `daisycal.home` to the internet without putting
+authentication in front of it.
+
+## Production (generic)
+
+Stand-alone variant: the container itself serves HTTPS and reaches Radicale over the network at
+`https://calendar.home`. On the homelab use the Portainer stack above instead.
 
 ```bash
 printf 'RADICALE_USER=you\nRADICALE_PASSWORD=secret\n' > .env   # the Radicale account to use

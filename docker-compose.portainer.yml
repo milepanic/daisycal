@@ -1,0 +1,39 @@
+# Homelab deployment through Portainer (Docker host 192.168.1.9).
+#
+# Differences from docker-compose.yml:
+#   - pulls the image CI publishes to GHCR instead of building locally
+#   - joins the external `proxy` network, where the existing Radicale container
+#     (Portainer stack "calendar", container name `radicale`) already lives, so the
+#     upstream is plain http://radicale:5232 – no TLS, no DNS dependency on calendar.home
+#   - publishes only HTTP on 3035; TLS for https://daisycal.home is terminated by Caddy
+#     on 192.168.1.23 like for every other *.home service (see README "Homelab")
+#
+# Portainer → Stacks → Add stack → Repository:
+#   URL          https://github.com/milepanic/daisycal
+#   Reference    refs/heads/master
+#   Compose path docker-compose.portainer.yml
+#   Env vars     RADICALE_USER=mile   RADICALE_PASSWORD=<password of that account>
+# (or paste this file into the Web editor and set the same two variables).
+services:
+  daisycal:
+    image: ghcr.io/milepanic/daisycal:latest
+    container_name: daisycal
+    restart: unless-stopped
+    ports:
+      - '3035:80'
+    environment:
+      RADICALE_UPSTREAM: ${RADICALE_UPSTREAM:-http://radicale:5232}
+      # The Radicale account the app uses. No login screen: whoever can open
+      # daisycal.home sees this account's calendars.
+      RADICALE_USER: ${RADICALE_USER:?set RADICALE_USER in the stack environment}
+      RADICALE_PASSWORD: ${RADICALE_PASSWORD:?set RADICALE_PASSWORD in the stack environment}
+      # Docker's embedded DNS resolves the `radicale` container name on the proxy network.
+      NGINX_RESOLVER: ${NGINX_RESOLVER:-127.0.0.11}
+    networks:
+      - proxy
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  proxy:
+    external: true

@@ -12,10 +12,10 @@ Legenda: `[ ]` nije urađeno · `[x]` urađeno · `(opciono)` nije potrebno za p
 
 Podržavaju se isključivo dva tipa Radicale kolekcija, onako kako ih Radicale web UI kreira:
 
-| Radicale tip | `supported-calendar-component-set` | U DaisyCal-u |
-|---|---|---|
-| Calendar | `VEVENT` | kalendar u sidebaru, događaji u prikazima |
-| Tasks | `VTODO` | task lista u sidebaru, zadaci na Tasks stranici |
+| Radicale tip | `supported-calendar-component-set` | U DaisyCal-u                                    |
+| ------------ | ---------------------------------- | ----------------------------------------------- |
+| Calendar     | `VEVENT`                           | kalendar u sidebaru, događaji u prikazima       |
+| Tasks        | `VTODO`                            | task lista u sidebaru, zadaci na Tasks stranici |
 
 Sve ostalo se ignoriše i ne prikazuje: adresari (`VCARD`), dnevnici (`VJOURNAL`),
 mešovite kolekcije „Calendar and Tasks" (`VEVENT` + `VTODO`), kao i kolekcije bez
@@ -33,7 +33,7 @@ samo objekata (događaja i zadataka) unutar postojećih kolekcija.
 - [x] `docker-compose.dev.yml`: `ghcr.io/kozea/radicale:stable` za lokalni razvoj
   - [x] `config` fajl sa `htpasswd` auth (bcrypt) i `storage.filesystem_folder`
   - [x] seed skripta koja pravi test korisnika i nekoliko kalendara/task lista sa VEVENT i VTODO primerima
-    (uključujući ponavljajuće događaje, celodnevne, sa VTIMEZONE kako ih Apple upisuje)
+        (uključujući ponavljajuće događaje, celodnevne, sa VTIMEZONE kako ih Apple upisuje)
 - [x] Vite dev proxy: `/dav/*` → lokalni Radicale (isti origin, bez CORS-a)
 - [x] `.env` konfiguracija: `VITE_DAV_BASE` (default `/dav`)
 - [x] `README.md`: pokretanje dev okruženja, build, deploy
@@ -165,3 +165,18 @@ samo objekata (događaja i zadataka) unutar postojećih kolekcija.
 - [x] GitHub Actions: lint + test + build + Docker image
 - [x] Premeštanje statičkih mockup `.html` fajlova u `design/` (urađeno uz scaffold, jer Vite koristi `index.html` kao ulaz)
 - [x] Uklanjanje `design/` nakon što su svi prikazi portovani
+
+## 11. Deploy na homelab (2026-11-02)
+
+Stanje na homelabu: Radicale 3.8 već radi na Docker hostu `192.168.1.9` (Portainer stack `calendar`,
+kontejner `radicale`, mreža `proxy`, nalog `mile`), `calendar.home` je Caddy na `192.168.1.23`.
+CI je zelen, image `ghcr.io/milepanic/daisycal:latest` je javan.
+
+- [x] `docker-compose.portainer.yml`: GHCR image, mreža `proxy`, upstream `http://radicale:5232`, port `3035`
+- [x] README sekcija „Homelab (Portainer)" sa koracima
+- [ ] Portainer: stack `daisycal` iz Git repoa (`docker-compose.portainer.yml`), env `RADICALE_USER=mile` + lozinka
+- [ ] Technitium: A zapis `daisycal.home → 192.168.1.23`
+- [ ] Caddy na `.23`: `daisycal.home { reverse_proxy 192.168.1.9:3035 }` + reload
+- [ ] Ručni test: `https://daisycal.home` prikazuje kalendare naloga `mile`; create/edit/delete iz DaisyCal → vidljivo na iPhone-u i obrnuto (sekcija 10)
+- [ ] Odlučiti šta sa `calino` (drugi CalDAV web UI u istom stacku, `calino.home`) kad DaisyCal preuzme ulogu
+- [ ] (opciono) Space Grotesk font self-hostovati umesto Google Fonts, da app radi i bez interneta
