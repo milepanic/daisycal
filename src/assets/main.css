@@ -4,6 +4,8 @@
    Real calendar colors come from Radicale (ICAL:calendar-color) at runtime. */
 @theme {
   --font-sans: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  /* Handwritten signature in the sidebar footer. */
+  --font-signature: 'Playwrite HR', cursive;
 
   --color-accent: #e30000;
 

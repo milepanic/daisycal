@@ -69,8 +69,14 @@ function pickDate(d: Date) {
       </p>
     </div>
 
-    <div class="flex h-12 shrink-0 items-center gap-x-2 px-3 text-xs text-gray-500">
-      <span class="truncate" :title="auth.serverUrl">{{ auth.username }}</span>
+    <div class="flex shrink-0 items-center px-3 py-3">
+      <p
+        class="font-signature text-[26px] leading-[1.4] font-light text-gray-500 italic"
+        :title="`${auth.username} · ${auth.serverUrl}`"
+      >
+        <span class="block whitespace-nowrap">Imagined by</span>
+        <span class="block whitespace-nowrap">Mile Panić</span>
+      </p>
     </div>
   </aside>
 </template>
