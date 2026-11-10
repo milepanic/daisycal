@@ -13,18 +13,24 @@
 #   Reference    refs/heads/master
 #   Compose path docker-compose.portainer.yml
 #   Env vars     RADICALE_USER=mile   RADICALE_PASSWORD=<password of that account>
-# (or paste this file into the Web editor and set the same two variables).
+#                optional: RADICALE_UPSTREAM (default http://radicale:5232),
+#                          DAISYCAL_PORT (default 3035)
+# (or paste this file into the Web editor and set the same variables).
+#
+# Note: the repo deliberately has no committed .env (only .env.example). Portainer would read a
+# .env from the repo root and its values would override the ${VAR:-default} fallbacks above.
 services:
   daisycal:
     image: ghcr.io/milepanic/daisycal:latest
     container_name: daisycal
     restart: unless-stopped
     ports:
-      - '3035:80'
+      # Host port Caddy proxies to; override with DAISYCAL_PORT in the stack environment.
+      - '${DAISYCAL_PORT:-3035}:80'
     environment:
-      # Fixed on purpose (no ${} substitution): Portainer also reads the repo .env, whose
-      # RADICALE_UPSTREAM points at the local dev Radicale and would otherwise win.
-      RADICALE_UPSTREAM: http://radicale:5232
+      # Where nginx forwards /dav/. Override in the stack environment if Radicale runs
+      # elsewhere, e.g. RADICALE_UPSTREAM=http://192.168.1.9:5232 or https://calendar.home
+      RADICALE_UPSTREAM: ${RADICALE_UPSTREAM:-http://radicale:5232}
       # The Radicale account the app uses. No login screen: whoever can open
       # daisycal.home sees this account's calendars.
       RADICALE_USER: ${RADICALE_USER:?set RADICALE_USER in the stack environment}

@@ -21,7 +21,7 @@ npm run dev                      # http://localhost:5173
 ```
 
 There is no login screen: the Vite proxy authenticates to the local Radicale as `daisy` / `daisy`
-(`DAV_PROXY_USER` / `DAV_PROXY_PASSWORD` in `.env`).
+(`DAV_PROXY_USER` / `DAV_PROXY_PASSWORD` in `.env`, see `.env.example`).
 
 The browser never talks to Radicale directly. Vite proxies `/dav/*` to the local Radicale
 (`vite.config.ts`), strips the prefix and sets `X-Script-Name: /dav` so the hrefs Radicale
@@ -76,7 +76,10 @@ Radicale directly over HTTP, so no certificate or DNS dependency is involved on 
 
 1. **Portainer** → Stacks → Add stack → _Repository_: URL `https://github.com/milepanic/daisycal`,
    reference `refs/heads/master`, compose path `docker-compose.portainer.yml`. Environment
-   variables: `RADICALE_USER=mile`, `RADICALE_PASSWORD=<its password>`. Deploy. Check
+   variables: `RADICALE_USER=mile`, `RADICALE_PASSWORD=<its password>`. Optional:
+   `RADICALE_UPSTREAM` (default `http://radicale:5232`, e.g. `http://192.168.1.9:5232` or
+   `https://calendar.home` if Radicale is not on the `proxy` network) and `DAISYCAL_PORT`
+   (default `3035`). Deploy. Check
    `http://192.168.1.9:3035/healthz` returns `ok` and `http://192.168.1.9:3035/` shows the
    calendars. (Optional: enable GitOps updates so a push to `master` redeploys the stack.)
 2. **DNS** (Technitium, `http://dns.home:5380`): add an A record `daisycal.home → 192.168.1.23`,

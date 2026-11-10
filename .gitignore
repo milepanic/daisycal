@@ -44,3 +44,6 @@ docker/radicale/data/
 # TLS certificates for daisycal.home (docker-compose.yml mounts ./certs)
 certs/*
 !certs/.gitkeep
+
+# Local environment (copy .env.example). Never commit: Portainer/compose read it from the repo root.
+.env
