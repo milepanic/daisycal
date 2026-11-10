@@ -22,7 +22,9 @@ services:
     ports:
       - '3035:80'
     environment:
-      RADICALE_UPSTREAM: ${RADICALE_UPSTREAM:-http://radicale:5232}
+      # Fixed on purpose (no ${} substitution): Portainer also reads the repo .env, whose
+      # RADICALE_UPSTREAM points at the local dev Radicale and would otherwise win.
+      RADICALE_UPSTREAM: http://radicale:5232
       # The Radicale account the app uses. No login screen: whoever can open
       # daisycal.home sees this account's calendars.
       RADICALE_USER: ${RADICALE_USER:?set RADICALE_USER in the stack environment}
