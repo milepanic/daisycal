@@ -111,6 +111,26 @@ describe('CreatePopup', () => {
     wrapper.unmount()
   })
 
+  it('keeps the 30-minute default for a slot away from the form default start', async () => {
+    const wrapper = await open({
+      kind: 'event',
+      start: new Date(2026, 9, 13, 14),
+      end: new Date(2026, 9, 13, 14, 30),
+    })
+    expect((wrapper.find('[aria-label="Start time"]').element as HTMLInputElement).value).toBe(
+      '14:00',
+    )
+    expect((wrapper.find('[aria-label="End time"]').element as HTMLInputElement).value).toBe(
+      '14:30',
+    )
+    // Moving the start still keeps the length.
+    await wrapper.find('[aria-label="Start time"]').setValue('15:00')
+    expect((wrapper.find('[aria-label="End time"]').element as HTMLInputElement).value).toBe(
+      '15:30',
+    )
+    wrapper.unmount()
+  })
+
   it('creates an all-day task via the type switcher', async () => {
     const wrapper = await open({
       kind: 'event',

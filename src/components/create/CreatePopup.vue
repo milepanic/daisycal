@@ -279,6 +279,9 @@ watch(
     const end = Math.min(24 * 60 - 1, toMin(next) + length)
     form.endTime = `${String(Math.floor(end / 60)).padStart(2, '0')}:${String(end % 60).padStart(2, '0')}`
   },
+  // Sync: a deferred run would pair the old start with the new end that init()/loadEvent() set
+  // right after, and stretch a new 14:00-14:30 event to 18:30.
+  { flush: 'sync' },
 )
 
 watch(kind, (k) => {
