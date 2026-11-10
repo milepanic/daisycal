@@ -20,6 +20,8 @@ interface Layout {
   view: CalendarView
   weekStart: WeekStart
   showCompletedTasks: boolean
+  /** Task list picked in the calendar's tasks panel (null = first visible list). */
+  tasksPanelList: string | null
 }
 
 const DEFAULT_LAYOUT: Layout = {
@@ -28,6 +30,7 @@ const DEFAULT_LAYOUT: Layout = {
   view: 'week',
   weekStart: 1,
   showCompletedTasks: true,
+  tasksPanelList: null,
 }
 
 export interface CreateDraft {
@@ -68,16 +71,18 @@ export const useUiStore = defineStore('ui', () => {
   const sidebarOpen = ref(saved.sidebarOpen)
   const tasksPanelOpen = ref(saved.tasksPanelOpen)
   const showCompletedTasks = ref(saved.showCompletedTasks)
+  const tasksPanelList = ref<string | null>(saved.tasksPanelList)
   const createDraft = ref<CreateDraft | null>(null)
   const selection = ref<Selection | null>(null)
 
-  watch([view, weekStart, sidebarOpen, tasksPanelOpen, showCompletedTasks], () =>
+  watch([view, weekStart, sidebarOpen, tasksPanelOpen, showCompletedTasks, tasksPanelList], () =>
     writeJson('local', LAYOUT_KEY, {
       view: view.value,
       weekStart: weekStart.value,
       sidebarOpen: sidebarOpen.value,
       tasksPanelOpen: tasksPanelOpen.value,
       showCompletedTasks: showCompletedTasks.value,
+      tasksPanelList: tasksPanelList.value,
     } satisfies Layout),
   )
 
@@ -131,6 +136,7 @@ export const useUiStore = defineStore('ui', () => {
     sidebarOpen,
     tasksPanelOpen,
     showCompletedTasks,
+    tasksPanelList,
     createDraft,
     selection,
     visibleRange,

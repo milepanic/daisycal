@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /** The #tasks-panel from the mockup: list picker, add button, open tasks, collapsible completed. */
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 
 import type { Task } from '@/api/ical'
 import { useCalendarsStore } from '@/stores/calendars'
@@ -15,15 +15,19 @@ const tasks = useTasksStore()
 const ui = useUiStore()
 const notifications = useNotificationsStore()
 
-const listUrl = ref<string | null>(null)
-watch(
-  () => calendars.visibleTaskLists,
-  (lists) => {
-    if (!listUrl.value || !lists.some((l) => l.url === listUrl.value))
-      listUrl.value = lists[0]?.url ?? null
-  },
-  { immediate: true },
-)
+/**
+ * The picked list is remembered (ui.tasksPanelList). While it is hidden or not loaded yet the
+ * panel shows the first visible list without forgetting the choice.
+ */
+const listUrl = computed(() => {
+  const lists = calendars.visibleTaskLists
+  const saved = ui.tasksPanelList
+  return (saved && lists.some((l) => l.url === saved) ? saved : lists[0]?.url) ?? null
+})
+function pickList(url: string) {
+  ui.tasksPanelList = url
+  pickerOpen.value = false
+}
 const list = computed(() => (listUrl.value ? calendars.get(listUrl.value) : undefined))
 const color = computed(() => (listUrl.value ? calendars.colorFor(listUrl.value) : '#7c3aed'))
 const all = computed(() =>
@@ -78,7 +82,7 @@ async function toggle(t: Task, done: boolean) {
             :aria-selected="l.url === listUrl"
             class="flex w-full items-center gap-x-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-gray-100"
             :class="l.url === listUrl ? 'font-semibold text-gray-900' : 'text-gray-700'"
-            @click="((listUrl = l.url), (pickerOpen = false))"
+            @click="pickList(l.url)"
           >
             <span
               class="size-2.5 rounded-sm"
