@@ -25,7 +25,7 @@ function onClick(e: MouseEvent) {
       :style="
         task.completed
           ? { backgroundColor: color, color: 'white' }
-          : { backgroundColor: color + '33' }
+          : { backgroundColor: color + '0d', boxShadow: `inset 0 0 0 1px ${color}99` }
       "
     >
       <svg

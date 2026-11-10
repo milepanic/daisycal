@@ -102,7 +102,10 @@ function eventKey(i: EventInstance) {
                   :style="
                     entry.task.completed
                       ? { backgroundColor: colorFor(entry.task.collectionUrl), color: 'white' }
-                      : { backgroundColor: colorFor(entry.task.collectionUrl) + '33' }
+                      : {
+                          backgroundColor: colorFor(entry.task.collectionUrl) + '0d',
+                          boxShadow: `inset 0 0 0 1px ${colorFor(entry.task.collectionUrl)}99`,
+                        }
                   "
                 >
                   <svg

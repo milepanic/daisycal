@@ -10,8 +10,12 @@ const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>()
       type="checkbox"
       :checked="modelValue"
       :aria-label="label"
-      class="peer col-start-1 row-start-1 size-4 cursor-pointer appearance-none bg-white checked:bg-(--cb-color) focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-(--cb-color)"
-      :class="round ? 'rounded-full bg-(--cb-color)/20' : 'rounded-sm'"
+      class="peer col-start-1 row-start-1 size-4 cursor-pointer appearance-none checked:bg-(--cb-color) focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-(--cb-color)"
+      :class="
+        round
+          ? 'rounded-full border-[1.5px] border-(--cb-color)/50 bg-(--cb-color)/5 checked:border-(--cb-color)'
+          : 'rounded-sm bg-white'
+      "
       @change="emit('update:modelValue', ($event.target as HTMLInputElement).checked)"
     />
     <svg
