@@ -95,7 +95,7 @@ async function submitAdd() {
 <template>
   <form
     v-if="adding"
-    class="mt-1 rounded-md bg-gray-50 px-2 py-1.5"
+    class="mt-1 rounded-sm bg-gray-50 px-2 py-1.5"
     data-testid="inline-add"
     @submit.prevent="submitAdd"
   >
@@ -116,7 +116,7 @@ async function submitAdd() {
         v-for="q in shortcuts"
         :key="q.key"
         type="button"
-        class="rounded-md px-1.5 py-0.5 font-medium ring-1"
+        class="rounded-sm px-1.5 py-0.5 font-medium ring-1"
         :class="
           newDate === toDateKey(q.date)
             ? 'bg-gray-900 text-white ring-gray-900'
@@ -140,7 +140,7 @@ async function submitAdd() {
       <button
         v-if="otherDate"
         type="button"
-        class="rounded-md p-0.5 text-gray-400 hover:bg-white hover:text-gray-700"
+        class="rounded-sm p-0.5 text-gray-400 hover:bg-white hover:text-gray-700"
         @click="toggleShortcut(newDate)"
       >
         <span class="sr-only">Remove due date</span>
@@ -152,7 +152,7 @@ async function submitAdd() {
       <button
         v-if="newDate && !newTime"
         type="button"
-        class="rounded-md px-2 py-1 font-medium text-gray-500 hover:bg-white hover:text-gray-900"
+        class="rounded-sm px-2 py-1 font-medium text-gray-500 hover:bg-white hover:text-gray-900"
         @click="newTime = '09:00'"
       >
         Add time
@@ -160,7 +160,7 @@ async function submitAdd() {
       <button
         v-if="newTime"
         type="button"
-        class="rounded-md px-2 py-1 font-medium text-gray-500 hover:bg-white hover:text-gray-900"
+        class="rounded-sm px-2 py-1 font-medium text-gray-500 hover:bg-white hover:text-gray-900"
         @click="newTime = ''"
       >
         No time
@@ -168,14 +168,14 @@ async function submitAdd() {
       <span class="ml-auto flex gap-x-1">
         <button
           type="button"
-          class="rounded-md px-2 py-1 font-medium text-gray-500 hover:bg-white hover:text-gray-900"
+          class="rounded-sm px-2 py-1 font-medium text-gray-500 hover:bg-white hover:text-gray-900"
           @click="cancelAdd"
         >
           Cancel
         </button>
         <button
           type="submit"
-          class="rounded-md bg-gray-900 px-2.5 py-1 font-semibold text-white hover:bg-gray-700"
+          class="rounded-sm bg-gray-900 px-2.5 py-1 font-semibold text-white hover:bg-gray-700"
         >
           Add
         </button>
@@ -185,7 +185,7 @@ async function submitAdd() {
   <button
     v-else
     type="button"
-    class="mt-1 flex w-full items-center gap-x-3 rounded-md px-2 py-2 text-sm font-semibold text-accent hover:bg-accent/10"
+    class="mt-1 flex w-full items-center gap-x-3 rounded-sm px-2 py-2 text-sm font-semibold text-accent hover:bg-accent/10"
     :disabled="!list"
     @click="startAdd"
   >

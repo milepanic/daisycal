@@ -24,10 +24,10 @@ const unit = computed(() => stepLabel(ui.view))
     <SidebarToggle />
 
     <div class="flex min-w-0 items-center gap-x-2">
-      <div class="flex h-9 items-center rounded-md bg-white/60 p-0.5">
+      <div class="flex h-9 items-center rounded-sm bg-white/60 p-0.5">
         <button
           type="button"
-          class="flex h-full w-8 items-center justify-center rounded-md text-gray-500 hover:bg-white hover:text-gray-900"
+          class="flex h-full w-8 items-center justify-center rounded-sm text-gray-500 hover:bg-white hover:text-gray-900"
           @click="nav.prev()"
         >
           <span class="sr-only">Previous {{ unit }}</span>
@@ -35,14 +35,14 @@ const unit = computed(() => stepLabel(ui.view))
         </button>
         <button
           type="button"
-          class="h-full rounded-md px-2.5 text-sm font-semibold text-gray-900 hover:bg-white"
+          class="h-full rounded-sm px-2.5 text-sm font-semibold text-gray-900 hover:bg-white"
           @click="nav.today()"
         >
           Today
         </button>
         <button
           type="button"
-          class="flex h-full w-8 items-center justify-center rounded-md text-gray-500 hover:bg-white hover:text-gray-900"
+          class="flex h-full w-8 items-center justify-center rounded-sm text-gray-500 hover:bg-white hover:text-gray-900"
           @click="nav.next()"
         >
           <span class="sr-only">Next {{ unit }}</span>
@@ -65,7 +65,7 @@ const unit = computed(() => stepLabel(ui.view))
         <select
           id="view-select"
           :value="ui.view"
-          class="h-9 cursor-pointer appearance-none rounded-md bg-white/60 py-1.5 pr-7 pl-3 text-sm font-medium text-gray-900"
+          class="h-9 cursor-pointer appearance-none rounded-sm bg-white/60 py-1.5 pr-7 pl-3 text-sm font-medium text-gray-900"
           @change="nav.setView(($event.target as HTMLSelectElement).value as CalendarView)"
         >
           <option value="agenda">Agenda</option>
@@ -87,7 +87,7 @@ const unit = computed(() => stepLabel(ui.view))
       />
       <button
         type="button"
-        class="inline-flex h-9 items-center gap-x-1.5 rounded-md bg-gray-900 px-3 text-sm font-semibold text-white hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
+        class="inline-flex h-9 items-center gap-x-1.5 rounded-sm bg-gray-900 px-3 text-sm font-semibold text-white hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
         @click="ui.openCreate({ kind: 'event' })"
       >
         <AppIcon name="plus" class="-ml-0.5 size-5" />

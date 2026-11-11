@@ -117,7 +117,7 @@ function onCellClick(date: Date, e: MouseEvent) {
             <button
               v-if="cell.isToday && pendingCount"
               type="button"
-              class="flex w-full items-center gap-x-1.5 truncate rounded-md px-1.5 py-0.5 text-left text-xs text-gray-700 hover:bg-gray-100"
+              class="flex w-full items-center gap-x-1.5 truncate rounded-sm px-1.5 py-0.5 text-left text-xs text-gray-700 hover:bg-gray-100"
               :class="pendingAnchor ? 'bg-gray-100' : ''"
               :aria-expanded="pendingAnchor ? 'true' : 'false'"
               aria-haspopup="dialog"

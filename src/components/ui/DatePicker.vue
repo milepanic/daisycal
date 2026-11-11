@@ -161,7 +161,7 @@ function shiftMonth(by: number) {
     <button
       ref="trigger"
       type="button"
-      class="inline-flex items-center gap-x-1.5 rounded-md text-sm font-medium whitespace-nowrap focus-visible:outline-2 focus-visible:outline-accent"
+      class="inline-flex items-center gap-x-1.5 rounded-sm text-sm font-medium whitespace-nowrap focus-visible:outline-2 focus-visible:outline-accent"
       :class="
         ghost
           ? 'px-2 py-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900'
@@ -194,7 +194,7 @@ function shiftMonth(by: number) {
         <div class="flex items-center">
           <button
             type="button"
-            class="rounded-md p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+            class="rounded-sm p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
             @click="shiftMonth(-1)"
           >
             <span class="sr-only">Previous month</span>
@@ -202,7 +202,7 @@ function shiftMonth(by: number) {
           </button>
           <button
             type="button"
-            class="rounded-md p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+            class="rounded-sm p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
             @click="shiftMonth(1)"
           >
             <span class="sr-only">Next month</span>

@@ -157,7 +157,7 @@ function pick(o: Option) {
       :aria-expanded="open"
       :aria-controls="listId"
       :aria-activedescendant="open && active >= 0 ? `${listId}-${active}` : undefined"
-      class="rounded-md text-center font-medium text-gray-900 tabular-nums focus:outline-2 focus:outline-accent"
+      class="rounded-sm text-center font-medium text-gray-900 tabular-nums focus:outline-2 focus:outline-accent"
       :class="
         size === 'sm'
           ? 'w-14 bg-white px-1.5 py-1 text-xs ring-1 ring-gray-200'
@@ -175,7 +175,7 @@ function pick(o: Option) {
       ref="list"
       role="listbox"
       :aria-label="label"
-      class="absolute top-full left-0 z-50 mt-1 max-h-64 overflow-y-auto rounded-md bg-white py-2 text-sm shadow-[0_4px_16px_rgba(0,0,0,0.18)]"
+      class="absolute top-full left-0 z-50 mt-1 max-h-64 overflow-y-auto rounded-sm bg-white py-2 text-sm shadow-[0_4px_16px_rgba(0,0,0,0.18)]"
       :class="from ? 'w-44' : 'w-28'"
     >
       <li

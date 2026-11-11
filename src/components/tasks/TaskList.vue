@@ -73,7 +73,7 @@ function openDetailed() {
       <span v-if="open.length" class="text-xs text-gray-400">{{ open.length }}</span>
       <button
         type="button"
-        class="ml-auto rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+        class="ml-auto rounded-sm p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
         title="New task with details"
         @click="openDetailed"
       >
@@ -86,7 +86,7 @@ function openDetailed() {
 
     <p
       v-if="listError"
-      class="mx-2 mt-1 rounded-md bg-red-50 px-2 py-1 text-xs text-red-700"
+      class="mx-2 mt-1 rounded-sm bg-red-50 px-2 py-1 text-xs text-red-700"
       role="alert"
     >
       {{ listError }}
@@ -111,7 +111,7 @@ function openDetailed() {
 
       <details v-if="completed.length && ui.showCompletedTasks" class="group mt-2">
         <summary
-          class="flex cursor-pointer list-none items-center gap-x-2 rounded-md px-2 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 [&::-webkit-details-marker]:hidden"
+          class="flex cursor-pointer list-none items-center gap-x-2 rounded-sm px-2 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 [&::-webkit-details-marker]:hidden"
         >
           <AppIcon
             name="chevron-down"

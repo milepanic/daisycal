@@ -91,7 +91,7 @@ const priorityClass = computed(() =>
 
 <template>
   <li
-    class="group/task flex items-start gap-x-3 rounded-md p-2 hover:bg-gray-50"
+    class="group/task flex items-start gap-x-3 rounded-sm p-2 hover:bg-gray-50"
     :data-task="task.uid"
     @pointerdown="onPointerDown"
   >

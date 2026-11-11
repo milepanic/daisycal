@@ -40,8 +40,8 @@ function classFor(d: Date) {
   if (isSameDay(d, today)) return 'rounded-full bg-accent text-white'
   const base = d.getMonth() === month.value.getMonth() ? 'text-gray-700' : 'text-gray-400'
   if (isSameDay(d, props.selected))
-    return `rounded-md bg-white text-gray-900 ring-1 ring-gray-300 ${base}`
-  return `rounded-md hover:bg-white/60 ${base}`
+    return `rounded-sm bg-white text-gray-900 ring-1 ring-gray-300 ${base}`
+  return `rounded-sm hover:bg-white/60 ${base}`
 }
 </script>
 
@@ -52,7 +52,7 @@ function classFor(d: Date) {
       <div class="flex items-center gap-x-1">
         <button
           type="button"
-          class="rounded-md p-1 text-gray-500 hover:bg-white/60 hover:text-gray-700"
+          class="rounded-sm p-1 text-gray-500 hover:bg-white/60 hover:text-gray-700"
           @click="month = addMonths(month, -1)"
         >
           <span class="sr-only">Previous month</span>
@@ -60,7 +60,7 @@ function classFor(d: Date) {
         </button>
         <button
           type="button"
-          class="rounded-md p-1 text-gray-500 hover:bg-white/60 hover:text-gray-700"
+          class="rounded-sm p-1 text-gray-500 hover:bg-white/60 hover:text-gray-700"
           @click="month = addMonths(month, 1)"
         >
           <span class="sr-only">Next month</span>

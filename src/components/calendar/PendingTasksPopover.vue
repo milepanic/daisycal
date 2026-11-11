@@ -105,7 +105,7 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onDocMouseDown))
         </div>
         <button
           type="button"
-          class="-mt-1 -mr-1 rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+          class="-mt-1 -mr-1 rounded-sm p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
           @click="emit('close')"
         >
           <span class="sr-only">Close</span>

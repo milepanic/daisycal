@@ -135,7 +135,7 @@ async function remove() {
       </div>
       <button
         type="button"
-        class="-mt-1 -mr-1 rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+        class="-mt-1 -mr-1 rounded-sm p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
         @click="emit('close')"
       >
         <span class="sr-only">Close</span>
@@ -161,24 +161,24 @@ async function remove() {
       </div>
     </dl>
 
-    <p v-if="error" class="mt-3 rounded-md bg-red-50 px-2 py-1.5 text-xs text-red-700">
+    <p v-if="error" class="mt-3 rounded-sm bg-red-50 px-2 py-1.5 text-xs text-red-700">
       {{ error }}
     </p>
 
-    <div v-if="confirming" class="mt-4 rounded-md bg-gray-50 p-3 text-sm">
+    <div v-if="confirming" class="mt-4 rounded-sm bg-gray-50 p-3 text-sm">
       <p class="font-medium text-gray-900">Delete this task?</p>
       <div class="mt-2 flex gap-2">
         <button
           type="button"
           :disabled="busy"
-          class="rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-60"
+          class="rounded-sm bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-60"
           @click="remove"
         >
           Delete
         </button>
         <button
           type="button"
-          class="rounded-md px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200"
+          class="rounded-sm px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200"
           @click="confirming = false"
         >
           Cancel
@@ -189,21 +189,21 @@ async function remove() {
       <button
         type="button"
         :disabled="busy"
-        class="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-gray-700 disabled:opacity-60"
+        class="rounded-sm bg-gray-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-gray-700 disabled:opacity-60"
         @click="toggleCompleted"
       >
         {{ task.completed ? 'Mark not completed' : 'Mark completed' }}
       </button>
       <button
         type="button"
-        class="rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100"
+        class="rounded-sm px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100"
         @click="edit"
       >
         Edit
       </button>
       <button
         type="button"
-        class="rounded-md px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+        class="rounded-sm px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
         @click="confirming = true"
       >
         Delete

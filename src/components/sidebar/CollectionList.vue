@@ -17,7 +17,7 @@ const emit = defineEmits<{ toggle: [url: string, visible: boolean] }>()
 <template>
   <details open class="group mt-6">
     <summary
-      class="flex cursor-pointer list-none items-center justify-between rounded-md px-2 py-1.5 text-xs font-semibold tracking-wide text-gray-500 uppercase hover:bg-white/60 [&::-webkit-details-marker]:hidden"
+      class="flex cursor-pointer list-none items-center justify-between rounded-sm px-2 py-1.5 text-xs font-semibold tracking-wide text-gray-500 uppercase hover:bg-white/60 [&::-webkit-details-marker]:hidden"
     >
       {{ title }}
       <AppIcon
@@ -32,7 +32,7 @@ const emit = defineEmits<{ toggle: [url: string, visible: boolean] }>()
       <li v-else-if="collections.length === 0" class="px-2 py-1.5 text-sm text-gray-400">None</li>
       <li v-for="c in collections" :key="c.url">
         <label
-          class="flex cursor-pointer items-center gap-x-3 rounded-md px-2 py-1.5 text-sm text-gray-700 hover:bg-white/60"
+          class="flex cursor-pointer items-center gap-x-3 rounded-sm px-2 py-1.5 text-sm text-gray-700 hover:bg-white/60"
         >
           <ColorCheckbox
             :color="c.color ?? FALLBACK_COLOR"

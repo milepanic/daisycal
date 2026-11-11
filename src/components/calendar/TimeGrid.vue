@@ -694,7 +694,7 @@ function onGridKeydown(e: KeyboardEvent) {
             >
             <span
               class="mx-auto mt-1 flex size-8 items-center justify-center text-base font-semibold"
-              :class="c.isToday ? 'rounded-full bg-accent text-white' : 'rounded-md text-gray-900'"
+              :class="c.isToday ? 'rounded-full bg-accent text-white' : 'rounded-sm text-gray-900'"
               :aria-current="c.isToday ? 'date' : undefined"
             >
               {{ c.day.getDate() }}
@@ -748,7 +748,7 @@ function onGridKeydown(e: KeyboardEvent) {
             >
               <button
                 type="button"
-                class="flex h-full w-full items-center gap-x-1.5 truncate rounded-md px-1.5 text-left text-xs text-gray-700 hover:bg-gray-100"
+                class="flex h-full w-full items-center gap-x-1.5 truncate rounded-sm px-1.5 text-left text-xs text-gray-700 hover:bg-gray-100"
                 :class="pendingAnchor ? 'bg-gray-100' : ''"
                 :aria-expanded="pendingAnchor ? 'true' : 'false'"
                 aria-haspopup="dialog"
@@ -792,7 +792,7 @@ function onGridKeydown(e: KeyboardEvent) {
             :key="itemKey(p.item)"
             class="absolute transition-opacity duration-150"
             :class="[
-              p.overEvent ? 'z-20 rounded-md ring-1 ring-white' : 'z-10',
+              p.overEvent ? 'z-20 rounded-sm ring-1 ring-white' : 'z-10',
               p.left > 0 && !p.overEvent ? 'ring-1 ring-white' : '',
               draggingKey === (p.item.kind === 'event' ? itemKey(p.item) : p.item.task.objectUrl)
                 ? 'opacity-40'
@@ -815,7 +815,7 @@ function onGridKeydown(e: KeyboardEvent) {
               <!-- Travel time (iPhone): a lighter band in the event color above the start. -->
               <div
                 v-if="p.travelPx > 0"
-                class="pointer-events-none absolute inset-x-0 top-0 flex items-start gap-x-1 overflow-hidden rounded-t-md px-1.5 pt-0.5 text-[10px] leading-tight font-medium"
+                class="pointer-events-none absolute inset-x-0 top-0 flex items-start gap-x-1 overflow-hidden rounded-t-sm px-1.5 pt-0.5 text-[10px] leading-tight font-medium"
                 :style="{
                   height: `${p.travelPx}px`,
                   color: travelText(colorFor(p.item.instance.collectionUrl)),
@@ -861,7 +861,7 @@ function onGridKeydown(e: KeyboardEvent) {
           </div>
           <div
             v-if="dragPreview && dragPreview.dayKey === c.key"
-            class="pointer-events-none absolute inset-x-0.5 z-40 overflow-hidden rounded-md text-xs ring-2 ring-white"
+            class="pointer-events-none absolute inset-x-0.5 z-40 overflow-hidden rounded-sm text-xs ring-2 ring-white"
             :class="
               dragPreview.task
                 ? 'flex items-center gap-x-1 pr-1.5 pl-1 text-(--chip-fg)'
@@ -891,7 +891,7 @@ function onGridKeydown(e: KeyboardEvent) {
           </div>
           <div
             v-if="draftPlacement(c.day)"
-            class="pointer-events-none absolute inset-x-0.5 z-40 overflow-hidden rounded-md text-xs ring-2 ring-white"
+            class="pointer-events-none absolute inset-x-0.5 z-40 overflow-hidden rounded-sm text-xs ring-2 ring-white"
             :class="
               draft?.kind === 'task'
                 ? 'flex items-center gap-x-1 pr-1.5 pl-1 text-(--chip-fg)'
@@ -922,7 +922,7 @@ function onGridKeydown(e: KeyboardEvent) {
             :style="{ top: `${nowTop}px` }"
             data-testid="now-line"
           >
-            <span class="-ml-1 size-2 rounded-md bg-accent"></span>
+            <span class="-ml-1 size-2 rounded-sm bg-accent"></span>
             <span class="h-0.5 flex-1 bg-accent"></span>
           </div>
         </div>
@@ -956,7 +956,7 @@ function onGridKeydown(e: KeyboardEvent) {
     <Teleport to="body">
       <div
         v-if="drag?.kind === 'pending' && drag.moved && !drag.day"
-        class="pointer-events-none fixed z-50 max-w-xs truncate rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white shadow-lg"
+        class="pointer-events-none fixed z-50 max-w-xs truncate rounded-sm bg-gray-900 px-3 py-1.5 text-sm font-medium text-white shadow-lg"
         :style="{ left: `${drag.x + 12}px`, top: `${drag.y + 12}px` }"
         data-testid="pending-drag-ghost"
       >
