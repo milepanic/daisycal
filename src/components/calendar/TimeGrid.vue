@@ -777,7 +777,7 @@ function onGridKeydown(e: KeyboardEvent) {
         <div
           v-for="c in columns"
           :key="c.key"
-          class="relative cursor-pointer border-l border-gray-200 bg-[repeating-linear-gradient(to_bottom,var(--color-gray-200)_0_1px,transparent_1px_48px)]"
+          class="relative cursor-pointer border-l border-gray-200 bg-[repeating-linear-gradient(to_bottom,var(--color-gray-200)_0_1px,transparent_1px_60px)]"
           :data-day="c.key"
           tabindex="0"
           role="gridcell"

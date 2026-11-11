@@ -16,7 +16,8 @@ function parseHex(color: string): [number, number, number] | null {
   const m = /^#([0-9a-f]{3,8})$/i.exec(color.trim())
   if (!m) return null
   let hex = m[1]!
-  if (hex.length === 3 || hex.length === 4) hex = hex.slice(0, 3).map((c) => c + c).join('')
+  if (hex.length === 3 || hex.length === 4)
+    hex = Array.from(hex.slice(0, 3), (c) => c + c).join('')
   if (hex.length !== 6 && hex.length !== 8) return null
   return [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16)) as [number, number, number]
 }
