@@ -5,8 +5,11 @@
 import type { EventInstance, Task } from '@/api/ical'
 import { DAY_MS, type DateRange, addDays, eachDay, isSameDay, startOfDay, toDateKey } from './dates'
 
-/** One hour of the time grid in pixels (the mockup uses 60px rows). */
-export const HOUR_PX = 60
+/**
+ * One hour of the time grid in pixels (48px, as in Google Calendar). The hour lines in
+ * TimeGrid's background repeat at the same size; keep the two in step.
+ */
+export const HOUR_PX = 48
 export const DAY_PX = 24 * HOUR_PX
 /** Shortest chip in the grid (the mockup's 10-minute standup is `h-4`). */
 export const MIN_EVENT_PX = 16

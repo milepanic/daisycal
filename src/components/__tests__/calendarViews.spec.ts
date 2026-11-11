@@ -292,6 +292,21 @@ describe('TimeGrid', () => {
     wrapper.unmount()
   })
 
+  it('leaves room below midnight that is not part of any day', async () => {
+    const wrapper = mount(TimeGrid, {
+      props: { days: eachDay(WEEK), instances: [], tasks: [], colorFor },
+    })
+    const room = wrapper.find('[data-testid="grid-overscroll"]')
+    expect(room.exists()).toBe(true)
+    expect(room.text()).toBe('00:00')
+    // One empty cell per day, none of them a day column (no clicks, drops or chips there).
+    expect(room.findAll('.border-l')).toHaveLength(7)
+    expect(room.find('[data-day]').exists()).toBe(false)
+    await room.trigger('pointerdown')
+    expect(wrapper.emitted('createAt')).toBeUndefined()
+    wrapper.unmount()
+  })
+
   it("shows the current time line only in today's column", () => {
     const today = new Date()
     const wrapper = mount(TimeGrid, {

@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import CreatePopup from '@/components/create/CreatePopup.vue'
 import TimeGrid from '@/components/calendar/TimeGrid.vue'
 import { eachDay } from '@/lib/dates'
+import { HOUR_PX } from '@/lib/layout'
 import { useAuthStore } from '@/stores/auth'
 import { useCalendarsStore } from '@/stores/calendars'
 import { useEventsStore } from '@/stores/events'
@@ -88,7 +89,10 @@ describe('CreatePopup', () => {
       },
     })
     expect(grid.find('[data-testid="draft-chip"]').text()).toContain('Coffee')
-    expect(grid.find('[data-testid="draft-chip"]').attributes('style')).toContain('top: 600px')
+    // 10:00–11:00 in grid pixels (not minutes): placed where the slot was clicked.
+    const chipStyle = grid.find('[data-testid="draft-chip"]').attributes('style')
+    expect(chipStyle).toContain(`top: ${(600 * HOUR_PX) / 60}px`)
+    expect(chipStyle).toContain(`height: ${HOUR_PX - 2}px`)
 
     await typeTime(wrapper, 'End time', '11:30')
     await wrapper.find('#event-location').setValue('Cafe')

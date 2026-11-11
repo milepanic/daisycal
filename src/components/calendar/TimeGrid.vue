@@ -606,8 +606,11 @@ function draftPlacement(day: Date) {
   const dayStart = startOfDay(day)
   const dayEnd = addDays(dayStart, 1)
   if (!(d.start < dayEnd && d.end > dayStart)) return null
-  const top = (Math.max(d.start.getTime(), dayStart.getTime()) - dayStart.getTime()) / 60_000
-  const bottom = (Math.min(d.end.getTime(), dayEnd.getTime()) - dayStart.getTime()) / 60_000
+  // Minutes from midnight, turned into grid pixels.
+  const top =
+    ((Math.max(d.start.getTime(), dayStart.getTime()) - dayStart.getTime()) / 60_000) * PX_PER_MIN
+  const bottom =
+    ((Math.min(d.end.getTime(), dayEnd.getTime()) - dayStart.getTime()) / 60_000) * PX_PER_MIN
   return {
     top,
     height: d.kind === 'task' ? TASK_CHIP_PX : Math.max(bottom - top - CHIP_GAP_PX, 14),
@@ -777,7 +780,7 @@ function onGridKeydown(e: KeyboardEvent) {
         <div
           v-for="c in columns"
           :key="c.key"
-          class="relative cursor-pointer border-l border-gray-200 bg-[repeating-linear-gradient(to_bottom,var(--color-gray-200)_0_1px,transparent_1px_60px)]"
+          class="relative cursor-pointer border-l border-gray-200 bg-[repeating-linear-gradient(to_bottom,var(--color-gray-200)_0_1px,transparent_1px_48px)]"
           :data-day="c.key"
           tabindex="0"
           role="gridcell"
@@ -923,6 +926,19 @@ function onGridKeydown(e: KeyboardEvent) {
             <span class="h-0.5 flex-1 bg-accent"></span>
           </div>
         </div>
+      </div>
+      <!-- Room below midnight, so the evening can be scrolled up to the middle of the view.
+           Outside the day: nothing can be created or dropped here. -->
+      <div
+        class="grid h-[50vh] border-t border-gray-200"
+        :style="{ gridTemplateColumns: gridCols }"
+        aria-hidden="true"
+        data-testid="grid-overscroll"
+      >
+        <div class="relative">
+          <span class="absolute right-2 -translate-y-1/2 text-[11px] text-gray-400">00:00</span>
+        </div>
+        <div v-for="c in columns" :key="c.key" class="border-l border-gray-200 bg-gray-50/70"></div>
       </div>
     </div>
 
