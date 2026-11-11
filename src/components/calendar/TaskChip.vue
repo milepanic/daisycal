@@ -4,6 +4,7 @@
  * time grid it is a block like an event and shows the due time after the title ("Call, 15:30").
  */
 import type { Task } from '@/api/ical'
+import { textOn } from '@/lib/color'
 import { formatTime } from '@/lib/format'
 import TaskDot from '@/components/ui/TaskDot.vue'
 
@@ -38,7 +39,7 @@ function onClick(e: MouseEvent) {
             task.completed ? 'opacity-60' : '',
           ]
     "
-    :style="size === 'month' ? undefined : { backgroundColor: color }"
+    :style="size === 'month' ? undefined : { backgroundColor: color, '--chip-fg': textOn(color) }"
     @click="onClick"
   >
     <TaskDot :color="color" :checked="task.completed" size="sm" :on-color="size !== 'month'" />
@@ -50,14 +51,14 @@ function onClick(e: MouseEvent) {
             ? 'text-gray-400 line-through'
             : 'text-gray-800'
           : task.completed
-            ? 'text-white line-through'
-            : 'text-white'
+            ? 'text-(--chip-fg) line-through'
+            : 'text-(--chip-fg)'
       "
       >{{ task.summary || '(No title)'
       }}<span
         v-if="showTime && task.due"
         class="font-normal"
-        :class="size === 'month' ? 'text-gray-500' : 'text-white/80'"
+        :class="size === 'month' ? 'text-gray-500' : 'text-(--chip-fg)/80'"
         >, {{ formatTime(task.due) }}</span
       ></span
     >

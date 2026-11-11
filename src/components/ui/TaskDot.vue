@@ -2,8 +2,9 @@
 /**
  * Non-interactive look-alike of the round task checkbox (ColorCheckbox `round`), for places
  * where the task sits inside a button (calendar chips, agenda rows, drag previews).
- * `onColor` is for chips filled with the list color: a white ring, white when done with the
- * checkmark in the list color.
+ * `onColor` is for chips filled with the list color: a ring in the chip's text color
+ * (`--chip-fg`, white or near-black by contrast), filled when done with the checkmark in the
+ * list color.
  */
 withDefaults(
   defineProps<{ color: string; checked?: boolean; size?: 'sm' | 'md'; onColor?: boolean }>(),
@@ -18,8 +19,8 @@ withDefaults(
       size === 'sm' ? 'size-2.5' : 'size-3',
       onColor
         ? checked
-          ? 'border-white bg-white'
-          : 'border-white/90 bg-white/15'
+          ? 'border-(--chip-fg) bg-(--chip-fg)'
+          : 'border-(--chip-fg)/90 bg-(--chip-fg)/15'
         : checked
           ? 'border-(--cb-color) bg-(--cb-color)'
           : 'border-(--cb-color)/50 bg-(--cb-color)/5',

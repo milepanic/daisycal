@@ -25,6 +25,7 @@ import {
   minutesSinceMidnight,
   slotFromOffset,
 } from '@/lib/layout'
+import { DARK_TEXT, contrastRatio, textOn } from '@/lib/color'
 import { markDragged, wasJustDragged } from '@/lib/dragGuard'
 import type { Anchor, CreateDraft } from '@/stores/ui'
 import AppIcon from '@/components/ui/AppIcon.vue'
@@ -166,6 +167,11 @@ const nowTop = computed(() => minutesSinceMidnight(now.value, now.value) * PX_PE
 function eventKey(i: EventInstance) {
   return `${i.objectUrl}|${i.recurrenceId?.toString() ?? ''}`
 }
+/** Travel band text: the event color on its light tint, or near-black when that is too pale. */
+function travelText(color: string) {
+  return contrastRatio(color, '#ffffff') >= 3 ? color : DARK_TEXT
+}
+
 /** "30 min", "1 h", "1 h 30 min" for the travel band. */
 function formatTravel(minutes: number) {
   const h = Math.floor(minutes / 60)
@@ -809,7 +815,7 @@ function onGridKeydown(e: KeyboardEvent) {
                 class="pointer-events-none absolute inset-x-0 top-0 flex items-start gap-x-1 overflow-hidden rounded-t-md px-1.5 pt-0.5 text-[10px] leading-tight font-medium"
                 :style="{
                   height: `${p.travelPx}px`,
-                  color: colorFor(p.item.instance.collectionUrl),
+                  color: travelText(colorFor(p.item.instance.collectionUrl)),
                   backgroundColor: `color-mix(in srgb, ${colorFor(p.item.instance.collectionUrl)} 18%, white)`,
                 }"
                 data-testid="travel-time"
@@ -855,26 +861,27 @@ function onGridKeydown(e: KeyboardEvent) {
             class="pointer-events-none absolute inset-x-0.5 z-40 overflow-hidden rounded-md text-xs ring-2 ring-white"
             :class="
               dragPreview.task
-                ? 'flex items-center gap-x-1 pr-1.5 pl-1 text-white'
-                : 'px-2 py-1 text-white'
+                ? 'flex items-center gap-x-1 pr-1.5 pl-1 text-(--chip-fg)'
+                : 'px-2 py-1 text-(--chip-fg)'
             "
             :style="{
               top: `${dragPreview.top}px`,
               height: `${dragPreview.height}px`,
               backgroundColor: dragPreview.color,
+              '--chip-fg': textOn(dragPreview.color ?? '#566c86'),
             }"
             data-testid="drag-preview"
           >
             <template v-if="dragPreview.task">
               <TaskDot :color="dragPreview.color ?? '#7c3aed'" size="sm" on-color />
               <span class="truncate font-medium">{{ dragPreview.title }}</span>
-              <span class="ml-auto shrink-0 text-[11px] text-white/80">{{
+              <span class="ml-auto shrink-0 text-[11px] text-(--chip-fg)/80">{{
                 formatTime(dragPreview.from)
               }}</span>
             </template>
             <template v-else>
               <p class="truncate font-medium">{{ dragPreview.title }}</p>
-              <p class="truncate text-[11px] text-white/80">
+              <p class="truncate text-[11px] text-(--chip-fg)/80">
                 {{ formatTime(dragPreview.from) }}–{{ formatTime(dragPreview.to) }}
               </p>
             </template>
@@ -884,13 +891,14 @@ function onGridKeydown(e: KeyboardEvent) {
             class="pointer-events-none absolute inset-x-0.5 z-40 overflow-hidden rounded-md text-xs ring-2 ring-white"
             :class="
               draft?.kind === 'task'
-                ? 'flex items-center gap-x-1 pr-1.5 pl-1 text-white'
-                : 'px-2 py-1 text-white'
+                ? 'flex items-center gap-x-1 pr-1.5 pl-1 text-(--chip-fg)'
+                : 'px-2 py-1 text-(--chip-fg)'
             "
             :style="{
               top: `${draftPlacement(c.day)!.top}px`,
               height: `${draftPlacement(c.day)!.height}px`,
               backgroundColor: draftColor,
+              '--chip-fg': textOn(draftColor ?? '#566c86'),
             }"
             data-testid="draft-chip"
           >
@@ -900,7 +908,7 @@ function onGridKeydown(e: KeyboardEvent) {
             </template>
             <template v-else>
               <p class="truncate font-medium">{{ draft?.title || '(No title)' }}</p>
-              <p class="truncate text-[11px] text-white/80">
+              <p class="truncate text-[11px] text-(--chip-fg)/80">
                 {{ formatTime(draft!.start!) }}–{{ formatTime(draft!.end!) }}
               </p>
             </template>
