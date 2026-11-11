@@ -18,6 +18,7 @@ import {
   eventIcs,
   todoIcs,
 } from '@/stores/__tests__/fakeClient'
+import { pickDate, timeValue, typeTime } from './pickers'
 
 const WEEK = { start: new Date(2026, 9, 12), end: new Date(2026, 9, 19) }
 let client: FakeClient
@@ -47,10 +48,15 @@ beforeEach(async () => {
   await useTasksStore().ensureLoaded()
 })
 
-async function open(draft: Parameters<ReturnType<typeof useUiStore>['openCreate']>[0]) {
+/** Mounts the popup; unless `collapsed`, the date/time line is clicked open like a user would. */
+async function open(
+  draft: Parameters<ReturnType<typeof useUiStore>['openCreate']>[0],
+  { collapsed = false } = {},
+) {
   useUiStore().openCreate(draft)
   const wrapper = mount(CreatePopup, { attachTo: document.body })
   await flushPromises()
+  if (!collapsed) await wrapper.find('[data-testid="when-summary"]').trigger('click')
   return wrapper
 }
 
@@ -69,9 +75,6 @@ describe('CreatePopup', () => {
     expect(wrapper.find('[role="alert"]').text()).toBe('Add a title')
 
     await wrapper.find('#create-name').setValue('Coffee')
-    await wrapper.find('[aria-label="End time"]').setValue('09:00')
-    await wrapper.find('form').trigger('submit')
-    expect(wrapper.find('[role="alert"]').text()).toBe('End must be after the start')
 
     // The grid shows the draft chip with the live title.
     const grid = mount(TimeGrid, {
@@ -87,7 +90,7 @@ describe('CreatePopup', () => {
     expect(grid.find('[data-testid="draft-chip"]').text()).toContain('Coffee')
     expect(grid.find('[data-testid="draft-chip"]').attributes('style')).toContain('top: 600px')
 
-    await wrapper.find('[aria-label="End time"]').setValue('11:30')
+    await typeTime(wrapper, 'End time', '11:30')
     await wrapper.find('#event-location').setValue('Cafe')
     await wrapper.find('#event-repeat').setValue('weekdays')
     await wrapper
@@ -117,17 +120,167 @@ describe('CreatePopup', () => {
       start: new Date(2026, 9, 13, 14),
       end: new Date(2026, 9, 13, 14, 30),
     })
-    expect((wrapper.find('[aria-label="Start time"]').element as HTMLInputElement).value).toBe(
-      '14:00',
-    )
-    expect((wrapper.find('[aria-label="End time"]').element as HTMLInputElement).value).toBe(
-      '14:30',
-    )
+    expect(timeValue(wrapper, 'Start time')).toBe('14:00')
+    expect(timeValue(wrapper, 'End time')).toBe('14:30')
     // Moving the start still keeps the length.
-    await wrapper.find('[aria-label="Start time"]').setValue('15:00')
-    expect((wrapper.find('[aria-label="End time"]').element as HTMLInputElement).value).toBe(
-      '15:30',
+    await typeTime(wrapper, 'Start time', '15:00')
+    expect(timeValue(wrapper, 'End time')).toBe('15:30')
+    wrapper.unmount()
+  })
+
+  it('starts with the date and time as one line, like Google Calendar', async () => {
+    const event = await open(
+      { kind: 'event', start: new Date(2026, 9, 13, 18), end: new Date(2026, 9, 13, 18, 30) },
+      { collapsed: true },
     )
+    const line = event.find('[data-testid="when-summary"]')
+    expect(line.text().replace(/\s+/g, ' ')).toBe(
+      'Tuesday, October 13 · 18:00 – 18:30Does not repeat',
+    )
+    expect(event.find('input[aria-label="Start time"]').exists()).toBe(false)
+    await line.trigger('click')
+    expect(event.find('[data-testid="when-summary"]').exists()).toBe(false)
+    expect(timeValue(event, 'Start time')).toBe('18:00')
+    event.unmount()
+
+    const late = await open(
+      { kind: 'event', start: new Date(2026, 9, 13, 22), end: new Date(2026, 9, 14, 1) },
+      { collapsed: true },
+    )
+    expect(late.find('[data-testid="when-summary"] span').text()).toBe(
+      'Tuesday, October 13, 22:00 – Wednesday, October 14, 01:00',
+    )
+    late.unmount()
+
+    const task = await open({ kind: 'task', start: new Date(2026, 9, 20, 9) }, { collapsed: true })
+    expect(task.find('[data-testid="when-summary"]').text()).toBe('Tuesday, October 20 · 09:00')
+    task.unmount()
+  })
+
+  it('types times loosely, lists end times with durations and crosses midnight', async () => {
+    const wrapper = await open({
+      kind: 'event',
+      start: new Date(2026, 9, 13, 10),
+      end: new Date(2026, 9, 13, 11),
+    })
+    await wrapper.find('#create-name').setValue('Late show')
+    expect(wrapper.find('button[aria-label^="Start date:"]').text()).toBe('Tuesday, October 13')
+    // "2130" reads as 21:30; the end moves along and keeps the hour.
+    await typeTime(wrapper, 'Start time', '2130')
+    expect(timeValue(wrapper, 'Start time')).toBe('21:30')
+    expect(timeValue(wrapper, 'End time')).toBe('22:30')
+
+    // The end list starts at the start and shows durations.
+    await wrapper.find('input[aria-label="End time"]').trigger('focus')
+    const options = wrapper.findAll('[role="listbox"][aria-label="End time"] [role="option"]')
+    const text = (i: number) => options[i]!.text().replace(/\s+/g, ' ')
+    expect([text(0), text(1), text(4), text(6)]).toEqual([
+      '21:30 (0 mins)',
+      '21:45 (15 mins)',
+      '22:30 (1 hr)',
+      '23:00 (1.5 hrs)',
+    ])
+    // Picking 01:00 ends the event the next day, and the end date shows up.
+    await options.find((o) => o.text().startsWith('01:00'))!.trigger('mousedown')
+    expect(timeValue(wrapper, 'End time')).toBe('01:00')
+    expect(wrapper.find('button[aria-label^="End date:"]').text()).toBe('Wed, Oct 14')
+
+    // With two dates in the row both use the short form; ending the same day shows one long date.
+    expect(wrapper.find('button[aria-label^="Start date:"]').text()).toBe('Tue, Oct 13')
+    await typeTime(wrapper, 'End time', '23:00')
+    expect(wrapper.find('button[aria-label^="Start date:"]').text()).toBe('Tuesday, October 13')
+    expect(wrapper.find('button[aria-label^="End date:"]').exists()).toBe(false)
+    await typeTime(wrapper, 'End time', '1')
+    // Moving the start date carries the end along.
+    await pickDate(wrapper, 'Start date', '2026-10-15')
+    expect(wrapper.find('button[aria-label^="End date:"]').text()).toBe('Fri, Oct 16')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    const created = [...client.objects.values()].find((o) => o.data.includes('SUMMARY:Late show'))!
+    expect(created.data).toContain('DTSTART;TZID=Europe/Belgrade:20261015T213000')
+    expect(created.data).toContain('DTEND;TZID=Europe/Belgrade:20261016T010000')
+    wrapper.unmount()
+  })
+
+  it('makes a multi-day timed event through the end date', async () => {
+    const wrapper = await open({
+      kind: 'event',
+      start: new Date(2026, 9, 13, 9),
+      end: new Date(2026, 9, 13, 10),
+    })
+    await wrapper.find('#create-name').setValue('Conference')
+    // Ending before the start moves the end to the next day; its date can then be changed.
+    await typeTime(wrapper, 'End time', '8')
+    await pickDate(wrapper, 'End date', '2026-10-15')
+    await typeTime(wrapper, 'End time', '5pm')
+    // Past the first day the end list is a plain clock, not durations.
+    await wrapper.find('input[aria-label="End time"]').trigger('focus')
+    expect(wrapper.find('[role="listbox"][aria-label="End time"]').text()).not.toContain('(')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    const created = [...client.objects.values()].find((o) => o.data.includes('SUMMARY:Conference'))!
+    expect(created.data).toContain('DTSTART;TZID=Europe/Belgrade:20261013T090000')
+    expect(created.data).toContain('DTEND;TZID=Europe/Belgrade:20261015T170000')
+    wrapper.unmount()
+  })
+
+  it('changes nothing outside the popup while editing, until Save', async () => {
+    const ui = useUiStore()
+    const events = useEventsStore()
+    const review = events.instancesFor(WEEK).find((i) => i.summary === 'Review')!
+    const saved = client.objects.get(review.objectUrl)!.data
+    const wrapper = await open({
+      kind: 'event',
+      edit: { objectUrl: review.objectUrl, recurrenceId: null },
+    })
+    const draftBefore = { ...ui.createDraft }
+    await wrapper.find('#create-name').setValue('Review (moved)')
+    await typeTime(wrapper, 'Start time', '16:00')
+    await pickDate(wrapper, 'Start date', '2026-10-16')
+    // No live preview: the draft, the store and the server still hold the saved event.
+    expect(ui.createDraft).toEqual(draftBefore)
+    expect(events.instancesFor(WEEK).find((i) => i.objectUrl === review.objectUrl)!.summary).toBe(
+      'Review',
+    )
+    expect(client.objects.get(review.objectUrl)!.data).toBe(saved)
+    // Cancel throws the changes away.
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Cancel')!
+      .trigger('click')
+    expect(ui.createDraft).toBeNull()
+    expect(client.objects.get(review.objectUrl)!.data).toBe(saved)
+    wrapper.unmount()
+  })
+
+  it('sets and clears a task due date with the picker', async () => {
+    const wrapper = await open({ kind: 'task' })
+    await wrapper.find('#create-name').setValue('Plan trip')
+    expect(wrapper.find('[data-testid="due-shortcuts"]').exists()).toBe(false)
+    await pickDate(wrapper, 'Due date', '2026-12-24')
+    expect(wrapper.find('button[aria-label^="Due date:"]').text()).toBe('Thursday, December 24')
+    // The picker has no quick picks and no "No date".
+    await wrapper.find('button[aria-label^="Due date:"]').trigger('click')
+    expect(wrapper.find('[data-testid="date-picker"]').text()).not.toMatch(/Today|No date/)
+    await wrapper.find('button[aria-label^="Due date:"]').trigger('click')
+    // The "x" removes the time first, then the date.
+    const clear = () => wrapper.find('button[class*="text-gray-400"][class*="size-8"]')
+    expect(clear().text()).toBe('Remove time')
+    await clear().trigger('click')
+    expect(wrapper.find('input[aria-label="Due time"]').exists()).toBe(false)
+    expect(clear().text()).toBe('Remove due date')
+    await clear().trigger('click')
+    expect(wrapper.find('button[aria-label^="Due date:"]').text()).toBe('No due date')
+    await pickDate(wrapper, 'Due date', '2026-12-24')
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Add time')!
+      .trigger('click')
+    await typeTime(wrapper, 'Due time', '18.15')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    const created = [...client.objects.values()].find((o) => o.data.includes('SUMMARY:Plan trip'))!
+    expect(created.data).toContain('DUE;TZID=Europe/Belgrade:20261224T181500')
     wrapper.unmount()
   })
 
@@ -237,9 +390,7 @@ describe('CreatePopup', () => {
       edit: { objectUrl: milk.objectUrl, recurrenceId: null },
     })
     expect((wrapper.find('#create-name').element as HTMLInputElement).value).toBe('Buy milk')
-    expect((wrapper.find('[aria-label="Due time"]').element as HTMLInputElement).value).toBe(
-      '17:00',
-    )
+    expect(timeValue(wrapper, 'Due time')).toBe('17:00')
     await wrapper.find('#create-name').setValue('Buy oat milk')
     await wrapper.find('form').trigger('submit')
     await flushPromises()

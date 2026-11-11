@@ -3,19 +3,17 @@
  * One task list column (mockup tasks.html section): header, inline "Add a task" with optional
  * due date and 24h time, open tasks, collapsible "Completed (N)". Writes go through the store.
  */
-import { computed, nextTick, ref } from 'vue'
+import { computed, ref } from 'vue'
 
 import type { Collection } from '@/api/collections'
-import type { Task, TaskForm } from '@/api/ical'
-import { parseDateKey } from '@/lib/dates'
+import type { Task } from '@/api/ical'
 import { wasJustDragged } from '@/lib/dragGuard'
 import { useCalendarsStore } from '@/stores/calendars'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useTasksStore } from '@/stores/tasks'
 import { useUiStore } from '@/stores/ui'
 import AppIcon from '@/components/ui/AppIcon.vue'
-import TaskDot from '@/components/ui/TaskDot.vue'
-import TimeSelect from '@/components/ui/TimeSelect.vue'
+import TaskInlineAdd from './TaskInlineAdd.vue'
 import TaskRow from './TaskRow.vue'
 
 const props = defineProps<{ list: Collection; dropTarget?: boolean }>()
@@ -34,58 +32,6 @@ const loading = computed(() => tasks.isLoading(props.list.url) && all.value.leng
 const listError = computed(() => tasks.listError(props.list.url))
 
 const adding = ref(false)
-const newTitle = ref('')
-const newDate = ref('')
-const newTime = ref('')
-const newInput = ref<HTMLInputElement | null>(null)
-
-async function startAdd() {
-  adding.value = true
-  await nextTick()
-  newInput.value?.focus()
-}
-
-function cancelAdd() {
-  adding.value = false
-  newTitle.value = ''
-  newDate.value = ''
-  newTime.value = ''
-}
-
-function newDue(): { due: Date | null; dueAllDay: boolean } {
-  const d = parseDateKey(newDate.value)
-  if (!d) return { due: null, dueAllDay: true }
-  if (newTime.value) {
-    d.setHours(Number(newTime.value.slice(0, 2)), Number(newTime.value.slice(3, 5)), 0, 0)
-    return { due: d, dueAllDay: false }
-  }
-  return { due: d, dueAllDay: true }
-}
-
-async function submitAdd() {
-  const title = newTitle.value.trim()
-  if (!title) {
-    cancelAdd()
-    return
-  }
-  const form: TaskForm = {
-    summary: title,
-    description: '',
-    ...newDue(),
-    priority: null,
-    alarm: null,
-  }
-  newTitle.value = ''
-  newDate.value = ''
-  newTime.value = ''
-  try {
-    await tasks.createTask(props.list, form)
-  } catch (err) {
-    notifications.reportError(err, `Could not add "${title}"`, () =>
-      tasks.createTask(props.list, form),
-    )
-  }
-}
 
 async function toggle(task: Task, done: boolean) {
   try {
@@ -136,79 +82,7 @@ function openDetailed() {
       </button>
     </div>
 
-    <form
-      v-if="adding"
-      class="mt-1 rounded-md bg-gray-50 px-2 py-1.5"
-      data-testid="inline-add"
-      @submit.prevent="submitAdd"
-    >
-      <div class="flex items-center gap-x-3">
-        <span class="grid size-4 shrink-0 place-items-center"><TaskDot :color="color" /></span>
-        <input
-          ref="newInput"
-          v-model="newTitle"
-          type="text"
-          placeholder="Task title"
-          aria-label="New task title"
-          class="min-w-0 flex-1 bg-transparent text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
-          @keydown.escape.prevent="cancelAdd"
-        />
-      </div>
-      <div class="mt-1.5 flex flex-wrap items-center gap-1.5 pl-7 text-xs">
-        <input
-          v-model="newDate"
-          type="date"
-          aria-label="New task due date"
-          class="rounded-md bg-white px-2 py-1 font-medium text-gray-900 ring-1 ring-gray-200"
-        />
-        <TimeSelect
-          v-if="newDate && newTime"
-          v-model="newTime"
-          label="New task due time"
-          class="!bg-white !px-2 !py-1 !text-xs ring-1 ring-gray-200"
-        />
-        <button
-          v-if="newDate && !newTime"
-          type="button"
-          class="rounded-md px-2 py-1 font-medium text-gray-500 hover:bg-white hover:text-gray-900"
-          @click="newTime = '09:00'"
-        >
-          Add time
-        </button>
-        <button
-          v-if="newTime"
-          type="button"
-          class="rounded-md px-2 py-1 font-medium text-gray-500 hover:bg-white hover:text-gray-900"
-          @click="newTime = ''"
-        >
-          No time
-        </button>
-        <span class="ml-auto flex gap-x-1">
-          <button
-            type="button"
-            class="rounded-md px-2 py-1 font-medium text-gray-500 hover:bg-white hover:text-gray-900"
-            @click="cancelAdd"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            class="rounded-md bg-gray-900 px-2.5 py-1 font-semibold text-white hover:bg-gray-700"
-          >
-            Add
-          </button>
-        </span>
-      </div>
-    </form>
-    <button
-      v-else
-      type="button"
-      class="mt-1 flex w-full items-center gap-x-3 rounded-md px-2 py-2 text-sm font-semibold text-accent hover:bg-accent/10"
-      @click="startAdd"
-    >
-      <AppIcon name="plus" class="size-5" />
-      Add a task
-    </button>
+    <TaskInlineAdd v-model:adding="adding" :list="list" :color="color" />
 
     <p
       v-if="listError"

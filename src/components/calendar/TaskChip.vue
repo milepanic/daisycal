@@ -1,9 +1,20 @@
 <script setup lang="ts">
-/** Gray task chip with the list color square; completed tasks are struck through (mockup). */
+/**
+ * Gray task chip with the round list-color marker; completed tasks are struck through. In the
+ * time grid it is a block like an event and shows the due time after the title ("Call, 15:30").
+ */
 import type { Task } from '@/api/ical'
+import { formatTime } from '@/lib/format'
 import TaskDot from '@/components/ui/TaskDot.vue'
 
-const props = defineProps<{ task: Task; color: string; size?: 'grid' | 'month' }>()
+const props = defineProps<{
+  task: Task
+  color: string
+  size?: 'grid' | 'month'
+  selected?: boolean
+  /** Append the due time to the title (time grid). */
+  showTime?: boolean
+}>()
 const emit = defineEmits<{ select: [task: Task, el: HTMLElement] }>()
 
 function onClick(e: MouseEvent) {
@@ -13,18 +24,42 @@ function onClick(e: MouseEvent) {
 </script>
 
 <template>
+  <!-- Month view: gray row. Time grid: a block in the list color, like an event. -->
   <button
     type="button"
     :title="task.summary"
-    class="flex w-full min-w-0 cursor-pointer items-center overflow-hidden rounded-md bg-gray-100 text-left text-xs hover:bg-gray-200"
-    :class="size === 'month' ? 'gap-x-1.5 px-1.5 py-0.5' : 'h-full gap-x-1.5 px-2'"
+    :data-selected="selected || undefined"
+    class="flex w-full min-w-0 cursor-pointer items-center overflow-hidden rounded-md text-left text-xs focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gray-900 data-selected:ring-2 data-selected:ring-gray-900 data-selected:ring-offset-1"
+    :class="
+      size === 'month'
+        ? 'gap-x-1.5 bg-gray-100 px-1.5 py-0.5 transition-colors duration-150 hover:bg-gray-200'
+        : [
+            'h-full gap-x-1 pr-1.5 pl-1 transition-[filter,box-shadow] duration-150 hover:brightness-110',
+            task.completed ? 'opacity-60' : '',
+          ]
+    "
+    :style="size === 'month' ? undefined : { backgroundColor: color }"
     @click="onClick"
   >
-    <TaskDot :color="color" :checked="task.completed" :size="size === 'month' ? 'sm' : 'md'" />
+    <TaskDot :color="color" :checked="task.completed" size="sm" :on-color="size !== 'month'" />
     <span
-      class="truncate"
-      :class="task.completed ? 'text-gray-400 line-through' : 'text-gray-800'"
-      >{{ task.summary }}</span
+      class="min-w-0 truncate"
+      :class="
+        size === 'month'
+          ? task.completed
+            ? 'text-gray-400 line-through'
+            : 'text-gray-800'
+          : task.completed
+            ? 'text-white line-through'
+            : 'text-white'
+      "
+      >{{ task.summary || '(No title)'
+      }}<span
+        v-if="showTime && task.due"
+        class="font-normal"
+        :class="size === 'month' ? 'text-gray-500' : 'text-white/80'"
+        >, {{ formatTime(task.due) }}</span
+      ></span
     >
   </button>
 </template>

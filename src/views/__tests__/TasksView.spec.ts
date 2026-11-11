@@ -8,6 +8,7 @@ import { useCalendarsStore } from '@/stores/calendars'
 import { useTasksStore } from '@/stores/tasks'
 import { useUiStore } from '@/stores/ui'
 import { FakeClient, MY_TASKS, PERSONAL, todoIcs } from '@/stores/__tests__/fakeClient'
+import { pickDate, typeTime } from '@/components/__tests__/pickers'
 
 const SHOPPING = {
   ...MY_TASKS,
@@ -69,10 +70,16 @@ describe('TasksView', () => {
       'Book dentist',
     ])
     expect(mine.find('li[data-task="late"]').text()).toContain('Mon, Oct 5, 17:00')
-    expect(mine.find('li[data-task="late"] span.bg-red-50').exists()).toBe(true)
+    expect(mine.find('li[data-task="late"] [data-testid="due-badge"].text-red-600').exists()).toBe(
+      true,
+    )
     expect(mine.find('li[data-task="late"] svg.text-red-500').exists()).toBe(true) // high priority flag
-    expect(mine.find('li[data-task="today"] span.text-accent').text()).toBe('Today, 12:00')
-    expect(mine.find('li[data-task="later"] span.bg-gray-100').text()).toBe('Sun, Oct 18')
+    expect(mine.find('li[data-task="today"] [data-testid="due-badge"].text-accent').text()).toBe(
+      'Today, 12:00',
+    )
+    expect(mine.find('li[data-task="later"] [data-testid="due-badge"].text-gray-600').text()).toBe(
+      'Sunday',
+    )
     expect(mine.find('details summary').text()).toContain('Completed (1)')
     expect(mine.find('li[data-task="done"]').text()).toContain('Completed Tue, Oct 6')
 
@@ -122,12 +129,12 @@ describe('TasksView', () => {
 
     // With a date and a 24h time picked inline.
     await shopping.find('input[aria-label="New task title"]').setValue('Return library books')
-    await shopping.find('input[aria-label="New task due date"]').setValue('2026-10-20')
+    await pickDate(shopping, 'New task due date', '2026-10-20')
     await shopping
       .findAll('button')
       .find((b) => b.text() === 'Add time')!
       .trigger('click')
-    await shopping.find('select[aria-label="New task due time"]').setValue('18:30')
+    await typeTime(shopping, 'New task due time', '18:30')
     await shopping.find('form').trigger('submit')
     await flushPromises()
     const timed = [...client.objects.values()].find((o) =>

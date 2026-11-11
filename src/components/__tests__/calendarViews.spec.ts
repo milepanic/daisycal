@@ -7,10 +7,12 @@ import { expandEvent, parseEventObject, parseTask } from '@/api/ical'
 import AgendaView from '@/components/calendar/AgendaView.vue'
 import EventPopover from '@/components/calendar/EventPopover.vue'
 import MonthView from '@/components/calendar/MonthView.vue'
+import TaskPopover from '@/components/calendar/TaskPopover.vue'
 import TasksPanel from '@/components/calendar/TasksPanel.vue'
 import TimeGrid from '@/components/calendar/TimeGrid.vue'
 import { addDays, eachDay, startOfDay, toDateKey } from '@/lib/dates'
 import { markDragged } from '@/lib/dragGuard'
+import { DAY_PX, HOUR_PX } from '@/lib/layout'
 import { useAuthStore } from '@/stores/auth'
 import { useCalendarsStore } from '@/stores/calendars'
 import { useEventsStore } from '@/stores/events'
@@ -24,6 +26,7 @@ import {
   eventIcs,
   todoIcs,
 } from '@/stores/__tests__/fakeClient'
+import { pickDate } from './pickers'
 
 /** test-utils builds a MouseEvent for pointer* and cannot set `button`; dispatch a real PointerEvent. */
 async function pointer(target: { element: Element }, type: string, init: PointerEventInit) {
@@ -40,6 +43,8 @@ async function pointer(target: { element: Element }, type: string, init: Pointer
 }
 
 const WEEK = { start: new Date(2026, 9, 12), end: new Date(2026, 9, 19) }
+/** Grid pixels for a number of minutes (the grid is HOUR_PX per hour). */
+const px = (minutes: number) => (minutes * HOUR_PX) / 60
 const colorFor = (url: string) => (url === WORK.url ? '#225688' : '#566c86')
 
 function seeded() {
@@ -96,12 +101,12 @@ describe('TimeGrid', () => {
     // All-day bar spans Thu+Fri.
     const bar = wrapper.find('[data-testid="allday-row"] [style*="grid-column: 4 / span 2"]')
     expect(bar.text()).toBe('Offsite')
-    // Wednesday 10:00 local (08:00Z in Belgrade DST) → top 600px; review 90 min → 90px.
+    // Wednesday 10:00 local (08:00Z in Belgrade DST); review 90 min, minus the 2px gap.
     const wed = wrapper.find('[data-day="2026-10-14"]')
     const chips = wed.findAll('.absolute.z-10')
     const review = chips.find((c) => c.text().includes('Design review'))!
-    expect(review.attributes('style')).toContain('top: 600px')
-    expect(review.attributes('style')).toContain('height: 88px')
+    expect(review.attributes('style')).toContain(`top: ${px(600)}px`)
+    expect(review.attributes('style')).toContain(`height: ${px(90) - 2}px`)
     expect(review.attributes('style')).toContain('width: calc(50% - 4px)')
     const standup = chips.find((c) => c.text().includes('Daily Standup'))!
     expect(standup.attributes('style')).toContain('height: 14px')
@@ -120,19 +125,49 @@ describe('TimeGrid', () => {
       top: 0,
       left: 0,
       width: 100,
-      height: 1440,
-      bottom: 1440,
+      height: DAY_PX,
+      bottom: DAY_PX,
       right: 100,
       x: 0,
       y: 0,
       toJSON: () => ({}),
     })
-    await pointer(col, 'pointerdown', { clientX: 50, clientY: 635 })
-    await pointer(col, 'pointerup', { clientX: 50, clientY: 635 })
+    await pointer(col, 'pointerdown', { clientX: 50, clientY: px(635) })
+    await pointer(col, 'pointerup', { clientX: 50, clientY: px(635) })
     const [start, end, allDay] = wrapper.emitted('createAt')![0]!
     expect(start).toEqual(new Date(2026, 9, 13, 10, 30))
     expect(end).toEqual(new Date(2026, 9, 13, 11, 0)) // 30-minute default
     expect(allDay).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('lays a task over an event it overlaps, slightly narrower, like Google Calendar', async () => {
+    const { instances, tasks } = seeded()
+    // Due Wednesday 10:30, during "Design review" (10:00–11:30), after the 10-minute standup.
+    const overlapping = parseTask({
+      url: `${MY_TASKS.url}call.ics`,
+      collectionUrl: MY_TASKS.url,
+      etag: '"1"',
+      data: todoIcs('call', 'Call Ana', 'DUE:20261014T083000Z\r\n'),
+    })
+    const wrapper = mount(TimeGrid, {
+      props: { days: eachDay(WEEK), instances, tasks: [...tasks, overlapping], colorFor },
+    })
+    const wed = wrapper.find('[data-day="2026-10-14"]')
+    const call = wed.find('.absolute.z-20')
+    const review = wed.findAll('.absolute.z-10').find((c) => c.text().includes('Design review'))!
+    // The task is a 30-minute block (minus the 2px gap) with its time, laid over the review and
+    // indented 8px; the review keeps its width (half: the standup sits beside it).
+    expect(call.text()).toBe('Call Ana, 10:30')
+    expect(call.classes()).toContain('ring-white')
+    expect(call.attributes('style')).toContain(`top: ${px(630)}px`)
+    expect(call.attributes('style')).toContain(`height: ${px(30) - 2}px`)
+    expect(call.attributes('style')).toContain('left: calc(0% + 10px)')
+    expect(call.attributes('style')).toContain('width: calc(50% - 12px)')
+    expect(review.attributes('style')).toContain('width: calc(50% - 4px)')
+    // A task with nothing under it is a plain full-width chip.
+    const slides = wed.findAll('.absolute.z-10').find((c) => c.text().startsWith('Prepare slides'))!
+    expect(slides.attributes('style')).toContain('width: calc(100% - 4px)')
     wrapper.unmount()
   })
 
@@ -148,8 +183,8 @@ describe('TimeGrid', () => {
         top: 0,
         left: i * 100,
         width: 100,
-        height: 1440,
-        bottom: 1440,
+        height: DAY_PX,
+        bottom: DAY_PX,
         right: (i + 1) * 100,
         x: i * 100,
         y: 0,
@@ -159,21 +194,21 @@ describe('TimeGrid', () => {
 
     // Drag from 10:00 to 11:40 on Tuesday → 10:00–11:45 (15-minute snap).
     const tue = cols[1]!
-    await pointer(tue, 'pointerdown', { clientX: 150, clientY: 600 })
-    await pointer(tue, 'pointermove', { clientX: 150, clientY: 700 })
+    await pointer(tue, 'pointerdown', { clientX: 150, clientY: px(600) })
+    await pointer(tue, 'pointermove', { clientX: 150, clientY: px(700) })
     expect(wrapper.find('[data-testid="drag-preview"]').text()).toContain('10:00–11:45')
-    await pointer(tue, 'pointerup', { clientX: 150, clientY: 700 })
+    await pointer(tue, 'pointerup', { clientX: 150, clientY: px(700) })
     const [s1, e1] = wrapper.emitted('createAt')![0]!
     expect(s1).toEqual(new Date(2026, 9, 13, 10, 0))
     expect(e1).toEqual(new Date(2026, 9, 13, 11, 45))
 
     // Move "Design review" (Wed 10:00–11:30) to Thursday 13:00.
     const review = wrapper.find('[data-chip$="review.ics|"]')
-    await pointer(review, 'pointerdown', { clientX: 250, clientY: 610 })
-    await pointer(review, 'pointermove', { clientX: 350, clientY: 790 })
+    await pointer(review, 'pointerdown', { clientX: 250, clientY: px(610) })
+    await pointer(review, 'pointermove', { clientX: 350, clientY: px(790) })
     expect(wrapper.find('[data-testid="drag-preview"]').text()).toContain('13:00–14:30')
     expect(wrapper.find('[data-chip$="review.ics|"]').classes()).toContain('opacity-40')
-    await pointer(review, 'pointerup', { clientX: 350, clientY: 790 })
+    await pointer(review, 'pointerup', { clientX: 350, clientY: px(790) })
     const [moved, ms, me] = wrapper.emitted('moveEvent')![0]!
     expect(moved).toMatchObject({ summary: 'Design review' })
     expect(ms).toEqual(new Date(2026, 9, 15, 13, 0))
@@ -186,10 +221,10 @@ describe('TimeGrid', () => {
     const gym = wrapper.find('[data-chip$="gym.ics|"]')
     await pointer(gym.find('[data-testid="resize-handle"]'), 'pointerdown', {
       clientX: 450,
-      clientY: 540,
+      clientY: px(540),
     })
-    await pointer(gym, 'pointermove', { clientX: 450, clientY: 587 })
-    await pointer(gym, 'pointerup', { clientX: 450, clientY: 587 })
+    await pointer(gym, 'pointermove', { clientX: 450, clientY: px(587) })
+    await pointer(gym, 'pointerup', { clientX: 450, clientY: px(587) })
     const [, rs, re] = wrapper.emitted('moveEvent')![1]!
     expect(rs).toEqual(new Date(2026, 9, 16, 8, 0))
     expect(re).toEqual(new Date(2026, 9, 16, 9, 45))
@@ -197,8 +232,8 @@ describe('TimeGrid', () => {
     // A press without movement on a chip is still a click.
     const standup = wrapper.find('[data-chip$="standup.ics|"]')
     await new Promise((r) => setTimeout(r, 450))
-    await pointer(standup, 'pointerdown', { clientX: 250, clientY: 605 })
-    await pointer(standup, 'pointerup', { clientX: 251, clientY: 606 })
+    await pointer(standup, 'pointerdown', { clientX: 250, clientY: px(605) })
+    await pointer(standup, 'pointerup', { clientX: 251, clientY: px(606) })
     await standup.find('button').trigger('click')
     expect(wrapper.emitted('selectEvent')![0]![0]).toMatchObject({ summary: 'Daily Standup' })
     wrapper.unmount()
@@ -216,21 +251,21 @@ describe('TimeGrid', () => {
         top: 0,
         left: i * 100,
         width: 100,
-        height: 1440,
-        bottom: 1440,
+        height: DAY_PX,
+        bottom: DAY_PX,
         right: (i + 1) * 100,
         x: i * 100,
         y: 0,
         toJSON: () => ({}),
       })
     })
-    // "Prepare slides" is due Wednesday 12:00 (720px); drag it to Thursday 15:00.
+    // "Prepare slides" is due Wednesday 12:00; drag it to Thursday 15:00.
     const chip = wrapper.find('[data-task-chip$="slides.ics"]')
-    await pointer(chip, 'pointerdown', { clientX: 250, clientY: 725 })
-    await pointer(chip, 'pointermove', { clientX: 350, clientY: 905 })
+    await pointer(chip, 'pointerdown', { clientX: 250, clientY: px(725) })
+    await pointer(chip, 'pointermove', { clientX: 350, clientY: px(905) })
     expect(wrapper.find('[data-testid="drag-preview"]').text()).toContain('Prepare slides')
     expect(wrapper.find('[data-testid="drag-preview"]').text()).toContain('15:00')
-    await pointer(chip, 'pointerup', { clientX: 350, clientY: 905 })
+    await pointer(chip, 'pointerup', { clientX: 350, clientY: px(905) })
     const [task, due] = wrapper.emitted('moveTask')![0]!
     expect(task).toMatchObject({ summary: 'Prepare slides' })
     expect(due).toEqual(new Date(2026, 9, 15, 15, 0))
@@ -297,24 +332,24 @@ describe('TimeGrid', () => {
     })
     wrapper.element.getBoundingClientRect = rect(0, 300, 2000)
     wrapper.findAll('[data-day]').forEach((c, i) => {
-      c.element.getBoundingClientRect = rect(i * 100, 100, 1440)
+      c.element.getBoundingClientRect = rect(i * 100, 100, DAY_PX)
     })
     const row = { element: popover()!.querySelector('li')! }
-    await pointer(row, 'pointerdown', { clientX: 500, clientY: 500 })
+    await pointer(row, 'pointerdown', { clientX: 500, clientY: px(500) })
     // The row leaves the DOM with the popover; later events go to whatever is under the pointer.
     const body = { element: document.body }
     // Off the grid: the popover closes and a ghost follows the pointer.
-    await pointer(body, 'pointermove', { clientX: 500, clientY: 600 })
+    await pointer(body, 'pointermove', { clientX: 500, clientY: px(600) })
     expect(popover()).toBeNull()
     expect(document.querySelector('[data-testid="pending-drag-ghost"]')!.textContent).toContain(
       'Late report',
     )
-    // Over today's column at 15:00 (900px + half the chip height).
-    await pointer(body, 'pointermove', { clientX: 150, clientY: 911 })
+    // Over today's column at 15:00 (plus half the 22px chip height).
+    await pointer(body, 'pointermove', { clientX: 150, clientY: px(900) + 11 })
     expect(document.querySelector('[data-testid="pending-drag-ghost"]')).toBeNull()
     expect(wrapper.find('[data-testid="drag-preview"]').text()).toContain('Late report')
     expect(wrapper.find('[data-testid="drag-preview"]').text()).toContain('15:00')
-    await pointer(body, 'pointerup', { clientX: 150, clientY: 911 })
+    await pointer(body, 'pointerup', { clientX: 150, clientY: px(900) + 11 })
     const [task, due] = wrapper.emitted('moveTask')![0]!
     expect(task).toMatchObject({ summary: 'Late report' })
     expect(due).toEqual(new Date(today.getFullYear(), today.getMonth(), today.getDate(), 15))
@@ -491,8 +526,22 @@ describe('TasksPanel and EventPopover', () => {
     await flushPromises()
     expect(client.objects.get(`${MY_TASKS.url}slides.ics`)!.data).toContain('STATUS:COMPLETED')
     expect(wrapper.text()).toContain('Completed (2)')
+
+    // "Add a task" adds inline, like the Tasks view, instead of opening the popup.
     await wrapper.find('button.text-accent').trigger('click')
-    expect(useUiStore().createDraft).toMatchObject({ kind: 'task', collectionUrl: MY_TASKS.url })
+    expect(useUiStore().createDraft).toBeNull()
+    await wrapper.find('input[aria-label="New task title"]').setValue('Call the dentist')
+    await pickDate(wrapper, 'New task due date', '2026-10-20')
+    await wrapper.find('[data-testid="inline-add"]').trigger('submit')
+    await flushPromises()
+    const created = [...client.objects.values()].find((o) =>
+      o.data.includes('SUMMARY:Call the dentist'),
+    )!
+    expect(created.collectionUrl).toBe(MY_TASKS.url)
+    expect(created.data).toContain('DUE;VALUE=DATE:20261020')
+    expect(wrapper.text()).toContain('Call the dentist')
+    await wrapper.find('input[aria-label="New task title"]').trigger('keydown', { key: 'Escape' })
+    expect(wrapper.find('[data-testid="inline-add"]').exists()).toBe(false)
   })
 
   it('remembers the picked task list, also while it is hidden', async () => {
@@ -523,6 +572,34 @@ describe('TasksPanel and EventPopover', () => {
     await nextTick()
     setActivePinia(createPinia())
     expect(useUiStore().tasksPanelList).toBe(shopping.url)
+  })
+
+  it('shows task details from the calendar, completes, opens edit and deletes', async () => {
+    const tasks = useTasksStore()
+    const slides = tasks.get(`${MY_TASKS.url}slides.ics`)!
+    const wrapper = mount(TaskPopover, {
+      props: { task: slides, anchor: { x: 10, y: 10, width: 50, height: 20 } },
+      attachTo: document.body,
+    })
+    expect(wrapper.find('h2').text()).toBe('Prepare slides')
+    expect(wrapper.text()).toContain('My tasks')
+    const button = (label: string) => wrapper.findAll('button').find((b) => b.text() === label)!
+    await button('Mark completed').trigger('click')
+    await flushPromises()
+    expect(client.objects.get(slides.objectUrl)!.data).toContain('STATUS:COMPLETED')
+    expect(wrapper.emitted('close')).toHaveLength(1)
+
+    await button('Edit').trigger('click')
+    expect(useUiStore().createDraft).toMatchObject({
+      kind: 'task',
+      edit: { objectUrl: slides.objectUrl },
+    })
+    await button('Delete').trigger('click')
+    expect(wrapper.text()).toContain('Delete this task?')
+    await wrapper.find('button.bg-red-600').trigger('click')
+    await flushPromises()
+    expect(client.objects.has(slides.objectUrl)).toBe(false)
+    wrapper.unmount()
   })
 
   it('shows event details, opens edit and deletes with scope', async () => {

@@ -5,8 +5,8 @@
 import type { EventInstance, Task } from '@/api/ical'
 import { DAY_MS, type DateRange, addDays, eachDay, isSameDay, startOfDay, toDateKey } from './dates'
 
-/** One hour of the time grid in pixels (the mockup uses 60px rows). */
-export const HOUR_PX = 60
+/** One hour of the time grid in pixels (48px, as in Google Calendar). */
+export const HOUR_PX = 48
 export const DAY_PX = 24 * HOUR_PX
 /** Shortest chip in the grid (the mockup's 10-minute standup is `h-4`). */
 export const MIN_EVENT_PX = 16
@@ -51,33 +51,54 @@ export function minutesSinceMidnight(d: Date, day: Date): number {
   return (d.getTime() - startOfDay(day).getTime()) / 60_000
 }
 
+/** How long a timed task occupies in the grid (Google Calendar shows tasks as 30-minute blocks). */
+export const TASK_SLOT_MIN = 30
+
+/** Anything laid out in a day column: an event, or a task from its due time on. */
+export interface TimedItem<T> {
+  item: T
+  start: Date
+  end: Date
+}
+
+export interface TimedLayout<T> {
+  item: T
+  top: number
+  height: number
+  left: number
+  width: number
+  continuesBefore: boolean
+  continuesAfter: boolean
+  compact: boolean
+}
+
 /**
- * Places the timed events of one day. Overlapping events share the width Google-Calendar
- * style: events are clustered, assigned to the first free column, and each chip stretches
- * right over columns nothing else occupies.
+ * Places the timed items of one day. Overlapping items share the width Google-Calendar style:
+ * they are clustered, assigned to the first free column, and each chip stretches right over
+ * columns nothing else occupies.
  */
-export function layoutDay(instances: EventInstance[], day: Date): TimedPlacement[] {
+export function layoutTimed<T>(entries: TimedItem<T>[], day: Date): TimedLayout<T>[] {
   const dayStart = startOfDay(day)
   const dayEnd = addDays(dayStart, 1)
-  const items = instances
-    .filter((i) => !isAllDayRow(i) && i.start < dayEnd && i.end > dayStart)
-    .map((instance) => {
-      const start = Math.max(instance.start.getTime(), dayStart.getTime())
-      const end = Math.min(instance.end.getTime(), dayEnd.getTime())
+  const items = entries
+    .filter((e) => e.start < dayEnd && e.end > dayStart)
+    .map((e) => {
+      const start = Math.max(e.start.getTime(), dayStart.getTime())
+      const end = Math.min(e.end.getTime(), dayEnd.getTime())
       const top = ((start - dayStart.getTime()) / 60_000) * (HOUR_PX / 60)
       const height = Math.max(((end - start) / 60_000) * (HOUR_PX / 60), MIN_EVENT_PX)
       return {
-        instance,
+        item: e.item,
         top,
         height,
         bottom: top + height,
-        continuesBefore: instance.start < dayStart,
-        continuesAfter: instance.end > dayEnd,
+        continuesBefore: e.start < dayStart,
+        continuesAfter: e.end > dayEnd,
       }
     })
     .sort((a, b) => a.top - b.top || b.bottom - a.bottom)
 
-  const out: TimedPlacement[] = []
+  const out: TimedLayout<T>[] = []
   let i = 0
   while (i < items.length) {
     // Build a cluster of transitively overlapping items.
@@ -112,7 +133,7 @@ export function layoutDay(instances: EventInstance[], day: Date): TimedPlacement
         span++
       }
       out.push({
-        instance: item.instance,
+        item: item.item,
         top: item.top,
         height: item.height,
         left: col / n,
@@ -125,6 +146,57 @@ export function layoutDay(instances: EventInstance[], day: Date): TimedPlacement
     i = j
   }
   return out
+}
+
+export interface TaskPlacement<T> extends TimedLayout<T> {
+  /** Drawn on top of an event, indented from its left edge (Google Calendar). */
+  overEvent: boolean
+}
+
+/**
+ * Places the timed tasks of one day over the already laid-out events, the way Google Calendar
+ * does: events keep their width, and a task that overlaps events sits on top of them across the
+ * same width (the caller indents it a little so the event stays visible). Tasks that overlap
+ * each other split that width into columns, like events do.
+ */
+export function layoutTasks<T extends Task>(
+  tasks: T[],
+  events: TimedPlacement[],
+  day: Date,
+): TaskPlacement<T>[] {
+  return layoutTimed(tasks.map(taskEntry), day).map((p) => {
+    const bottom = p.top + p.height
+    const under = events.filter((e) => e.top < bottom && e.top + e.height > p.top)
+    if (under.length === 0) return { ...p, overEvent: false }
+    const left = Math.min(...under.map((e) => e.left))
+    const right = Math.max(...under.map((e) => e.left + e.width))
+    return {
+      ...p,
+      left: left + p.left * (right - left),
+      width: p.width * (right - left),
+      overEvent: true,
+    }
+  })
+}
+
+/** Timed events of one day (see `layoutTimed`); all-day and day-long events are skipped. */
+export function layoutDay(instances: EventInstance[], day: Date): TimedPlacement[] {
+  return layoutTimed(
+    instances
+      .filter((i) => !isAllDayRow(i))
+      .map((instance) => ({ item: instance, start: instance.start, end: instance.end })),
+    day,
+  ).map(({ item, ...rest }) => ({ instance: item, ...rest }))
+}
+
+/** A timed task as a layout entry: from its due time, TASK_SLOT_MIN long, kept within its day. */
+export function taskEntry<T extends Task>(task: T): TimedItem<T> {
+  const due = task.due!
+  const end = Math.min(
+    due.getTime() + TASK_SLOT_MIN * 60_000,
+    addDays(startOfDay(due), 1).getTime(),
+  )
+  return { item: task, start: due, end: new Date(end) }
 }
 
 /** Column index of a date within the day list, or -1. */

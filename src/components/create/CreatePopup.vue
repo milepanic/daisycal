@@ -32,13 +32,15 @@ import {
 import { addDays, parseDateKey, startOfDay, toDateKey } from '@/lib/dates'
 import { DEFAULT_NEW_EVENT_MIN } from '@/lib/layout'
 import { MONTHS_LONG, WEEKDAYS_LONG } from '@/lib/format'
+import { formatPickerDate, toMinutes } from '@/lib/timeInput'
 import { useFocusTrap } from '@/composables/useFocusTrap'
 import { useCalendarsStore } from '@/stores/calendars'
 import { useEventsStore } from '@/stores/events'
 import { useTasksStore } from '@/stores/tasks'
 import { useUiStore } from '@/stores/ui'
 import AppIcon from '@/components/ui/AppIcon.vue'
-import TimeSelect from '@/components/ui/TimeSelect.vue'
+import DatePicker from '@/components/ui/DatePicker.vue'
+import TimeInput from '@/components/ui/TimeInput.vue'
 
 const ui = useUiStore()
 const calendars = useCalendarsStore()
@@ -102,8 +104,71 @@ const end = computed(() => {
     const d = parseDateKey(form.endDate || form.date)
     return d ? addDays(startOfDay(d), 1) : null
   }
-  return combine(form.date, form.endTime)
+  return combine(form.endDate || form.date, form.endTime)
 })
+
+/** Whole days between the start and end date (0 = same day). */
+const spanDays = computed(() => {
+  const a = parseDateKey(form.date)
+  const b = parseDateKey(form.endDate || form.date)
+  return a && b ? Math.round((startOfDay(b).getTime() - startOfDay(a).getTime()) / 86_400_000) : 0
+})
+/**
+ * A timed event shows its end date only when it ends on another day; one ending at midnight
+ * right after reads as "23:00 – 00:00" without it.
+ */
+const endsOtherDay = computed(
+  () => spanDays.value > 1 || (spanDays.value === 1 && form.endTime !== '00:00'),
+)
+
+/**
+ * Picking an end time: within the first 24 hours the end follows the duration (picking 01:00
+ * for a 22:00 start ends the event the next day). Longer events keep their end date.
+ */
+function setEndTime(t: string) {
+  const s = start.value
+  if (!s || spanDays.value > 1) {
+    form.endTime = t
+    return
+  }
+  const duration = (toMinutes(t) - toMinutes(form.startTime) + 1440) % 1440
+  const e = new Date(s.getTime() + duration * 60_000)
+  form.endDate = toDateKey(e)
+  form.endTime = hhmm(e)
+}
+
+/**
+ * As in Google Calendar the date and time start as one line of text ("Thursday, November 12 ·
+ * 18:00 – 18:30"); clicking it shows the fields.
+ */
+const whenOpen = ref(false)
+const longDate = (key: string) => {
+  const d = parseDateKey(key)
+  return d ? formatPickerDate(d) : ''
+}
+const whenText = computed(() => {
+  if (kind.value === 'task') {
+    if (!form.dueDate) return 'No due date'
+    return form.dueTime ? `${longDate(form.dueDate)} · ${form.dueTime}` : longDate(form.dueDate)
+  }
+  if (form.allDay) {
+    return !form.endDate || form.endDate === form.date
+      ? longDate(form.date)
+      : `${longDate(form.date)} – ${longDate(form.endDate)}`
+  }
+  return endsOtherDay.value
+    ? `${longDate(form.date)}, ${form.startTime} – ${longDate(form.endDate)}, ${form.endTime}`
+    : `${longDate(form.date)} · ${form.startTime} – ${form.endTime}`
+})
+const repeatLabel = computed(
+  () => repeatOptions.value.find((o) => o.value === form.repeat)?.label ?? 'Does not repeat',
+)
+
+/** The single "x" next to the due date: removes the time first, then the date. */
+function clearDue() {
+  if (form.dueTime) form.dueTime = ''
+  else form.dueDate = ''
+}
 
 const repeatOptions = computed(() => {
   const d = start.value ?? new Date()
@@ -218,7 +283,19 @@ function loadTask(task: Task) {
   form.description = f.description
 }
 
+/** Set while the form is filled from the draft, so the "keep the length" watcher stays out. */
+let filling = false
+
 function init() {
+  filling = true
+  try {
+    fill()
+  } finally {
+    filling = false
+  }
+}
+
+function fill() {
   const d = draft.value
   if (!d) return
   error.value = null
@@ -268,19 +345,30 @@ function init() {
     ''
 }
 
-// Moving the start keeps the event length (as in the mockup's 12:00 – 13:00 slot).
+// Moving the start (date or time) keeps the event length, also across days.
 watch(
-  () => form.startTime,
-  (next, prev) => {
-    if (kind.value !== 'event' || form.allDay || !prev || !next) return
-    const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5))
-    const length = toMin(form.endTime) - toMin(prev)
+  () => [form.date, form.startTime] as const,
+  ([date, time], [prevDate, prevTime]) => {
+    if (filling || kind.value !== 'event' || !prevDate || !date) return
+    if (form.allDay) {
+      const a = parseDateKey(prevDate)
+      const b = parseDateKey(date)
+      const e = parseDateKey(form.endDate)
+      if (a && b && e)
+        form.endDate = toDateKey(addDays(e, Math.round((b.getTime() - a.getTime()) / 86_400_000)))
+      return
+    }
+    const prevStart = combine(prevDate, prevTime)
+    const prevEnd = combine(form.endDate || prevDate, form.endTime)
+    const next = combine(date, time)
+    if (!prevStart || !prevEnd || !next) return
+    const length = prevEnd.getTime() - prevStart.getTime()
     if (length <= 0) return
-    const end = Math.min(24 * 60 - 1, toMin(next) + length)
-    form.endTime = `${String(Math.floor(end / 60)).padStart(2, '0')}:${String(end % 60).padStart(2, '0')}`
+    const e = new Date(next.getTime() + length)
+    form.endDate = toDateKey(e)
+    form.endTime = hhmm(e)
   },
-  // Sync: a deferred run would pair the old start with the new end that init()/loadEvent() set
-  // right after, and stretch a new 14:00-14:30 event to 18:30.
+  // Sync, so each change is paired with the end it started from.
   { flush: 'sync' },
 )
 
@@ -290,12 +378,14 @@ watch(kind, (k) => {
   if (!lists.some((c) => c.url === form.collectionUrl)) form.collectionUrl = lists[0]?.url ?? ''
 })
 
-// Mirror the form into the draft so the grid previews it.
+// Mirror the form into the draft so the grid previews a new event or task. While editing
+// nothing leaves the form before Save: the calendar keeps showing the saved version.
 watch(
   () =>
     [
       form.title,
       form.date,
+      form.endDate,
       form.startTime,
       form.endTime,
       form.allDay,
@@ -305,6 +395,7 @@ watch(
       kind.value,
     ] as const,
   () => {
+    if (isEdit.value) return
     if (kind.value === 'task') {
       const due = form.dueDate ? combine(form.dueDate, form.dueTime || '00:00') : null
       ui.updateDraft({
@@ -359,7 +450,8 @@ const validation = computed<string | null>(() => {
   if (!form.collectionUrl) return kind.value === 'task' ? 'Pick a task list' : 'Pick a calendar'
   if (kind.value === 'event') {
     if (!start.value || !end.value) return 'Pick a date'
-    if (end.value <= start.value)
+    // A timed event may be zero minutes long ("18:00 (0 mins)"), an all-day one not.
+    if (form.allDay ? end.value <= start.value : end.value < start.value)
       return form.allDay ? 'End date must not be before the start' : 'End must be after the start'
   } else if (form.dueTime && !form.dueDate) return 'Pick a due date'
   return null
@@ -395,7 +487,10 @@ function taskForm(): TaskForm {
 async function save() {
   if (busy.value) return
   error.value = validation.value
-  if (error.value) return
+  if (error.value) {
+    if (/date|start/i.test(error.value)) whenOpen.value = true
+    return
+  }
   busy.value = true
   conflict.value = false
   try {
@@ -537,70 +632,97 @@ async function remove(deleteScope: EditScope) {
           <div class="flex items-start gap-x-4">
             <AppIcon name="clock" class="mt-1.5 size-5 shrink-0 text-gray-400" />
             <div class="min-w-0 flex-1">
-              <div class="flex flex-wrap items-center gap-1.5 text-sm">
-                <input
-                  v-model="form.date"
-                  type="date"
-                  aria-label="Start date"
-                  class="rounded-md bg-gray-100 px-2.5 py-1.5 font-medium text-gray-900 hover:bg-gray-200"
-                />
-                <template v-if="form.allDay">
-                  <span class="text-gray-400">–</span>
-                  <input
-                    v-model="form.endDate"
-                    type="date"
-                    aria-label="End date"
-                    class="rounded-md bg-gray-100 px-2.5 py-1.5 font-medium text-gray-900 hover:bg-gray-200"
+              <button
+                v-if="!whenOpen"
+                type="button"
+                class="-mx-2 -my-1 block w-[calc(100%+1rem)] rounded-md px-2 py-1 text-left hover:bg-gray-100"
+                data-testid="when-summary"
+                @click="whenOpen = true"
+              >
+                <span class="block text-sm text-gray-900">{{ whenText }}</span>
+                <span class="block text-xs text-gray-500">{{ repeatLabel }}</span>
+              </button>
+              <template v-else>
+                <div class="flex flex-wrap items-center gap-1.5 text-sm">
+                  <!-- Two dates in one row use the short form ("Wed, Nov 11") so the row fits. -->
+                  <DatePicker
+                    v-model="form.date"
+                    label="Start date"
+                    :week-start="ui.weekStart"
+                    :short="form.allDay || endsOtherDay"
                   />
-                </template>
-                <template v-else>
-                  <TimeSelect v-model="form.startTime" label="Start time" />
-                  <span class="text-gray-400">–</span>
-                  <TimeSelect v-model="form.endTime" label="End time" />
-                </template>
-              </div>
-              <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
-                <label class="flex cursor-pointer items-center gap-x-2 text-sm text-gray-700">
-                  <span class="grid size-4 shrink-0 place-items-center">
-                    <input
-                      v-model="form.allDay"
-                      type="checkbox"
-                      class="peer col-start-1 row-start-1 size-4 cursor-pointer appearance-none rounded-sm bg-gray-200 checked:bg-gray-900"
+                  <template v-if="form.allDay">
+                    <span class="text-gray-400">–</span>
+                    <DatePicker
+                      v-model="form.endDate"
+                      label="End date"
+                      :week-start="ui.weekStart"
+                      :min="form.date"
+                      short
                     />
-                    <svg
-                      class="pointer-events-none col-start-1 row-start-1 hidden size-3.5 text-white peer-checked:block"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      viewBox="0 0 14 14"
-                      aria-hidden="true"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M3 7.5 5.75 10.25 11 4"
-                      />
-                    </svg>
-                  </span>
-                  All day
-                </label>
-                <div class="relative">
-                  <label for="event-repeat" class="sr-only">Repeat</label>
-                  <select
-                    id="event-repeat"
-                    v-model="form.repeat"
-                    class="cursor-pointer appearance-none rounded-md py-1.5 pr-7 pl-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:outline-2 focus:outline-accent"
-                  >
-                    <option v-for="o in repeatOptions" :key="o.value" :value="o.value">
-                      {{ o.label }}
-                    </option>
-                  </select>
-                  <AppIcon
-                    name="chevron-down"
-                    class="pointer-events-none absolute top-1/2 right-2 size-4 -translate-y-1/2 text-gray-400"
-                  />
+                  </template>
+                  <template v-else>
+                    <TimeInput v-model="form.startTime" label="Start time" />
+                    <span class="text-gray-400">–</span>
+                    <TimeInput
+                      :model-value="form.endTime"
+                      label="End time"
+                      :from="spanDays > 1 ? '' : form.startTime"
+                      @update:model-value="setEndTime"
+                    />
+                    <DatePicker
+                      v-if="endsOtherDay"
+                      v-model="form.endDate"
+                      label="End date"
+                      :week-start="ui.weekStart"
+                      :min="form.date"
+                      short
+                    />
+                  </template>
                 </div>
-              </div>
+                <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <label class="flex cursor-pointer items-center gap-x-2 text-sm text-gray-700">
+                    <span class="grid size-4 shrink-0 place-items-center">
+                      <input
+                        v-model="form.allDay"
+                        type="checkbox"
+                        class="peer col-start-1 row-start-1 size-4 cursor-pointer appearance-none rounded-sm bg-gray-200 checked:bg-gray-900"
+                      />
+                      <svg
+                        class="pointer-events-none col-start-1 row-start-1 hidden size-3.5 text-white peer-checked:block"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        viewBox="0 0 14 14"
+                        aria-hidden="true"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M3 7.5 5.75 10.25 11 4"
+                        />
+                      </svg>
+                    </span>
+                    All day
+                  </label>
+                  <div class="relative">
+                    <label for="event-repeat" class="sr-only">Repeat</label>
+                    <select
+                      id="event-repeat"
+                      v-model="form.repeat"
+                      class="cursor-pointer appearance-none rounded-md py-1.5 pr-7 pl-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:outline-2 focus:outline-accent"
+                    >
+                      <option v-for="o in repeatOptions" :key="o.value" :value="o.value">
+                        {{ o.label }}
+                      </option>
+                    </select>
+                    <AppIcon
+                      name="chevron-down"
+                      class="pointer-events-none absolute top-1/2 right-2 size-4 -translate-y-1/2 text-gray-400"
+                    />
+                  </div>
+                </div>
+              </template>
               <div
                 v-if="isEdit && editingInstance?.isRecurring"
                 class="mt-2 flex flex-wrap items-center gap-x-4 text-sm text-gray-700"
@@ -718,40 +840,45 @@ async function remove(deleteScope: EditScope) {
           <div class="flex items-start gap-x-4">
             <AppIcon name="clock" class="mt-1.5 size-5 shrink-0 text-gray-400" />
             <div class="min-w-0 flex-1">
-              <div class="flex flex-wrap items-center gap-1.5 text-sm">
-                <input
-                  v-model="form.dueDate"
-                  type="date"
-                  aria-label="Due date"
-                  class="rounded-md bg-gray-100 px-2.5 py-1.5 font-medium text-gray-900 hover:bg-gray-200"
-                />
-                <TimeSelect v-if="form.dueTime" v-model="form.dueTime" label="Due time" />
-                <button
-                  v-if="!form.dueTime"
-                  type="button"
-                  class="rounded-md px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-900"
-                  @click="form.dueTime = '09:00'"
-                >
-                  Add time
-                </button>
-                <button
-                  v-if="form.dueTime"
-                  type="button"
-                  class="flex size-8 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-                  @click="form.dueTime = ''"
-                >
-                  <span class="sr-only">Remove time</span>
-                  <AppIcon name="close" class="size-4" />
-                </button>
-                <button
-                  v-if="form.dueDate"
-                  type="button"
-                  class="rounded-md px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-900"
-                  @click="((form.dueDate = ''), (form.dueTime = ''))"
-                >
-                  No due date
-                </button>
-              </div>
+              <button
+                v-if="!whenOpen"
+                type="button"
+                class="-mx-2 -my-1 block w-[calc(100%+1rem)] rounded-md px-2 py-1 text-left hover:bg-gray-100"
+                data-testid="when-summary"
+                @click="whenOpen = true"
+              >
+                <span class="block text-sm text-gray-900">{{ whenText }}</span>
+              </button>
+              <template v-else>
+                <div class="flex flex-wrap items-center gap-1.5 text-sm">
+                  <DatePicker
+                    v-model="form.dueDate"
+                    label="Due date"
+                    :week-start="ui.weekStart"
+                    placeholder="No due date"
+                  />
+                  <TimeInput v-if="form.dueTime" v-model="form.dueTime" label="Due time" />
+                  <button
+                    v-if="!form.dueTime && form.dueDate"
+                    type="button"
+                    class="rounded-md px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                    @click="form.dueTime = '09:00'"
+                  >
+                    Add time
+                  </button>
+                  <button
+                    v-if="form.dueDate"
+                    type="button"
+                    class="flex size-8 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                    @click="clearDue"
+                  >
+                    <span class="sr-only">{{
+                      form.dueTime ? 'Remove time' : 'Remove due date'
+                    }}</span>
+                    <AppIcon name="close" class="size-4" />
+                  </button>
+                </div>
+              </template>
             </div>
           </div>
 

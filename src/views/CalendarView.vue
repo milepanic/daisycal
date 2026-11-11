@@ -13,6 +13,7 @@ import { useTasksStore } from '@/stores/tasks'
 import { type Anchor, useUiStore } from '@/stores/ui'
 import AgendaView from '@/components/calendar/AgendaView.vue'
 import EventPopover from '@/components/calendar/EventPopover.vue'
+import TaskPopover from '@/components/calendar/TaskPopover.vue'
 import MonthView from '@/components/calendar/MonthView.vue'
 import TasksPanel from '@/components/calendar/TasksPanel.vue'
 import TimeGrid from '@/components/calendar/TimeGrid.vue'
@@ -47,7 +48,7 @@ const selectedKey = computed(() =>
   ui.selection ? `${ui.selection.objectUrl}|${ui.selection.recurrenceId ?? ''}` : null,
 )
 const selectedInstance = computed(() =>
-  ui.selection
+  ui.selection && ui.selection.kind !== 'task'
     ? instances.value.find(
         (i) =>
           i.objectUrl === ui.selection!.objectUrl &&
@@ -70,13 +71,13 @@ function selectEvent(instance: EventInstance, el: HTMLElement) {
     anchor: anchorOf(el),
   })
 }
-function selectTask(task: Task) {
-  ui.openCreate({
-    kind: 'task',
-    collectionUrl: task.collectionUrl,
-    edit: { objectUrl: task.objectUrl, recurrenceId: null },
-  })
+/** A task opens its details popover, like an event (Google Calendar). */
+function selectTask(task: Task, el: HTMLElement) {
+  ui.select({ kind: 'task', objectUrl: task.objectUrl, recurrenceId: null, anchor: anchorOf(el) })
 }
+const selectedTask = computed(() =>
+  ui.selection?.kind === 'task' ? tasks.get(ui.selection.objectUrl) : undefined,
+)
 /** Drag/resize in the grid. Recurring events change only the dragged occurrence. */
 async function moveEvent(instance: EventInstance, start: Date, end: Date) {
   const run = () =>
@@ -185,6 +186,14 @@ const draftColor = computed(() =>
     <EventPopover
       v-if="selectedInstance"
       :instance="selectedInstance"
+      :anchor="ui.selection?.anchor"
+      @close="ui.select(null)"
+    />
+  </Transition>
+  <Transition name="pop">
+    <TaskPopover
+      v-if="selectedTask"
+      :task="selectedTask"
       :anchor="ui.selection?.anchor"
       @close="ui.select(null)"
     />

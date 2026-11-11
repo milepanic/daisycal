@@ -2,11 +2,13 @@
 /**
  * Non-interactive look-alike of the round task checkbox (ColorCheckbox `round`), for places
  * where the task sits inside a button (calendar chips, agenda rows, drag previews).
+ * `onColor` is for chips filled with the list color: a white ring, white when done with the
+ * checkmark in the list color.
  */
-withDefaults(defineProps<{ color: string; checked?: boolean; size?: 'sm' | 'md' }>(), {
-  checked: false,
-  size: 'md',
-})
+withDefaults(
+  defineProps<{ color: string; checked?: boolean; size?: 'sm' | 'md'; onColor?: boolean }>(),
+  { checked: false, size: 'md', onColor: false },
+)
 </script>
 
 <template>
@@ -14,7 +16,13 @@ withDefaults(defineProps<{ color: string; checked?: boolean; size?: 'sm' | 'md' 
     class="grid shrink-0 place-items-center rounded-full border-[1.5px]"
     :class="[
       size === 'sm' ? 'size-2.5' : 'size-3',
-      checked ? 'border-(--cb-color) bg-(--cb-color)' : 'border-(--cb-color)/50 bg-(--cb-color)/5',
+      onColor
+        ? checked
+          ? 'border-white bg-white'
+          : 'border-white/90 bg-white/15'
+        : checked
+          ? 'border-(--cb-color) bg-(--cb-color)'
+          : 'border-(--cb-color)/50 bg-(--cb-color)/5',
     ]"
     :style="{ '--cb-color': color }"
     aria-hidden="true"
@@ -22,8 +30,7 @@ withDefaults(defineProps<{ color: string; checked?: boolean; size?: 'sm' | 'md' 
   >
     <svg
       v-if="checked"
-      class="text-white"
-      :class="size === 'sm' ? 'size-2' : 'size-2.5'"
+      :class="[size === 'sm' ? 'size-2' : 'size-2.5', onColor ? 'text-(--cb-color)' : 'text-white']"
       fill="none"
       stroke="currentColor"
       stroke-width="2"

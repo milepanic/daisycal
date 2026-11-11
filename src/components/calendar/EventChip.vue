@@ -33,7 +33,7 @@ function onClick(e: MouseEvent) {
     :data-selected="selected || undefined"
     class="block w-full min-w-0 cursor-pointer overflow-hidden text-left text-white transition-[filter,box-shadow] duration-150 hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gray-900 data-selected:ring-2 data-selected:ring-gray-900 data-selected:ring-offset-1"
     :class="[
-      variant === 'allday' ? 'truncate rounded-md px-2 py-0.5 text-xs font-semibold' : '',
+      variant === 'allday' ? 'truncate rounded-md px-2 py-0.5 text-xs font-medium' : '',
       variant === 'month'
         ? '@container flex items-center gap-x-1 rounded-md px-1.5 py-0.5 text-xs'
         : '',
@@ -51,20 +51,20 @@ function onClick(e: MouseEvent) {
   >
     <template v-if="variant === 'allday'">{{ instance.summary || '(No title)' }}</template>
     <template v-else-if="variant === 'month'">
-      <span class="min-w-0 truncate font-semibold">{{ instance.summary || '(No title)' }}</span>
+      <span class="min-w-0 truncate font-medium">{{ instance.summary || '(No title)' }}</span>
       <span class="ml-auto hidden shrink-0 text-[11px] text-white/80 @[7rem]:inline">{{
         formatTime(instance.start)
       }}</span>
     </template>
     <template v-else-if="compact">
-      <span class="min-w-0 truncate font-semibold">{{ instance.summary || '(No title)' }}</span>
+      <span class="min-w-0 truncate font-medium">{{ instance.summary || '(No title)' }}</span>
       <span class="ml-auto hidden shrink-0 text-[11px] text-white/80 @[8rem]:inline">
         <time :datetime="instance.start.toISOString()">{{ formatTime(instance.start) }}</time
         >–<time :datetime="instance.end.toISOString()">{{ formatTime(instance.end) }}</time>
       </span>
     </template>
     <template v-else>
-      <p class="w-full truncate font-semibold">{{ instance.summary || '(No title)' }}</p>
+      <p class="w-full truncate font-medium">{{ instance.summary || '(No title)' }}</p>
       <p class="w-full truncate text-[11px] text-white/80">
         <time :datetime="instance.start.toISOString()">{{ formatTime(instance.start) }}</time
         >–<time :datetime="instance.end.toISOString()">{{ formatTime(instance.end) }}</time>

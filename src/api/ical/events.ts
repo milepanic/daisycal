@@ -261,10 +261,7 @@ function ensureVtimezone(vcalendar: ICAL.Component, tzid: string | null | undefi
 }
 
 /** Builds a brand-new `.ics` for the form. Returns the text and the UID used as file name. */
-export function buildEventIcs(
-  form: EventForm,
-  uid = newUid(),
-): { uid: string; ics: string } {
+export function buildEventIcs(form: EventForm, uid = newUid()): { uid: string; ics: string } {
   const vcalendar = createCalendar()
   const vevent = new ICAL.Component('vevent')
   vevent.addPropertyWithValue('uid', uid)

@@ -15,6 +15,7 @@ import {
   eventIcs,
   todoIcs,
 } from '@/stores/__tests__/fakeClient'
+import { DAY_PX, HOUR_PX } from '@/lib/layout'
 
 let client: FakeClient
 
@@ -215,8 +216,8 @@ describe('app shell', () => {
         top: 0,
         left: i * 100,
         width: 100,
-        height: 1440,
-        bottom: 1440,
+        height: DAY_PX,
+        bottom: DAY_PX,
         right: (i + 1) * 100,
         x: i * 100,
         y: 0,
@@ -234,9 +235,10 @@ describe('app shell', () => {
           ...init,
         }),
       )
-    fire('pointerdown', { clientX: 350, clientY: 1025 })
-    fire('pointermove', { clientX: 350, clientY: 1145 })
-    fire('pointerup', { clientX: 350, clientY: 1145 })
+    // 17:00 → 19:00 is two hours further down.
+    fire('pointerdown', { clientX: 350, clientY: (1025 * HOUR_PX) / 60 })
+    fire('pointermove', { clientX: 350, clientY: (1145 * HOUR_PX) / 60 })
+    fire('pointerup', { clientX: 350, clientY: (1145 * HOUR_PX) / 60 })
     await flushPromises()
     const saved = client.objects.get(`${MY_TASKS.url}a.ics`)!.data
     expect(saved).toContain('DUE;TZID=Europe/Belgrade:20261015T190000')

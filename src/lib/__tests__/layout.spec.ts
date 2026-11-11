@@ -2,12 +2,16 @@ import { describe, expect, it } from 'vitest'
 
 import type { EventInstance, Task } from '@/api/ical'
 import {
+  HOUR_PX,
   buildAgendaDays,
   buildMonthCells,
   isAllDayRow,
   layoutDay,
   layoutSpans,
+  layoutTasks,
+  layoutTimed,
   slotFromOffset,
+  taskEntry,
 } from '../layout'
 
 let n = 0
@@ -56,12 +60,14 @@ function task(due: Date | null, extra: Partial<Task> = {}): Task {
   }
 }
 const d = (day: number, h = 0, m = 0) => new Date(2026, 9, day, h, m)
+/** Grid pixels for a number of minutes. */
+const px = (minutes: number) => (minutes * HOUR_PX) / 60
 
 describe('layoutDay', () => {
   it('positions by time with a minimum height and compact flag', () => {
     const [a, b] = layoutDay([ev(d(5, 9), d(5, 10)), ev(d(5, 10, 20), d(5, 10, 30))], d(5))
-    expect(a).toMatchObject({ top: 540, height: 60, left: 0, width: 1, compact: false })
-    expect(b).toMatchObject({ top: 620, height: 16, compact: true })
+    expect(a).toMatchObject({ top: px(540), height: px(60), left: 0, width: 1, compact: false })
+    expect(b).toMatchObject({ top: px(620), height: 16, compact: true })
   })
 
   it('splits overlapping events into columns and lets chips stretch over free columns', () => {
@@ -83,17 +89,57 @@ describe('layoutDay', () => {
     const night = ev(d(5, 23), d(6, 1))
     const sameDay = layoutDay([night], d(5))[0]!
     expect(sameDay).toMatchObject({
-      top: 1380,
-      height: 60,
+      top: px(1380),
+      height: px(60),
       continuesAfter: true,
       continuesBefore: false,
     })
     const nextDay = layoutDay([night], d(6))[0]!
-    expect(nextDay).toMatchObject({ top: 0, height: 60, continuesBefore: true })
+    expect(nextDay).toMatchObject({ top: 0, height: px(60), continuesBefore: true })
     expect(layoutDay([ev(d(5), d(6), { allDay: true }), ev(d(5, 8), d(6, 9))], d(5))).toHaveLength(
       0,
     )
     expect(isAllDayRow(ev(d(5, 8), d(6, 9)))).toBe(true)
+  })
+})
+
+describe('layoutTasks (tasks over events, Google Calendar style)', () => {
+  it('keeps the event width and lays an overlapping task over it', () => {
+    const meeting = ev(d(5, 13), d(5, 14), { summary: 'meeting' })
+    const events = layoutDay([meeting], d(5))
+    const call = task(d(5, 13, 15), { summary: 'call' })
+    const mail = task(d(5, 13, 15), { summary: 'mail' })
+    const later = task(d(5, 15), { summary: 'later' })
+    const placed = Object.fromEntries(
+      layoutTasks([call, mail, later], events, d(5)).map((p) => [p.item.summary, p]),
+    )
+    expect(events[0]).toMatchObject({ top: px(780), height: px(60), left: 0, width: 1 })
+    // 30-minute blocks over the meeting; the two tasks share its width between them.
+    expect(placed.call).toMatchObject({
+      top: px(795),
+      height: px(30),
+      left: 0,
+      width: 0.5,
+      overEvent: true,
+    })
+    expect(placed.mail).toMatchObject({ top: px(795), left: 0.5, width: 0.5, overEvent: true })
+    // Nothing underneath: a plain full-width chip.
+    expect(placed.later).toMatchObject({ top: px(900), left: 0, width: 1, overEvent: false })
+  })
+
+  it('covers only the events it overlaps', () => {
+    const a = ev(d(5, 9), d(5, 11), { summary: 'a' })
+    const b = ev(d(5, 9), d(5, 10), { summary: 'b' })
+    const events = layoutDay([a, b], d(5))
+    const [t] = layoutTasks([task(d(5, 10, 15))], events, d(5))
+    // Only "a" (left half) is still running at 10:15.
+    expect(t).toMatchObject({ left: 0, width: 0.5, overEvent: true })
+  })
+
+  it('keeps a late task inside its own day', () => {
+    const late = taskEntry(task(d(5, 23, 45)))
+    expect(late.end).toEqual(d(6))
+    expect(layoutTimed([late], d(6))).toEqual([])
   })
 })
 
@@ -180,7 +226,7 @@ describe('buildAgendaDays', () => {
 
 describe('slotFromOffset', () => {
   it('snaps to 30 minutes within the day', () => {
-    expect(slotFromOffset(d(5), 635)).toEqual(d(5, 10, 30))
+    expect(slotFromOffset(d(5), px(635))).toEqual(d(5, 10, 30))
     expect(slotFromOffset(d(5), -10)).toEqual(d(5, 0, 0))
     expect(slotFromOffset(d(5), 99999)).toEqual(d(5, 23, 30))
   })

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 /** One task row (mockup tasks.html): round checkbox in the list color, title, due badge, priority flag. */
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 
 import type { Task } from '@/api/ical'
 import { formatShortDateTime } from '@/lib/format'
+import { playCompleteSound } from '@/lib/sounds'
 import { dueBadge } from '@/lib/taskBadge'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import ColorCheckbox from '@/components/ui/ColorCheckbox.vue'
@@ -21,6 +22,60 @@ function onPointerDown(e: PointerEvent) {
   if ((e.target as HTMLElement).closest('input')) return
   emit('grab', props.task, e)
 }
+
+/**
+ * Completing a task plays a sound and a short "pop" before the change is reported, so the row
+ * does not jump to the Completed section mid-animation. With reduced motion (or no matchMedia,
+ * as in tests) the change is reported right away.
+ */
+const CELEBRATE_MS = 550
+const celebrating = ref(false)
+let celebrateTimer: ReturnType<typeof setTimeout> | undefined
+
+function reducedMotion() {
+  return (
+    typeof window.matchMedia !== 'function' ||
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  )
+}
+
+function finishCelebration() {
+  clearTimeout(celebrateTimer)
+  celebrateTimer = undefined
+  celebrating.value = false
+  emit('toggle', props.task, true)
+}
+
+function onCheck(done: boolean) {
+  if (celebrating.value) {
+    // Unticked again during the animation: the task was never saved as completed.
+    if (!done) {
+      clearTimeout(celebrateTimer)
+      celebrateTimer = undefined
+      celebrating.value = false
+    }
+    return
+  }
+  if (!done || props.task.completed) {
+    emit('toggle', props.task, done)
+    return
+  }
+  playCompleteSound()
+  if (reducedMotion()) {
+    emit('toggle', props.task, true)
+    return
+  }
+  celebrating.value = true
+  celebrateTimer = setTimeout(finishCelebration, CELEBRATE_MS)
+}
+
+// Leaving the view mid-animation still saves the completion.
+onBeforeUnmount(() => {
+  if (celebrateTimer) finishCelebration()
+})
+
+/** Six sparks around the checkbox, 60° apart. */
+const SPARKS = [0, 60, 120, 180, 240, 300]
 
 const badge = computed(() => dueBadge(props.task))
 const priorityClass = computed(() =>
@@ -40,14 +95,28 @@ const priorityClass = computed(() =>
     :data-task="task.uid"
     @pointerdown="onPointerDown"
   >
-    <span class="grid h-5 w-4 shrink-0 place-items-center">
+    <span
+      class="relative grid h-5 w-4 shrink-0 place-items-center"
+      :class="celebrating ? 'task-celebrate' : ''"
+      :style="{ '--spark-color': color }"
+    >
       <ColorCheckbox
         :color="color"
-        :model-value="task.completed"
+        :model-value="task.completed || celebrating"
         round
         :label="`${task.completed ? 'Mark as not completed' : 'Mark as completed'}: ${task.summary}`"
-        @update:model-value="emit('toggle', task, $event)"
+        @update:model-value="onCheck"
       />
+      <template v-if="celebrating">
+        <span class="task-ring" aria-hidden="true"></span>
+        <span
+          v-for="a in SPARKS"
+          :key="a"
+          class="task-spark"
+          :style="{ '--spark-angle': `${a}deg` }"
+          aria-hidden="true"
+        ></span>
+      </template>
     </span>
     <button
       type="button"
@@ -57,7 +126,13 @@ const priorityClass = computed(() =>
     >
       <p
         class="flex items-center gap-x-1.5 text-sm"
-        :class="task.completed ? 'text-gray-400 line-through' : 'text-gray-900'"
+        :class="
+          task.completed
+            ? 'text-gray-400 line-through'
+            : celebrating
+              ? 'text-gray-400 line-through decoration-gray-400 transition-colors duration-300'
+              : 'text-gray-900'
+        "
       >
         <AppIcon
           v-if="task.priority && !task.completed"
@@ -73,10 +148,13 @@ const priorityClass = computed(() =>
       </p>
       <p v-else-if="badge" class="mt-1.5">
         <span
-          class="inline-flex items-center gap-x-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium"
+          class="inline-flex items-center gap-x-1 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1"
           :class="badge.cls"
-          >{{ badge.label }}</span
+          data-testid="due-badge"
         >
+          <AppIcon name="calendar" class="size-3" />
+          {{ badge.label }}
+        </span>
       </p>
     </button>
   </li>

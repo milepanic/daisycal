@@ -55,6 +55,8 @@ export interface Anchor {
 }
 
 export interface Selection {
+  /** What was clicked; events when left out. */
+  kind?: 'event' | 'task'
   objectUrl: string
   /** `recurrenceId.toString()` of the occurrence, when the event repeats. */
   recurrenceId: string | null

@@ -71,11 +71,10 @@ function pickDate(d: Date) {
 
     <div class="flex shrink-0 items-center px-3 py-3">
       <p
-        class="font-signature text-[26px] leading-[1.4] font-light text-gray-500 italic"
+        class="font-signature text-[30px] leading-none whitespace-nowrap text-gray-500"
         :title="`${auth.username} · ${auth.serverUrl}`"
       >
-        <span class="block whitespace-nowrap">Imagined by</span>
-        <span class="block whitespace-nowrap">Mile Panić</span>
+        Mile's Calendar
       </p>
     </div>
   </aside>

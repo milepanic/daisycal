@@ -8,6 +8,7 @@ import { useNotificationsStore } from '@/stores/notifications'
 import { useTasksStore } from '@/stores/tasks'
 import { useUiStore } from '@/stores/ui'
 import AppIcon from '@/components/ui/AppIcon.vue'
+import TaskInlineAdd from '@/components/tasks/TaskInlineAdd.vue'
 import TaskRow from '@/components/tasks/TaskRow.vue'
 
 const calendars = useCalendarsStore()
@@ -36,6 +37,7 @@ const all = computed(() =>
 const open = computed(() => all.value.filter((t) => !t.completed))
 const completed = computed(() => all.value.filter((t) => t.completed))
 const pickerOpen = ref(false)
+const adding = ref(false)
 
 function openTask(task: Task) {
   ui.openCreate({
@@ -95,22 +97,17 @@ async function toggle(t: Task, done: boolean) {
     </div>
 
     <div class="flex-1 overflow-y-auto px-2 pb-4">
-      <button
-        type="button"
-        class="flex w-full items-center gap-x-3 rounded-md px-2 py-2 text-sm font-semibold text-accent hover:bg-accent/10"
-        :disabled="!listUrl"
-        @click="ui.openCreate({ kind: 'task', collectionUrl: listUrl ?? undefined })"
-      >
-        <AppIcon name="plus" class="size-5" />
-        Add a task
-      </button>
+      <TaskInlineAdd v-model:adding="adding" :list="list" :color="color" />
       <p
         v-if="listUrl && tasks.isLoading(listUrl) && all.length === 0"
         class="px-2 py-2 text-sm text-gray-400"
       >
         Loading…
       </p>
-      <p v-else-if="listUrl && open.length === 0" class="px-2 py-2 text-sm text-gray-400">
+      <p
+        v-else-if="listUrl && open.length === 0 && !adding"
+        class="px-2 py-2 text-sm text-gray-400"
+      >
         No open tasks.
       </p>
 

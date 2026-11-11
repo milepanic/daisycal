@@ -16,9 +16,12 @@ import {
   DAY_PX,
   DEFAULT_NEW_EVENT_MIN,
   HOUR_PX,
+  TASK_SLOT_MIN,
+  type TimedPlacement,
   isAllDayRow,
   layoutDay,
   layoutSpans,
+  layoutTasks,
   minutesSinceMidnight,
   slotFromOffset,
 } from '@/lib/layout'
@@ -78,8 +81,13 @@ const SNAP = 15
 const DRAG_THRESHOLD_PX = 6
 /** Space under every chip so back-to-back events and tasks do not touch (Google Calendar). */
 const CHIP_GAP_PX = 2
-/** Task chips: one fixed-height row. */
-const TASK_CHIP_PX = 20
+/** A timed task is a TASK_SLOT_MIN block, laid out with the events (Google Calendar). */
+const TASK_CHIP_PX = TASK_SLOT_MIN * PX_PER_MIN - CHIP_GAP_PX
+/** A task over an event starts this far in, so the event stays visible on its left. */
+const TASK_INSET_PX = 8
+
+/** What a day column shows: events, and timed tasks drawn over them when they overlap. */
+type GridItem = { kind: 'event'; instance: EventInstance } | { kind: 'task'; task: Task }
 
 const allDayPlacements = computed(() =>
   layoutSpans(props.instances.filter(isAllDayRow), props.days, (i) => ({
@@ -121,18 +129,42 @@ const columns = computed(() =>
       day,
       key: toDateKey(day),
       isToday: isSameDay(day, now.value),
-      placements: layoutDay(props.instances, day),
-      tasks: props.tasks.filter(
-        (t) => t.due && !t.dueAllDay && t.due >= dayStart && t.due < dayEnd,
-      ),
+      placements: placementsFor(day, dayStart, dayEnd),
     }
   }),
 )
+
+/** A grid chip: an event, or a task (laid over the events it overlaps, Google Calendar style). */
+interface GridPlacement extends Omit<TimedPlacement, 'instance'> {
+  item: GridItem
+  overEvent: boolean
+}
+
+function placementsFor(day: Date, dayStart: Date, dayEnd: Date): GridPlacement[] {
+  const events = layoutDay(props.instances, day)
+  const tasks = layoutTasks(
+    props.tasks.filter((t) => t.due && !t.dueAllDay && t.due >= dayStart && t.due < dayEnd),
+    events,
+    day,
+  )
+  return [
+    ...events.map(({ instance, ...p }) => ({
+      ...p,
+      item: { kind: 'event', instance } as GridItem,
+      overEvent: false,
+    })),
+    ...tasks.map(({ item, ...p }) => ({ ...p, item: { kind: 'task', task: item } as GridItem })),
+  ]
+}
 
 const nowTop = computed(() => minutesSinceMidnight(now.value, now.value) * PX_PER_MIN)
 
 function eventKey(i: EventInstance) {
   return `${i.objectUrl}|${i.recurrenceId?.toString() ?? ''}`
+}
+/** Selection / drag key of a grid item (tasks never recur, so their key ends in "|"). */
+function itemKey(it: GridItem) {
+  return it.kind === 'event' ? eventKey(it.instance) : `${it.task.objectUrl}|`
 }
 
 function anchorAt(el: HTMLElement, clientY: number): Anchor {
@@ -611,19 +643,6 @@ function onGridKeydown(e: KeyboardEvent) {
   const top = target.offsetTop
   candidates.sort((a, b) => Math.abs(a.offsetTop - top) - Math.abs(b.offsetTop - top))[0]!.focus()
 }
-
-/** Tasks due at the same time share one row (mockup: "3 tasks at the same time, inline"). */
-function taskRows(tasks: Task[]): { top: number; tasks: Task[] }[] {
-  const byTime = new Map<number, Task[]>()
-  for (const t of tasks) {
-    const key = t.due!.getTime()
-    byTime.set(key, [...(byTime.get(key) ?? []), t])
-  }
-  return [...byTime.entries()].map(([time, list]) => ({
-    top: minutesSinceMidnight(new Date(time), new Date(time)) * PX_PER_MIN,
-    tasks: list,
-  }))
-}
 </script>
 
 <template>
@@ -741,7 +760,7 @@ function taskRows(tasks: Task[]): { top: number; tasks: Task[] }[] {
         <div
           v-for="c in columns"
           :key="c.key"
-          class="relative cursor-pointer border-l border-gray-200 bg-[repeating-linear-gradient(to_bottom,var(--color-gray-200)_0_1px,transparent_1px_60px)]"
+          class="relative cursor-pointer border-l border-gray-200 bg-[repeating-linear-gradient(to_bottom,var(--color-gray-200)_0_1px,transparent_1px_48px)]"
           :data-day="c.key"
           tabindex="0"
           role="gridcell"
@@ -750,54 +769,55 @@ function taskRows(tasks: Task[]): { top: number; tasks: Task[] }[] {
         >
           <div
             v-for="p in c.placements"
-            :key="eventKey(p.instance)"
-            class="absolute z-10 transition-opacity duration-150"
+            :key="itemKey(p.item)"
+            class="absolute transition-opacity duration-150"
             :class="[
-              p.left > 0 ? 'ring-1 ring-white' : '',
-              draggingKey === eventKey(p.instance) ? 'opacity-40' : '',
+              p.overEvent ? 'z-20 rounded-md ring-1 ring-white' : 'z-10',
+              p.left > 0 && !p.overEvent ? 'ring-1 ring-white' : '',
+              draggingKey === (p.item.kind === 'event' ? itemKey(p.item) : p.item.task.objectUrl)
+                ? 'opacity-40'
+                : '',
             ]"
             :style="{
               top: `${p.top}px`,
               height: `${p.continuesAfter ? p.height : p.height - CHIP_GAP_PX}px`,
-              left: `calc(${p.left * 100}% + 2px)`,
-              width: `calc(${p.width * 100}% - 4px)`,
+              left: `calc(${p.left * 100}% + ${2 + (p.overEvent ? TASK_INSET_PX : 0)}px)`,
+              width: `calc(${p.width * 100}% - ${4 + (p.overEvent ? TASK_INSET_PX : 0)}px)`,
             }"
-            :data-chip="eventKey(p.instance)"
-            @pointerdown="onChipPointerDown(p.instance, c.day, $event)"
+            :data-chip="p.item.kind === 'event' ? itemKey(p.item) : undefined"
+            @pointerdown="
+              p.item.kind === 'event'
+                ? onChipPointerDown(p.item.instance, c.day, $event)
+                : onTaskPointerDown(p.item.task, c.day, $event)
+            "
           >
-            <EventChip
-              :instance="p.instance"
-              :color="colorFor(p.instance.collectionUrl)"
-              variant="timed"
-              :compact="p.compact"
-              :selected="selectedKey === eventKey(p.instance)"
-              :continues-before="p.continuesBefore"
-              :continues-after="p.continuesAfter"
-              class="cursor-grab active:cursor-grabbing"
-              @select="onSelectEvent"
-            />
-            <div
-              v-if="!p.continuesAfter"
-              class="absolute inset-x-0 bottom-0 h-1.5 cursor-ns-resize"
-              data-testid="resize-handle"
-              @pointerdown="onResizePointerDown(p.instance, c.day, $event)"
-            ></div>
-          </div>
-          <div
-            v-for="row in taskRows(c.tasks)"
-            :key="row.top"
-            class="absolute inset-x-0.5 z-10 flex gap-x-0.5"
-            :style="{ top: `${row.top}px`, height: `${TASK_CHIP_PX}px` }"
-          >
+            <template v-if="p.item.kind === 'event'">
+              <EventChip
+                :instance="p.item.instance"
+                :color="colorFor(p.item.instance.collectionUrl)"
+                variant="timed"
+                :compact="p.compact"
+                :selected="selectedKey === itemKey(p.item)"
+                :continues-before="p.continuesBefore"
+                :continues-after="p.continuesAfter"
+                class="cursor-grab active:cursor-grabbing"
+                @select="onSelectEvent"
+              />
+              <div
+                v-if="!p.continuesAfter"
+                class="absolute inset-x-0 bottom-0 h-1.5 cursor-ns-resize"
+                data-testid="resize-handle"
+                @pointerdown="onResizePointerDown(p.item.instance, c.day, $event)"
+              ></div>
+            </template>
             <TaskChip
-              v-for="t in row.tasks"
-              :key="t.objectUrl"
-              :task="t"
-              :color="colorFor(t.collectionUrl)"
-              class="min-w-0 flex-1 cursor-grab transition-opacity duration-150 active:cursor-grabbing"
-              :class="draggingKey === t.objectUrl ? 'opacity-40' : ''"
-              :data-task-chip="t.objectUrl"
-              @pointerdown="onTaskPointerDown(t, c.day, $event)"
+              v-else
+              :task="p.item.task"
+              :color="colorFor(p.item.task.collectionUrl)"
+              :selected="selectedKey === itemKey(p.item)"
+              show-time
+              class="h-full cursor-grab active:cursor-grabbing"
+              :data-task-chip="p.item.task.objectUrl"
               @select="onSelectTask"
             />
           </div>
@@ -806,25 +826,25 @@ function taskRows(tasks: Task[]): { top: number; tasks: Task[] }[] {
             class="pointer-events-none absolute inset-x-0.5 z-40 overflow-hidden rounded-md text-xs ring-2 ring-white"
             :class="
               dragPreview.task
-                ? 'flex items-center gap-x-1.5 bg-gray-100 px-2'
+                ? 'flex items-center gap-x-1 pr-1.5 pl-1 text-white'
                 : 'px-2 py-1 text-white'
             "
             :style="{
               top: `${dragPreview.top}px`,
               height: `${dragPreview.height}px`,
-              backgroundColor: dragPreview.task ? undefined : dragPreview.color,
+              backgroundColor: dragPreview.color,
             }"
             data-testid="drag-preview"
           >
             <template v-if="dragPreview.task">
-              <TaskDot :color="dragPreview.color ?? '#7c3aed'" />
-              <span class="truncate font-medium text-gray-800">{{ dragPreview.title }}</span>
-              <span class="ml-auto shrink-0 text-[11px] text-gray-500">{{
+              <TaskDot :color="dragPreview.color ?? '#7c3aed'" size="sm" on-color />
+              <span class="truncate font-medium">{{ dragPreview.title }}</span>
+              <span class="ml-auto shrink-0 text-[11px] text-white/80">{{
                 formatTime(dragPreview.from)
               }}</span>
             </template>
             <template v-else>
-              <p class="truncate font-semibold">{{ dragPreview.title }}</p>
+              <p class="truncate font-medium">{{ dragPreview.title }}</p>
               <p class="truncate text-[11px] text-white/80">
                 {{ formatTime(dragPreview.from) }}–{{ formatTime(dragPreview.to) }}
               </p>
@@ -835,24 +855,22 @@ function taskRows(tasks: Task[]): { top: number; tasks: Task[] }[] {
             class="pointer-events-none absolute inset-x-0.5 z-40 overflow-hidden rounded-md text-xs ring-2 ring-white"
             :class="
               draft?.kind === 'task'
-                ? 'flex items-center gap-x-1.5 bg-gray-100 px-2'
+                ? 'flex items-center gap-x-1 pr-1.5 pl-1 text-white'
                 : 'px-2 py-1 text-white'
             "
             :style="{
               top: `${draftPlacement(c.day)!.top}px`,
               height: `${draftPlacement(c.day)!.height}px`,
-              backgroundColor: draft?.kind === 'task' ? undefined : draftColor,
+              backgroundColor: draftColor,
             }"
             data-testid="draft-chip"
           >
             <template v-if="draft?.kind === 'task'">
-              <TaskDot :color="draftColor ?? '#7c3aed'" />
-              <span class="truncate font-medium text-gray-800">{{
-                draft?.title || '(No title)'
-              }}</span>
+              <TaskDot :color="draftColor ?? '#7c3aed'" size="sm" on-color />
+              <span class="truncate font-medium">{{ draft?.title || '(No title)' }}</span>
             </template>
             <template v-else>
-              <p class="truncate font-semibold">{{ draft?.title || '(No title)' }}</p>
+              <p class="truncate font-medium">{{ draft?.title || '(No title)' }}</p>
               <p class="truncate text-[11px] text-white/80">
                 {{ formatTime(draft!.start!) }}–{{ formatTime(draft!.end!) }}
               </p>

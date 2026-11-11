@@ -192,10 +192,7 @@ function ensureVtimezone(vcalendar: ICAL.Component, due: ICAL.Time | null) {
   if (vtz) vcalendar.addSubcomponent(vtz)
 }
 
-export function buildTaskIcs(
-  form: TaskForm,
-  uid = newUid(),
-): { uid: string; ics: string } {
+export function buildTaskIcs(form: TaskForm, uid = newUid()): { uid: string; ics: string } {
   const vcalendar = createCalendar()
   const vtodo = new ICAL.Component('vtodo')
   vtodo.addPropertyWithValue('uid', uid)
