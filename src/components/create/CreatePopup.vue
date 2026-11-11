@@ -62,6 +62,8 @@ const form = reactive({
   allDay: false,
   repeat: 'none' as string,
   alarm: null as number | null,
+  /** Apple travel time before the start, in minutes (events only). */
+  travel: null as number | null,
   location: '',
   description: '',
   // task
@@ -183,6 +185,19 @@ const repeatOptions = computed(() => {
   if (customRepeat.value) opts.push({ value: 'custom', label: describeRepeat(customRepeat.value) })
   return opts
 })
+/** The iPhone's travel time choices. */
+const travelOptions = [
+  { value: 5, label: '5 minutes' },
+  { value: 15, label: '15 minutes' },
+  { value: 30, label: '30 minutes' },
+  { value: 60, label: '1 hour' },
+  { value: 90, label: '1.5 hours' },
+  { value: 120, label: '2 hours' },
+]
+const customTravel = computed(() =>
+  form.travel != null && !travelOptions.some((o) => o.value === form.travel) ? form.travel : null,
+)
+
 const alarmOptions = [
   { value: 0, label: 'At time of event' },
   { value: 5, label: '5 minutes before' },
@@ -267,6 +282,7 @@ function loadEvent(instance: EventInstance) {
   customRepeat.value = f.repeat && repeatToSelect(f.repeat) === 'custom' ? f.repeat : null
   form.repeat = repeatToSelect(f.repeat)
   form.alarm = f.alarm
+  form.travel = f.travel ?? null
   form.location = f.location
   form.description = f.description
   scope.value = instance.isException ? 'this' : 'all'
@@ -468,6 +484,7 @@ function eventForm(): EventForm {
     tzid: editingInstance.value?.tzid ?? browserTimeZone(),
     repeat: repeatFromSelect(),
     alarm: form.alarm,
+    travel: form.allDay ? null : form.travel,
   }
 }
 
@@ -739,6 +756,49 @@ async function remove(deleteScope: EditScope) {
                 >
               </div>
             </div>
+          </div>
+
+          <!-- Travel time, as on the iPhone (not for all-day events). -->
+          <div v-if="!form.allDay" class="flex items-center gap-x-4">
+            <AppIcon name="car" class="size-5 shrink-0 text-gray-400" />
+            <div v-if="form.travel != null" class="flex items-center gap-x-1.5">
+              <div class="relative">
+                <label for="event-travel" class="sr-only">Travel time</label>
+                <select
+                  id="event-travel"
+                  v-model.number="form.travel"
+                  class="cursor-pointer appearance-none rounded-md bg-gray-100 py-2 pr-8 pl-3 text-sm font-medium text-gray-900 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
+                >
+                  <option v-for="o in travelOptions" :key="o.value" :value="o.value">
+                    {{ o.label }} travel time
+                  </option>
+                  <option v-if="customTravel != null" :value="customTravel">
+                    {{ customTravel }} minutes travel time
+                  </option>
+                </select>
+                <AppIcon
+                  name="chevron-down"
+                  class="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-gray-500"
+                />
+              </div>
+              <button
+                type="button"
+                class="flex size-8 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                @click="form.travel = null"
+              >
+                <span class="sr-only">Remove travel time</span>
+                <AppIcon name="close" class="size-4" />
+              </button>
+            </div>
+            <button
+              v-else
+              type="button"
+              class="inline-flex items-center gap-x-1 rounded-md px-2 py-1 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+              @click="form.travel = 30"
+            >
+              <AppIcon name="plus" class="size-4" />
+              Add travel time
+            </button>
           </div>
 
           <div class="flex items-center gap-x-4">

@@ -171,6 +171,24 @@ describe('TimeGrid', () => {
     wrapper.unmount()
   })
 
+  it('shows travel time as a band above the event', () => {
+    const { instances } = seeded()
+    const withTravel = instances.map((i) =>
+      i.summary === 'Design review' ? { ...i, travel: 30 } : i,
+    )
+    const wrapper = mount(TimeGrid, {
+      props: { days: eachDay(WEEK), instances: withTravel, tasks: [], colorFor },
+    })
+    const band = wrapper.find('[data-day="2026-10-14"] [data-testid="travel-time"]')
+    expect(band.text()).toBe('30 min')
+    expect(band.attributes('style')).toContain(`height: ${px(30)}px`)
+    // The chip starts 30 minutes earlier; the event itself sits below the band.
+    const review = band.element.parentElement!
+    expect(review.getAttribute('style')).toContain(`top: ${px(570)}px`)
+    expect(review.querySelector('button')!.getAttribute('style')).toContain(`top: ${px(30)}px`)
+    wrapper.unmount()
+  })
+
   it('drags on empty space to pick a slot, drags chips to move them and resizes from the bottom edge', async () => {
     const { instances } = seeded()
     const wrapper = mount(TimeGrid, {

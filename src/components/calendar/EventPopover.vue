@@ -133,6 +133,10 @@ async function remove(scope: EditScope) {
         <dt class="w-20 shrink-0 text-gray-400">Repeats</dt>
         <dd>{{ describeRepeat(instance.repeat) }}</dd>
       </div>
+      <div v-if="instance.travel" class="flex gap-x-2">
+        <dt class="w-20 shrink-0 text-gray-400">Travel</dt>
+        <dd>{{ instance.travel }} min before</dd>
+      </div>
       <div v-if="instance.alarm != null" class="flex gap-x-2">
         <dt class="w-20 shrink-0 text-gray-400">Reminder</dt>
         <dd>{{ instance.alarm }} min before</dd>

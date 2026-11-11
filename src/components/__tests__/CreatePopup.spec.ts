@@ -94,8 +94,9 @@ describe('CreatePopup', () => {
     await wrapper.find('#event-location').setValue('Cafe')
     await wrapper.find('#event-repeat').setValue('weekdays')
     await wrapper
-      .find('button.text-gray-600.hover\\:bg-gray-100.hover\\:text-gray-900.inline-flex')
-      .trigger('click') // Add notification
+      .findAll('button')
+      .find((b) => b.text() === 'Add notification')!
+      .trigger('click')
     await wrapper.find('form').trigger('submit')
     await flushPromises()
     expect(ui.createDraft).toBeNull()
@@ -251,6 +252,43 @@ describe('CreatePopup', () => {
     expect(ui.createDraft).toBeNull()
     expect(client.objects.get(review.objectUrl)!.data).toBe(saved)
     wrapper.unmount()
+  })
+
+  it('sets, keeps and removes Apple travel time on an event', async () => {
+    const events = useEventsStore()
+    const review = events.instancesFor(WEEK).find((i) => i.summary === 'Review')!
+    const wrapper = await open({
+      kind: 'event',
+      edit: { objectUrl: review.objectUrl, recurrenceId: null },
+    })
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Add travel time')!
+      .trigger('click')
+    expect((wrapper.find('#event-travel').element as HTMLSelectElement).value).toBe('30')
+    await wrapper.find('#event-travel').setValue('60')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    const saved = () => client.objects.get(review.objectUrl)!.data
+    expect(saved()).toContain('X-APPLE-TRAVEL-DURATION;VALUE=DURATION:PT1H')
+    wrapper.unmount()
+
+    // The edit popup reads it back; removing it drops the property.
+    const again = await open({
+      kind: 'event',
+      edit: { objectUrl: review.objectUrl, recurrenceId: null },
+    })
+    expect((again.find('#event-travel').element as HTMLSelectElement).value).toBe('60')
+    await again
+      .findAll('button')
+      .find((b) => b.text() === 'Remove travel time')!
+      .trigger('click')
+    await flushPromises()
+    expect(again.find('#event-travel').exists()).toBe(false)
+    await again.find('form').trigger('submit')
+    await flushPromises()
+    expect(saved()).not.toContain('X-APPLE-TRAVEL')
+    again.unmount()
   })
 
   it('sets and clears a task due date with the picker', async () => {

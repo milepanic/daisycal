@@ -71,6 +71,8 @@ export interface EventInstance {
   isRecurring: boolean
   repeat: RepeatRule | null
   alarm: AlarmMinutes
+  /** Apple travel time before the start, in minutes (X-APPLE-TRAVEL-DURATION), or null. */
+  travel: number | null
   status: 'CONFIRMED' | 'TENTATIVE' | 'CANCELLED' | null
 }
 
@@ -87,6 +89,43 @@ export interface EventForm {
   tzid?: string | null
   repeat: RepeatRule | null
   alarm: AlarmMinutes
+  /** Travel time in minutes, null for none; left out = keep what the event has. */
+  travel?: number | null
+}
+
+/**
+ * Apple's travel time (iPhone / Mac Calendar): `X-APPLE-TRAVEL-DURATION;VALUE=DURATION:PT30M`
+ * on the VEVENT, the time blocked before DTSTART. Not part of RFC 5545; other clients ignore it.
+ */
+const TRAVEL_PROP = 'x-apple-travel-duration'
+
+function parseTravel(comp: ICAL.Component): number | null {
+  const prop = comp.getFirstProperty(TRAVEL_PROP)
+  if (!prop) return null
+  const raw = prop.getFirstValue() as unknown
+  let seconds: number | null = null
+  if (raw instanceof ICAL.Duration) seconds = raw.toSeconds()
+  else if (typeof raw === 'string') {
+    try {
+      seconds = ICAL.Duration.fromString(raw.trim()).toSeconds()
+    } catch {
+      seconds = null
+    }
+  }
+  return seconds && seconds > 0 ? Math.round(seconds / 60) : null
+}
+
+function applyTravel(comp: ICAL.Component, minutes: number | null) {
+  comp.removeAllProperties(TRAVEL_PROP)
+  if (!minutes || minutes <= 0) {
+    // The route Apple computed travel from is meaningless without the duration.
+    comp.removeAllProperties('x-apple-travel-start')
+    return
+  }
+  const prop = new ICAL.Property(TRAVEL_PROP, comp)
+  prop.setParameter('value', 'DURATION')
+  prop.setValue(ICAL.Duration.fromSeconds(minutes * 60).toString())
+  comp.addProperty(prop)
 }
 
 export function parseEventObject(object: CalendarObject): EventDocument {
@@ -148,6 +187,7 @@ function instanceFrom(
     isRecurring: doc.isRecurring,
     repeat: parseRepeat(doc.master.component),
     alarm: parseAlarm(comp),
+    travel: start.isDate ? null : parseTravel(comp),
     status: statusOf(comp),
   }
 }
@@ -226,6 +266,7 @@ export function eventToForm(instance: EventInstance): EventForm {
     tzid: instance.tzid ?? browserTimeZone(),
     repeat: instance.repeat,
     alarm: instance.alarm,
+    travel: instance.travel,
   }
 }
 
@@ -246,6 +287,9 @@ export function applyEventForm(
   setTimeProperty(comp, 'dtend', end)
   if (options.repeat !== false) applyRepeat(comp, form.repeat, start)
   applyAlarm(comp, form.alarm)
+  // All-day events have no travel time (as on the iPhone).
+  if (form.allDay) applyTravel(comp, null)
+  else if (form.travel !== undefined) applyTravel(comp, form.travel)
   const seq = comp.getFirstPropertyValue('sequence')
   comp.updatePropertyWithValue('sequence', (typeof seq === 'number' ? seq : 0) + 1)
 }

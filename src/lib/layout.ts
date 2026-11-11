@@ -29,6 +29,8 @@ export interface TimedPlacement {
   continuesBefore: boolean
   continuesAfter: boolean
   compact: boolean
+  /** Top part of the chip that is Apple travel time before the start (pixels, 0 = none). */
+  travelPx: number
 }
 
 export interface SpanPlacement<T> {
@@ -179,14 +181,35 @@ export function layoutTasks<T extends Task>(
   })
 }
 
-/** Timed events of one day (see `layoutTimed`); all-day and day-long events are skipped. */
+/**
+ * Timed events of one day (see `layoutTimed`); all-day and day-long events are skipped. Travel
+ * time (iPhone) is drawn as part of the chip above the start, so it counts for overlaps too.
+ */
 export function layoutDay(instances: EventInstance[], day: Date): TimedPlacement[] {
+  const dayStart = startOfDay(day)
   return layoutTimed(
     instances
       .filter((i) => !isAllDayRow(i))
-      .map((instance) => ({ item: instance, start: instance.start, end: instance.end })),
+      .map((instance) => ({
+        item: instance,
+        start: instance.travel
+          ? new Date(instance.start.getTime() - instance.travel * 60_000)
+          : instance.start,
+        end: instance.end,
+      })),
     day,
-  ).map(({ item, ...rest }) => ({ instance: item, ...rest }))
+  ).map(({ item, ...rest }) => {
+    const startPx = minutesSinceMidnight(item.start, day) * (HOUR_PX / 60)
+    const travelPx = item.travel && item.start > dayStart ? Math.max(0, startPx - rest.top) : 0
+    return {
+      ...rest,
+      instance: item,
+      // Travel time reaching into the previous day does not make the event continue from it.
+      continuesBefore: item.start < dayStart,
+      travelPx,
+      compact: rest.height - travelPx < COMPACT_PX,
+    }
+  })
 }
 
 /** A timed task as a layout entry: from its due time, TASK_SLOT_MIN long, kept within its day. */

@@ -33,6 +33,7 @@ function ev(start: Date, end: Date, extra: Partial<EventInstance> = {}): EventIn
     isRecurring: false,
     repeat: null,
     alarm: null,
+    travel: null,
     status: null,
     ...extra,
   }
@@ -100,6 +101,30 @@ describe('layoutDay', () => {
       0,
     )
     expect(isAllDayRow(ev(d(5, 8), d(6, 9)))).toBe(true)
+  })
+})
+
+describe('layoutDay with travel time', () => {
+  it('draws travel time above the start and counts it for overlaps', () => {
+    const drive = ev(d(5, 10), d(5, 11), { summary: 'drive', travel: 30 })
+    const before = ev(d(5, 9), d(5, 9, 45), { summary: 'before' })
+    const placed = Object.fromEntries(
+      layoutDay([drive, before], d(5)).map((p) => [p.instance.summary, p]),
+    )
+    // The chip starts at 09:30 with 30 minutes of travel, so it now overlaps "before".
+    expect(placed.drive).toMatchObject({
+      top: px(570),
+      height: px(90),
+      travelPx: px(30),
+      width: 0.5,
+    })
+    expect(placed.before).toMatchObject({ travelPx: 0, width: 0.5 })
+  })
+
+  it('clips travel time at midnight without marking the event as continued', () => {
+    const early = ev(d(5, 0, 15), d(5, 1), { travel: 60 })
+    const [p] = layoutDay([early], d(5))
+    expect(p).toMatchObject({ top: 0, travelPx: px(15), continuesBefore: false })
   })
 })
 

@@ -105,6 +105,7 @@ describe('EventChip', () => {
       isRecurring: false,
       repeat: null,
       alarm: null,
+      travel: null,
       status: null,
     }
     const wrapper = mount(EventChip, { props: { instance, color: '#225688', variant: 'timed' } })

@@ -268,3 +268,48 @@ describe('excludeOccurrenceIcs', () => {
     expect(expandEvent(parseEventObject(obj(ics)), WEEK_START, WEEK_END)).toHaveLength(3)
   })
 })
+
+describe('Apple travel time (X-APPLE-TRAVEL-DURATION)', () => {
+  // What the iPhone writes: the duration plus the place the route starts from.
+  const withTravel = APPLE_STANDUP.replace(
+    'X-APPLE-TRAVEL-ADVISORY-BEHAVIOR:AUTOMATIC',
+    'X-APPLE-TRAVEL-ADVISORY-BEHAVIOR:AUTOMATIC\nX-APPLE-TRAVEL-DURATION;VALUE=DURATION:PT45M\n' +
+      'X-APPLE-TRAVEL-START;ROUTING=CAR;VALUE=URI;X-ADDRESS=Home;X-TITLE=Home:geo:44.8,20.4',
+  )
+
+  it('reads the travel time per occurrence (none on an override without it)', () => {
+    const [mon, tue] = expandEvent(parseEventObject(obj(withTravel)), WEEK_START, WEEK_END)
+    expect(mon!.travel).toBe(45)
+    expect(tue!.summary).toBe('Daily standup (moved)')
+    expect(tue!.travel).toBeNull()
+  })
+
+  it('writes, keeps and removes it, leaving the other Apple properties alone', () => {
+    const doc = parseEventObject(obj(withTravel))
+    const [mon] = expandEvent(doc, WEEK_START, WEEK_END)
+    // Editing something else keeps the travel time and its route untouched.
+    const kept = updateEventIcs(doc, { ...eventToForm(mon!), summary: 'Standup' }, mon!, 'all')
+    expect(kept).toContain('X-APPLE-TRAVEL-DURATION;VALUE=DURATION:PT45M')
+    expect(kept).toContain('X-APPLE-TRAVEL-START')
+    // A new value replaces it.
+    const changed = updateEventIcs(doc, { ...eventToForm(mon!), travel: 90 }, mon!, 'all')
+    expect(changed).toContain('X-APPLE-TRAVEL-DURATION;VALUE=DURATION:PT1H30M')
+    expect(changed.match(/X-APPLE-TRAVEL-DURATION/g)).toHaveLength(1)
+    // Removing it also drops the route; the advisory flag stays.
+    const removed = updateEventIcs(doc, { ...eventToForm(mon!), travel: null }, mon!, 'all')
+    expect(removed).not.toContain('X-APPLE-TRAVEL-DURATION')
+    expect(removed).not.toContain('X-APPLE-TRAVEL-START')
+    expect(removed).toContain('X-APPLE-TRAVEL-ADVISORY-BEHAVIOR:AUTOMATIC')
+    // New events get it too, all-day events never.
+    const fresh = buildEventIcs({ ...eventToForm(mon!), travel: 15 }).ics
+    expect(fresh).toContain('X-APPLE-TRAVEL-DURATION;VALUE=DURATION:PT15M')
+    const allDay = buildEventIcs({
+      ...eventToForm(mon!),
+      allDay: true,
+      start: new Date(2026, 9, 12),
+      end: new Date(2026, 9, 13),
+      travel: 15,
+    }).ics
+    expect(allDay).not.toContain('X-APPLE-TRAVEL')
+  })
+})

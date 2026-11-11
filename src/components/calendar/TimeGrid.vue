@@ -153,7 +153,11 @@ function placementsFor(day: Date, dayStart: Date, dayEnd: Date): GridPlacement[]
       item: { kind: 'event', instance } as GridItem,
       overEvent: false,
     })),
-    ...tasks.map(({ item, ...p }) => ({ ...p, item: { kind: 'task', task: item } as GridItem })),
+    ...tasks.map(({ item, ...p }) => ({
+      ...p,
+      travelPx: 0,
+      item: { kind: 'task', task: item } as GridItem,
+    })),
   ]
 }
 
@@ -162,6 +166,13 @@ const nowTop = computed(() => minutesSinceMidnight(now.value, now.value) * PX_PE
 function eventKey(i: EventInstance) {
   return `${i.objectUrl}|${i.recurrenceId?.toString() ?? ''}`
 }
+/** "30 min", "1 h", "1 h 30 min" for the travel band. */
+function formatTravel(minutes: number) {
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return h ? (m ? `${h} h ${m} min` : `${h} h`) : `${m} min`
+}
+
 /** Selection / drag key of a grid item (tasks never recur, so their key ends in "|"). */
 function itemKey(it: GridItem) {
   return it.kind === 'event' ? eventKey(it.instance) : `${it.task.objectUrl}|`
@@ -792,6 +803,22 @@ function onGridKeydown(e: KeyboardEvent) {
             "
           >
             <template v-if="p.item.kind === 'event'">
+              <!-- Travel time (iPhone): a lighter band in the event color above the start. -->
+              <div
+                v-if="p.travelPx > 0"
+                class="pointer-events-none absolute inset-x-0 top-0 flex items-start gap-x-1 overflow-hidden rounded-t-md px-1.5 pt-0.5 text-[10px] leading-tight font-medium"
+                :style="{
+                  height: `${p.travelPx}px`,
+                  color: colorFor(p.item.instance.collectionUrl),
+                  backgroundColor: `color-mix(in srgb, ${colorFor(p.item.instance.collectionUrl)} 18%, white)`,
+                }"
+                data-testid="travel-time"
+              >
+                <template v-if="p.travelPx >= 12">
+                  <AppIcon name="car" class="size-3 shrink-0" />
+                  <span class="truncate">{{ formatTravel(p.item.instance.travel!) }}</span>
+                </template>
+              </div>
               <EventChip
                 :instance="p.item.instance"
                 :color="colorFor(p.item.instance.collectionUrl)"
@@ -801,6 +828,8 @@ function onGridKeydown(e: KeyboardEvent) {
                 :continues-before="p.continuesBefore"
                 :continues-after="p.continuesAfter"
                 class="cursor-grab active:cursor-grabbing"
+                :class="p.travelPx > 0 ? 'absolute inset-x-0 bottom-0 !h-auto rounded-t-none' : ''"
+                :style="p.travelPx > 0 ? { top: `${p.travelPx}px` } : undefined"
                 @select="onSelectEvent"
               />
               <div
