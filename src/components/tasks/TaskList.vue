@@ -74,7 +74,7 @@ function openDetailed() {
   >
     <div class="flex items-center gap-x-2 px-2 pt-1 pb-1">
       <span class="size-2.5 shrink-0 rounded-sm" :style="{ backgroundColor: color }"></span>
-      <h2 class="truncate text-lg font-normal text-gray-900">{{ list.displayName }}</h2>
+      <h2 class="truncate font-display text-lg font-bold text-gray-900">{{ list.displayName }}</h2>
       <span v-if="open.length" class="text-xs text-gray-400">{{ open.length }}</span>
       <button
         type="button"

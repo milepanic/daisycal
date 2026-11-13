@@ -57,7 +57,10 @@ function eventKey(i: EventInstance) {
               <time :datetime="day.key">{{ day.date.getDate() }}</time>
             </span>
             <div class="pt-1.5 leading-tight">
-              <p class="text-sm font-medium" :class="day.isToday ? 'text-accent' : 'text-gray-500'">
+              <p
+                class="font-display text-sm font-bold"
+                :class="day.isToday ? 'text-accent' : 'text-gray-500'"
+              >
                 {{ WEEKDAYS_LONG[day.date.getDay()] }}
               </p>
               <p class="text-[11px] text-gray-400">{{ MONTHS_LONG[day.date.getMonth()] }}</p>

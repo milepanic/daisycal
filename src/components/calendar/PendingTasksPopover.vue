@@ -94,7 +94,7 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onDocMouseDown))
     >
       <div class="flex items-start gap-x-3 px-4 pt-4">
         <div class="min-w-0 flex-1">
-          <h2 class="text-base font-semibold text-gray-900">Pending tasks</h2>
+          <h2 class="font-display text-base font-bold text-gray-900">Pending tasks</h2>
           <p class="mt-0.5 text-xs text-gray-500">
             {{
               draggable

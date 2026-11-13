@@ -57,7 +57,7 @@ function classFor(d: Date) {
 <template>
   <div class="px-1">
     <div class="mb-2 flex items-center justify-between">
-      <h2 class="text-sm font-semibold text-gray-900">{{ monthTitle(month) }}</h2>
+      <h2 class="font-display text-sm font-bold text-gray-900">{{ monthTitle(month) }}</h2>
       <div class="flex items-center gap-x-1">
         <button
           type="button"

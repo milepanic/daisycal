@@ -3,7 +3,9 @@
 /* Accent color and fallback calendar colors.
    Real calendar colors come from Radicale (ICAL:calendar-color) at runtime. */
 @theme {
-  --font-sans: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Mulish', ui-sans-serif, system-ui, sans-serif;
+  /* Titles (toolbar, list names, popover headings). */
+  --font-display: 'Philosopher', ui-sans-serif, system-ui, sans-serif;
   /* Handwritten signature in the sidebar footer. */
   --font-signature: 'Great Vibes', cursive;
 

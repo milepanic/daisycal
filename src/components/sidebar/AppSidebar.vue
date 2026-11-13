@@ -53,7 +53,7 @@ function pickDate(d: Date) {
       <MiniCalendar :selected="ui.currentDate" :week-start="ui.weekStart" @select="pickDate" />
 
       <CollectionList
-        title="My calendars"
+        title="Calendars"
         :collections="
           birthdays.collection
             ? [...calendars.calendars, birthdays.collection]
@@ -64,7 +64,7 @@ function pickDate(d: Date) {
         @toggle="calendars.setVisible"
       />
       <CollectionList
-        title="Task lists"
+        title="Tasks"
         :collections="calendars.taskLists"
         :is-visible="calendars.isVisible"
         :loading="calendars.status === 'loading'"

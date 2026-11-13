@@ -112,7 +112,7 @@ async function retrySync() {
       >
         <AppIcon name="calendar" class="size-6" />
       </span>
-      <h1 class="mt-4 text-lg font-semibold text-gray-900">DaisyCal</h1>
+      <h1 class="mt-4 font-display text-lg font-bold text-gray-900">DaisyCal</h1>
       <template v-if="auth.status === 'error'">
         <p class="mt-2 text-sm text-red-700" role="alert">{{ auth.error?.message }}</p>
         <p v-if="auth.error?.kind === 'credentials'" class="mt-1 text-xs text-gray-500">

@@ -76,7 +76,7 @@ function onCellClick(date: Date, e: MouseEvent) {
         <div
           v-for="d in headers"
           :key="d"
-          class="py-2 text-center text-sm font-medium"
+          class="py-2 text-center font-display text-sm font-bold"
           :class="
             d === today.getDay() && cells.some((c) => c.isToday) ? 'text-accent' : 'text-gray-500'
           "

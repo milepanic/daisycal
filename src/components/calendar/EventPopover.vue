@@ -125,7 +125,7 @@ async function remove(scope: EditScope) {
     <div class="flex items-start gap-x-3">
       <span class="mt-1.5 size-3 shrink-0 rounded-sm" :style="{ backgroundColor: color }"></span>
       <div class="min-w-0 flex-1">
-        <h2 class="text-base font-semibold text-gray-900">
+        <h2 class="font-display text-base font-bold text-gray-900">
           {{ instance.summary || '(No title)' }}
         </h2>
         <p class="mt-0.5 text-sm text-gray-600">{{ when }}</p>

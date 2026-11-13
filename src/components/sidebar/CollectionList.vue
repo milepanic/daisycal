@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/** Collapsible "My calendars" / "Task lists" section with color checkboxes. */
+/** Collapsible "Calendars" / "Tasks" section with color checkboxes. */
 import type { Collection } from '@/api/collections'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import ColorCheckbox from '@/components/ui/ColorCheckbox.vue'
@@ -17,7 +17,7 @@ const emit = defineEmits<{ toggle: [url: string, visible: boolean] }>()
 <template>
   <details open class="group mt-6">
     <summary
-      class="flex cursor-pointer list-none items-center justify-between rounded-sm px-2 py-1.5 text-xs font-semibold tracking-wide text-gray-500 uppercase hover:bg-white/60 [&::-webkit-details-marker]:hidden"
+      class="flex cursor-pointer list-none items-center justify-between rounded-sm px-2 py-1.5 text-sm font-semibold text-gray-500 hover:bg-white/60 [&::-webkit-details-marker]:hidden"
     >
       {{ title }}
       <AppIcon

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /** The #tasks-panel from the mockup: list picker, add button, open tasks, collapsible completed. */
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import type { Task } from '@/api/ical'
 import { wasJustDragged } from '@/lib/dragGuard'
@@ -39,6 +39,20 @@ const all = computed(() =>
 const open = computed(() => all.value.filter((t) => !t.completed))
 const completed = computed(() => all.value.filter((t) => t.completed))
 const pickerOpen = ref(false)
+const picker = ref<HTMLElement | null>(null)
+/** Open tasks of a list, shown next to it in the picker. */
+function openCount(url: string) {
+  return tasks.tasksFor(url, { includeCompleted: false }).length
+}
+// A click anywhere else closes the picker.
+function onDocMouseDown(e: MouseEvent) {
+  if (picker.value && !picker.value.contains(e.target as Node)) pickerOpen.value = false
+}
+watch(pickerOpen, (isOpen) => {
+  if (isOpen) document.addEventListener('mousedown', onDocMouseDown)
+  else document.removeEventListener('mousedown', onDocMouseDown)
+})
+onBeforeUnmount(() => document.removeEventListener('mousedown', onDocMouseDown))
 const adding = ref(false)
 /** Open tasks with their subtasks right under them. */
 const nestedOpen = computed(() => nestTasks(open.value))
@@ -70,45 +84,62 @@ async function toggle(t: Task, done: boolean) {
 
 <template>
   <aside id="tasks-panel" class="flex w-72 shrink-0 flex-col overflow-hidden rounded-2xl bg-white">
-    <div class="relative flex h-16 shrink-0 items-center px-4">
+    <!-- Header: the list name is the picker (like the list headings in the Tasks view). -->
+    <div ref="picker" class="relative shrink-0 px-2 pt-2.5" @keydown.escape="pickerOpen = false">
       <button
         type="button"
-        class="flex items-center gap-x-2 rounded-sm bg-gray-100 px-3 py-1.5 text-sm font-semibold text-gray-900 hover:bg-gray-200"
+        class="group flex max-w-full items-center gap-x-2 rounded-sm px-2 py-1 text-left hover:bg-gray-50"
         aria-haspopup="listbox"
         :aria-expanded="pickerOpen"
         @click="pickerOpen = !pickerOpen"
       >
-        <span class="size-2.5 rounded-sm" :style="{ backgroundColor: color }"></span>
-        {{ list?.displayName ?? 'No task list' }}
-        <AppIcon name="chevron-down" class="size-4 text-gray-500" />
+        <span class="size-2.5 shrink-0 rounded-sm" :style="{ backgroundColor: color }"></span>
+        <span class="truncate font-display text-lg font-bold text-gray-900">{{
+          list?.displayName ?? 'No task list'
+        }}</span>
+        <span v-if="open.length" class="text-xs text-gray-400 tabular-nums">{{ open.length }}</span>
+        <AppIcon
+          name="chevron-down"
+          class="size-4 shrink-0 text-gray-400 transition-transform duration-150 group-hover:text-gray-600"
+          :class="pickerOpen ? 'rotate-180' : ''"
+        />
       </button>
       <Transition name="dropdown">
         <ul
           v-if="pickerOpen"
           role="listbox"
-          class="absolute top-14 left-4 z-30 origin-top-left min-w-40 rounded-sm bg-white p-1 shadow-lg ring-1 ring-gray-200"
+          aria-label="Task list"
+          class="absolute top-full left-2 z-30 mt-1 w-56 origin-top-left rounded-xl bg-white p-1.5 shadow-xl ring-1 ring-gray-200"
         >
           <li v-for="l in calendars.visibleTaskLists" :key="l.url">
             <button
               type="button"
               role="option"
               :aria-selected="l.url === listUrl"
-              class="flex w-full items-center gap-x-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-gray-100"
+              class="flex w-full items-center gap-x-2.5 rounded-sm px-2.5 py-2 text-left text-sm hover:bg-gray-100"
               :class="l.url === listUrl ? 'font-semibold text-gray-900' : 'text-gray-700'"
               @click="pickList(l.url)"
             >
               <span
-                class="size-2.5 rounded-sm"
+                class="size-2.5 shrink-0 rounded-sm"
                 :style="{ backgroundColor: calendars.colorFor(l.url) }"
               ></span>
-              {{ l.displayName }}
+              <span class="min-w-0 flex-1 truncate">{{ l.displayName }}</span>
+              <span class="text-xs font-normal text-gray-400 tabular-nums">{{
+                openCount(l.url) || ''
+              }}</span>
+              <AppIcon
+                name="check"
+                class="size-4 shrink-0 text-gray-900"
+                :class="l.url === listUrl ? '' : 'invisible'"
+              />
             </button>
           </li>
         </ul>
       </Transition>
     </div>
 
-    <div class="flex-1 overflow-y-auto px-2 pb-4">
+    <div class="flex-1 overflow-y-auto px-2 pt-1 pb-4">
       <TaskInlineAdd v-model:adding="adding" :list="list" :color="color" />
       <p
         v-if="listUrl && tasks.isLoading(listUrl) && all.length === 0"

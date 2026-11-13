@@ -135,7 +135,7 @@ async function remove() {
       </span>
       <div class="min-w-0 flex-1">
         <h2
-          class="text-base font-semibold"
+          class="font-display text-base font-bold"
           :class="task.completed ? 'text-gray-400 line-through' : 'text-gray-900'"
         >
           {{ task.summary || '(No title)' }}

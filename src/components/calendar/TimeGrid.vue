@@ -753,7 +753,7 @@ function onGridKeydown(e: KeyboardEvent) {
               </span>
             </span>
             <span
-              class="text-sm font-medium"
+              class="font-display text-sm font-bold"
               :class="c.isToday ? 'text-accent' : 'text-gray-500'"
               >{{ WEEKDAYS_LONG[c.day.getDay()] }}</span
             >

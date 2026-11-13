@@ -51,7 +51,7 @@ const unit = computed(() => stepLabel(ui.view))
           <AppIcon name="chevron-right" class="size-4" stroke-width="2" />
         </button>
       </div>
-      <h1 class="ml-1 truncate text-base font-semibold text-gray-900 sm:text-lg">{{ title }}</h1>
+      <h1 class="ml-1 truncate font-display text-base font-bold text-gray-900 sm:text-lg">{{ title }}</h1>
     </div>
 
     <div class="ml-auto flex shrink-0 items-center gap-x-2">
