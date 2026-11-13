@@ -151,7 +151,7 @@ const segment = (active: boolean) =>
         v-if="open"
         role="dialog"
         aria-label="Settings"
-        class="absolute top-full right-0 z-50 mt-1.5 w-80 origin-top-right rounded-xl bg-white p-4 text-[13px] shadow-xl ring-1 ring-gray-200"
+        class="absolute top-full right-0 z-50 mt-1.5 max-h-[calc(100vh-6rem)] w-80 origin-top-right overflow-y-auto rounded-xl bg-white p-4 text-[13px] shadow-xl ring-1 ring-gray-200 max-md:fixed max-md:inset-x-2 max-md:top-24 max-md:w-auto"
         data-testid="settings-menu"
       >
         <div class="flex items-center justify-between gap-x-3">

@@ -4,6 +4,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 
 import type { EventInstance, Task } from '@/api/ical'
 import { useCalendarRoute } from '@/composables/useCalendarRoute'
+import { NARROW_QUERY, useMediaQuery } from '@/composables/useMediaQuery'
 import { eachDay } from '@/lib/dates'
 import { slideIn } from '@/lib/motion'
 import { eventToForm, taskToForm } from '@/api/ical'
@@ -24,7 +25,9 @@ import TimeGrid from '@/components/calendar/TimeGrid.vue'
 import CalendarToolbar from '@/components/shell/CalendarToolbar.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 
-const nav = useCalendarRoute()
+// Keeps the view and date in step with the URL.
+useCalendarRoute()
+const narrow = useMediaQuery(NARROW_QUERY)
 /** The time grid, so tasks dragged out of the tasks panel can be dropped onto it. */
 const grid = ref<InstanceType<typeof TimeGrid> | null>(null)
 function grabFromPanel(task: Task, e: PointerEvent) {
@@ -301,7 +304,6 @@ const draftColor = computed(() =>
           @select-event="selectEvent"
           @select-task="selectTask"
           @create-at="createAt"
-          @show-more="(d) => nav.go('day', d)"
         />
         <AgendaView
           v-else
@@ -311,6 +313,7 @@ const draftColor = computed(() =>
           :color-for="colorFor"
           :name-for="nameFor"
           :selected-key="selectedKey"
+          :weather-for="weather.forDay"
           @select-event="selectEvent"
           @select-task="selectTask"
         />
@@ -318,7 +321,8 @@ const draftColor = computed(() =>
     </div>
 
     <Transition name="panel">
-      <TasksPanel v-show="ui.tasksPanelOpen" @grab="grabFromPanel" />
+      <!-- No room beside the grid on a phone. -->
+      <TasksPanel v-show="ui.tasksPanelOpen && !narrow" @grab="grabFromPanel" />
     </Transition>
   </div>
 

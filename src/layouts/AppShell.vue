@@ -151,14 +151,14 @@ async function retrySync() {
       <!-- Drawer backdrop on narrow screens -->
       <div
         v-if="narrow && ui.sidebarOpen"
-        class="fixed inset-0 z-20 bg-black/30"
+        class="fixed inset-0 z-30 bg-black/30"
         data-testid="drawer-backdrop"
         @click="ui.sidebarOpen = false"
       ></div>
       <Transition :name="narrow ? 'slide' : 'fade'">
         <AppSidebar
           v-show="ui.sidebarOpen"
-          :class="narrow ? 'fixed inset-y-0 left-0 z-30 h-full bg-zinc-100 px-2 shadow-xl' : ''"
+          :class="narrow ? 'fixed inset-y-0 left-0 z-40 h-full bg-zinc-100 px-2 shadow-xl' : ''"
         />
       </Transition>
       <div ref="page" class="flex min-w-0 flex-1 flex-col">

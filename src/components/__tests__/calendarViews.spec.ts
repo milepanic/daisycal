@@ -568,39 +568,53 @@ describe('TimeGrid', () => {
 })
 
 describe('MonthView', () => {
-  it('renders 42 cells with chips and the +N more link', async () => {
+  it('renders weeks of days: bars for all-day events, lines for timed ones, and +N', async () => {
     const { instances, tasks } = seeded()
     const range = { start: new Date(2026, 8, 28), end: new Date(2026, 10, 9) }
-    // A fourth Wednesday item pushes the cell over the 3-row limit.
-    const extra = {
+    // More Wednesday items than fit: some go behind "+N".
+    const extra = (n: number, h: number) => ({
       ...instances.find((i) => i.summary === 'Gym')!,
-      objectUrl: 'https://x/extra.ics',
-      start: new Date(2026, 9, 14, 15),
-      end: new Date(2026, 9, 14, 16),
-    }
+      objectUrl: `https://x/extra${n}.ics`,
+      summary: `Extra ${n}`,
+      start: new Date(2026, 9, 14, h),
+      end: new Date(2026, 9, 14, h + 1),
+    })
     const wrapper = mount(MonthView, {
-      props: { range, month: 9, instances: [...instances, extra], tasks, colorFor },
+      props: {
+        range,
+        month: 9,
+        instances: [...instances, extra(1, 15), extra(2, 16), extra(3, 17)],
+        tasks,
+        colorFor,
+      },
+      attachTo: document.body,
     })
     expect(wrapper.findAll('[data-date]')).toHaveLength(42)
+    expect(wrapper.findAll('[data-testid="month-week"]')).toHaveLength(6)
     const wed = wrapper.find('[data-date="2026-10-14"]')
-    expect(wed.text()).toContain('Design review')
     expect(wed.text()).toContain('Daily Standup')
-    expect(wed.text()).not.toContain('Prepare slides')
-    expect(wed.text()).toContain('+2 more')
-    expect(wrapper.find('[data-date="2026-10-15"]').text()).toContain('Offsite')
+    expect(wed.find('[data-testid="month-more"]').exists()).toBe(true)
+    // The all-day / multi-day "Offsite" is a bar in its week, not a line in the cell.
+    const week = wrapper.findAll('[data-testid="month-week"]')[2]!
+    expect(week.text()).toContain('Offsite')
     expect(wrapper.find('[data-date="2026-10-01"]').text()).toContain('Oct')
     expect(wrapper.find('[data-date="2026-09-28"]').classes()).toContain('bg-gray-50/60')
-    await wed.find('button.text-gray-500').trigger('click')
+    // "+N" opens the whole day in a card.
+    await wed.find('[data-testid="month-more"]').trigger('click')
     expect(wrapper.emitted('showMore')![0]![0]).toEqual(new Date(2026, 9, 14))
+    const card = document.querySelector('[data-testid="month-day-card"]')!
+    expect(card.textContent).toContain('Extra 3')
+    expect(card.textContent).toContain('Design review')
     await wrapper.find('[data-date="2026-10-20"]').trigger('click')
     expect(wrapper.emitted('createAt')![0]!.slice(0, 3)).toEqual([
       new Date(2026, 9, 20),
       new Date(2026, 9, 21),
       true,
     ])
+    wrapper.unmount()
   })
 
-  it("shows pending tasks in today's cell and keeps the 3-row limit", async () => {
+  it("shows pending tasks in today's cell and keeps the line limit", async () => {
     setActivePinia(createPinia())
     const today = startOfDay(new Date())
     const range = { start: addDays(today, -14), end: addDays(today, 28) }
@@ -624,7 +638,7 @@ describe('MonthView', () => {
       props: {
         range,
         month: today.getMonth(),
-        instances: [at(9, 1), at(10, 2), at(11, 3)],
+        instances: [at(9, 1), at(10, 2), at(11, 3), at(12, 4)],
         tasks: [],
         colorFor,
         pendingTasks: [late],
@@ -633,10 +647,11 @@ describe('MonthView', () => {
     })
     const cell = wrapper.find(`[data-date="${toDateKey(today)}"]`)
     expect(cell.find('[data-testid="pending-tasks"]').text()).toBe('1 pending task')
-    // Pending item + one chip + "+2 more" instead of three chips.
+    // Pending item + two lines + "+N" instead of three lines.
     expect(cell.text()).toContain('Item 1')
-    expect(cell.text()).not.toContain('Item 2')
-    expect(cell.text()).toContain('+2 more')
+    expect(cell.text()).toContain('Item 2')
+    expect(cell.text()).not.toContain('Item 3')
+    expect(cell.find('[data-testid="month-more"]').text()).toBe('+2')
     await cell.find('[data-testid="pending-tasks"]').trigger('click')
     expect(wrapper.emitted('createAt')).toBeUndefined()
     const popover = document.querySelector('[data-testid="pending-popover"]')!
