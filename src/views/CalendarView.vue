@@ -22,6 +22,7 @@ import MonthView from '@/components/calendar/MonthView.vue'
 import TasksPanel from '@/components/calendar/TasksPanel.vue'
 import TimeGrid from '@/components/calendar/TimeGrid.vue'
 import CalendarToolbar from '@/components/shell/CalendarToolbar.vue'
+import AppIcon from '@/components/ui/AppIcon.vue'
 
 const nav = useCalendarRoute()
 /** The time grid, so tasks dragged out of the tasks panel can be dropped onto it. */
@@ -74,6 +75,9 @@ watch(
 
 const loading = computed(() => calendars.status === 'loading' || events.isLoading(ui.visibleRange))
 const loadError = computed(() => events.loadError(ui.visibleRange))
+function retryLoad() {
+  void events.ensureLoaded(ui.visibleRange)
+}
 const days = computed(() => eachDay(ui.visibleRange))
 const isGrid = computed(
   () =>
@@ -236,15 +240,23 @@ const draftColor = computed(() =>
       ref="viewport"
       class="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl bg-white shadow-card"
     >
-      <p
-        v-if="loadError"
-        class="mx-2 mt-2 rounded-sm bg-red-50 px-3 py-2 text-sm text-red-700"
-        role="alert"
-      >
-        {{ loadError }}
-      </p>
       <div
-        v-if="loading"
+        v-if="loadError"
+        class="mx-2 mt-2 flex items-center gap-x-3 rounded-xl bg-red-50 px-3 py-2.5"
+        role="alert"
+        data-testid="load-error"
+      >
+        <AppIcon name="warning" class="size-5 shrink-0 text-red-600" />
+        <p class="min-w-0 flex-1 text-[13px] text-red-800">
+          <span class="font-semibold">Could not load this period.</span>
+          {{ loadError }}
+        </p>
+        <button type="button" class="btn btn-sm btn-secondary" @click="retryLoad">Retry</button>
+      </div>
+      <!-- A thin bar while refreshing what is already on screen (the grid shows placeholder
+           blocks while it is still empty). -->
+      <div
+        v-if="loading && instances.length > 0"
         class="pointer-events-none absolute inset-x-0 top-0 z-30 h-0.5 overflow-hidden"
         data-testid="loading-bar"
       >
@@ -265,6 +277,7 @@ const draftColor = computed(() =>
           :draft-color="draftColor"
           :pending-tasks="pendingTasks"
           :weather-for="weather.forDay"
+          :loading="loading"
           @select-event="selectEvent"
           @select-task="selectTask"
           @create-at="createAt"

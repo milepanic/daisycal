@@ -5,6 +5,7 @@ import type { EventInstance, Task } from '@/api/ical'
 import type { DateRange } from '@/lib/dates'
 import { MONTHS_LONG, WEEKDAYS_LONG, spanTitle } from '@/lib/format'
 import { buildAgendaDays } from '@/lib/layout'
+import EmptyState from '@/components/ui/EmptyState.vue'
 import TaskDot from '@/components/ui/TaskDot.vue'
 
 const props = defineProps<{
@@ -37,9 +38,13 @@ function eventKey(i: EventInstance) {
         <h2 class="text-sm font-medium text-gray-500">{{ spanTitle(range) }}</h2>
         <span class="text-xs text-gray-400">{{ count }} {{ count === 1 ? 'item' : 'items' }}</span>
       </div>
-      <p v-if="days.length === 0" class="px-2 py-6 text-sm text-gray-400">
-        Nothing scheduled in this period.
-      </p>
+      <EmptyState
+        v-if="days.length === 0"
+        icon="calendar"
+        title="Nothing planned this month"
+        text="Events and tasks with a due date show up here."
+        class="py-16"
+      />
       <ul v-else class="mt-1">
         <li
           v-for="day in days"

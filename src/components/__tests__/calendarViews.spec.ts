@@ -666,7 +666,7 @@ describe('AgendaView', () => {
     const empty = mount(AgendaView, {
       props: { range: WEEK, instances: [], tasks: [], colorFor, nameFor: () => '' },
     })
-    expect(empty.text()).toContain('Nothing scheduled')
+    expect(empty.text()).toContain('Nothing planned')
   })
 })
 
@@ -770,7 +770,7 @@ describe('TasksPanel and EventPopover', () => {
     })
     await button('Delete').trigger('click')
     expect(wrapper.text()).toContain('Delete this task?')
-    await wrapper.find('button.bg-red-600').trigger('click')
+    await wrapper.find('[data-testid="delete-confirm"]').trigger('click')
     await flushPromises()
     expect(client.objects.has(slides.objectUrl)).toBe(false)
     wrapper.unmount()
@@ -786,14 +786,14 @@ describe('TasksPanel and EventPopover', () => {
     expect(wrapper.text()).toContain('Design review')
     expect(wrapper.text()).toContain('Wednesday, October 14, 2026 · 10:00 – 11:30')
     expect(wrapper.text()).toContain('Work')
-    await wrapper.find('button.bg-gray-900').trigger('click') // Edit
+    await wrapper.find('[data-testid="edit-button"]').trigger('click')
     expect(useUiStore().createDraft).toMatchObject({
       kind: 'event',
       edit: { objectUrl: instance.objectUrl },
     })
-    await wrapper.find('button.text-red-600').trigger('click') // Delete
+    await wrapper.find('[data-testid="delete-button"]').trigger('click')
     expect(wrapper.text()).toContain('Delete this event?')
-    await wrapper.find('button.bg-red-600').trigger('click')
+    await wrapper.find('[data-testid="delete-confirm"]').trigger('click')
     await flushPromises()
     expect(client.objects.has(instance.objectUrl)).toBe(false)
     expect(wrapper.emitted('close')).toBeTruthy()

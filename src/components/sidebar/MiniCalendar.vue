@@ -5,6 +5,9 @@
  *
  * Dragging across days picks them (`selectRange`): the band follows the pointer and the
  * calendar shows exactly those days on release.
+ *
+ * `dots` gives up to three calendar colors per day (date key) for small dots under the
+ * number; the six weeks shown are reported with `visibleRange` so the events can be loaded.
  */
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
@@ -31,10 +34,17 @@ const props = withDefaults(
     weekStart?: WeekStart
     /** Days shown in the calendar grid (day / week views); shaded as one band. */
     range?: DateRange | null
+    /** Colors of the calendars with events on a day (date key), at most three. */
+    dots?: (dateKey: string) => string[]
   }>(),
-  { weekStart: 1, range: null },
+  { weekStart: 1, range: null, dots: undefined },
 )
-const emit = defineEmits<{ select: [date: Date]; selectRange: [start: Date, days: number] }>()
+const emit = defineEmits<{
+  select: [date: Date]
+  selectRange: [start: Date, days: number]
+  /** The six weeks in the grid (on mount and when the month changes). */
+  visibleRange: [range: DateRange]
+}>()
 
 const month = ref(startOfMonth(props.selected))
 watch(
@@ -53,6 +63,15 @@ watch(month, async (next, prev) => {
 })
 
 const today = new Date()
+
+watch(
+  month,
+  (m) => {
+    const start = startOfWeek(m, props.weekStart)
+    emit('visibleRange', { start, end: addDays(start, 42) })
+  },
+  { immediate: true },
+)
 const weekdayLetters = computed(() =>
   Array.from({ length: 7 }, (_, i) => WEEKDAYS_LETTER[(props.weekStart + i) % 7]!),
 )
@@ -156,13 +175,25 @@ function classFor(d: Date) {
         <button
           type="button"
           class="mx-auto flex size-7 items-center justify-center"
-          :class="classFor(d)"
+          :class="[classFor(d), dots ? 'relative' : '']"
           :aria-current="isSameDay(d, today) ? 'date' : undefined"
           :aria-pressed="isSameDay(d, selected)"
           @pointerdown="onDayPointerDown(d, $event)"
           @click="emit('select', d)"
         >
           <time :datetime="toDateKey(d)">{{ d.getDate() }}</time>
+          <span
+            v-if="dots?.(toDateKey(d)).length"
+            class="pointer-events-none absolute bottom-[3px] left-1/2 flex -translate-x-1/2 gap-x-px"
+            data-testid="day-dots"
+          >
+            <span
+              v-for="(color, i) in dots(toDateKey(d))"
+              :key="i"
+              class="size-[3px] rounded-full"
+              :style="{ backgroundColor: isSameDay(d, today) ? 'var(--color-on-color)' : color }"
+            ></span>
+          </span>
         </button>
       </div>
     </div>

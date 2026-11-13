@@ -36,6 +36,7 @@ import { formatPickerDate, toMinutes } from '@/lib/timeInput'
 import { useFocusTrap } from '@/composables/useFocusTrap'
 import { useCalendarsStore } from '@/stores/calendars'
 import { useEventsStore } from '@/stores/events'
+import { useHistoryStore } from '@/stores/history'
 import { useTasksStore } from '@/stores/tasks'
 import { useUiStore } from '@/stores/ui'
 import AppIcon from '@/components/ui/AppIcon.vue'
@@ -47,6 +48,7 @@ const ui = useUiStore()
 const calendars = useCalendarsStore()
 const events = useEventsStore()
 const tasks = useTasksStore()
+const history = useHistoryStore()
 
 const draft = computed(() => ui.createDraft)
 const isEdit = computed(() => Boolean(draft.value?.edit))
@@ -433,10 +435,7 @@ function fill() {
   form.endTime = form.allDay ? '10:30' : hhmm(e)
   form.dueDate = toDateKey(s)
   form.dueTime = d.allDay ? '' : hhmm(s)
-  form.collectionUrl =
-    d.collectionUrl ??
-    (d.kind === 'task' ? taskLists.value[0]?.url : eventCalendars.value[0]?.url) ??
-    ''
+  form.collectionUrl = d.collectionUrl ?? defaultCollection(d.kind)
 }
 
 // Moving the start (date or time) keeps the event length, also across days.
@@ -466,11 +465,56 @@ watch(
   { flush: 'sync' },
 )
 
-watch(kind, (k) => {
-  if (isEdit.value) return
+/** The calendar / task list from the settings, or the first one when none (or it is gone). */
+function defaultCollection(k: 'event' | 'task'): string {
   const lists = k === 'task' ? taskLists.value : eventCalendars.value
-  if (!lists.some((c) => c.url === form.collectionUrl)) form.collectionUrl = lists[0]?.url ?? ''
+  const preferred = k === 'task' ? ui.defaultTaskList : ui.defaultCalendar
+  return (lists.find((c) => c.url === preferred) ?? lists[0])?.url ?? ''
+}
+
+watch(kind, (k, prev) => {
+  const lists = k === 'task' ? taskLists.value : eventCalendars.value
+  if (!lists.some((c) => c.url === form.collectionUrl)) form.collectionUrl = defaultCollection(k)
+  if (!isEdit.value || filling || !prev) return
+  // Changing an existing event into a task (or back): carry the date and time over.
+  if (k === 'task') {
+    form.dueDate = form.date
+    form.dueTime = form.allDay ? '' : form.startTime
+  } else {
+    const date = form.dueDate || toDateKey(new Date())
+    filling = true
+    try {
+      form.date = date
+      form.endDate = date
+      form.allDay = !form.dueTime
+      form.startTime = form.dueTime || '09:00'
+      const end = combine(date, form.startTime)!
+      end.setMinutes(end.getMinutes() + DEFAULT_NEW_EVENT_MIN)
+      form.endTime = hhmm(end)
+      form.endDate = toDateKey(end)
+    } finally {
+      filling = false
+    }
+  }
 })
+
+/**
+ * Why an existing item cannot change into `k` (null when it can): a repeating event has no
+ * task form, and deleting a task with subtasks would take them along.
+ */
+function kindBlocked(k: 'event' | 'task'): string | null {
+  if (k === 'task' && editingInstance.value?.isRecurring)
+    return 'A repeating event cannot become a task'
+  if (
+    k === 'event' &&
+    editingTask.value &&
+    tasks
+      .tasksFor(editingTask.value.collectionUrl, { includeCompleted: true })
+      .some((t) => t.parentUid === editingTask.value!.uid)
+  )
+    return 'A task with subtasks cannot become an event'
+  return null
+}
 
 // Mirror the form into the draft so the grid previews a new event or task. While editing
 // nothing leaves the form before Save: the calendar keeps showing the saved version.
@@ -593,7 +637,9 @@ async function save() {
   busy.value = true
   conflict.value = false
   try {
-    if (kind.value === 'task') await saveTask()
+    if (kind.value === 'task' && editingInstance.value) await convertToTask()
+    else if (kind.value === 'event' && editingTask.value) await convertToEvent()
+    else if (kind.value === 'task') await saveTask()
     else await saveEvent()
     ui.closeCreate()
   } catch (err) {
@@ -626,6 +672,28 @@ async function saveEvent() {
     editingInstance.value = instance
   }
   await events.updateEvent(instance, eventForm(), instance.isRecurring ? scope.value : 'all')
+}
+
+/**
+ * An existing event saved as a task (or a task as an event): the new object is written first,
+ * then the old one deleted, as one undo step.
+ */
+async function convertToTask() {
+  const instance = editingInstance.value!
+  await history.group(`convert-${instance.objectUrl}`, async () => {
+    await tasks.createTask(collection.value!, taskForm())
+    await events.deleteEvent(instance, 'all')
+  })
+  history.relabelLast(`Changed "${form.title || '(No title)'}" to a task`)
+}
+
+async function convertToEvent() {
+  const task = editingTask.value!
+  await history.group(`convert-${task.objectUrl}`, async () => {
+    await events.createEvent(collection.value!, eventForm())
+    await tasks.deleteTask(task)
+  })
+  history.relabelLast(`Changed "${form.title || '(No title)'}" to an event`)
 }
 
 async function saveTask() {
@@ -685,26 +753,41 @@ async function remove(deleteScope: EditScope) {
       :style="style"
       data-testid="create-popup"
     >
-      <div class="flex items-center justify-between px-3.5 pt-2.5">
-        <fieldset v-if="!isEdit" class="flex h-8 rounded-sm bg-gray-100 p-0.5">
-          <legend class="sr-only">Type</legend>
+      <!-- The type pill (or the edit title) centered; the close button on the right. -->
+      <div class="relative flex items-center justify-center px-3.5 pt-2.5">
+        <!-- Event / Task: the header's Calendar / Tasks pill, with the names. -->
+        <div
+          role="radiogroup"
+          aria-label="Type"
+          class="flex h-8 items-stretch rounded-full ring-1 ring-gray-300"
+        >
           <label
             v-for="t in ['event', 'task'] as const"
             :key="t"
-            class="flex cursor-pointer items-center gap-x-1.5 rounded-sm px-2.5 text-[13px] font-medium text-gray-600 hover:text-gray-900 has-checked:bg-white has-checked:text-gray-900 has-focus-visible:outline-2 has-focus-visible:outline-accent"
+            class="flex h-full items-center gap-x-1.5 rounded-full px-3 text-[13px] leading-none font-medium text-gray-500 transition-colors duration-150 has-checked:bg-pill has-checked:font-semibold has-checked:text-on-color has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent"
+            :class="
+              kindBlocked(t)
+                ? 'cursor-not-allowed opacity-40'
+                : 'cursor-pointer hover:text-gray-900'
+            "
+            :title="kindBlocked(t) ?? undefined"
           >
-            <input v-model="kind" type="radio" name="create-type" :value="t" class="sr-only" />
-            <AppIcon :name="t === 'event' ? 'calendar' : 'tasks'" class="size-4" />
-            {{ t === 'event' ? 'Event' : 'Task' }}
+            <input
+              v-model="kind"
+              type="radio"
+              name="create-type"
+              :value="t"
+              :disabled="Boolean(kindBlocked(t))"
+              class="sr-only"
+            />
+            <AppIcon :name="t === 'event' ? 'nav-calendar' : 'nav-tasks'" class="size-4 shrink-0" />
+            <span>{{ t === 'event' ? 'Event' : 'Task' }}</span>
           </label>
-        </fieldset>
-        <h2 v-else class="text-[13px] font-semibold text-gray-500">
-          {{ kind === 'task' ? 'Edit task' : 'Edit event' }}
-        </h2>
+        </div>
         <button
           type="button"
           title="Close"
-          class="flex size-8 items-center justify-center rounded-sm text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+          class="absolute top-2.5 right-3.5 flex size-8 items-center justify-center rounded-full text-gray-400 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-700"
           @click="ui.closeCreate()"
         >
           <span class="sr-only">Close</span>
@@ -713,7 +796,7 @@ async function remove(deleteScope: EditScope) {
       </div>
 
       <form class="px-3.5 pb-3.5" novalidate @submit.prevent="save">
-        <div class="mt-2 pl-7">
+        <div class="mt-4 pl-7">
           <label for="create-name" class="sr-only">Title</label>
           <input
             id="create-name"
@@ -1066,7 +1149,7 @@ async function remove(deleteScope: EditScope) {
               v-if="editingInstance?.isRecurring"
               type="button"
               :disabled="busy"
-              class="rounded-sm bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-700 disabled:opacity-60"
+              class="btn btn-sm btn-secondary"
               @click="remove('this')"
             >
               Only this occurrence
@@ -1074,16 +1157,13 @@ async function remove(deleteScope: EditScope) {
             <button
               type="button"
               :disabled="busy"
-              class="rounded-sm bg-red-600 px-3 py-1.5 text-xs font-semibold text-on-color hover:bg-red-500 disabled:opacity-60"
+              class="btn btn-sm btn-danger-solid"
               @click="remove('all')"
+              data-testid="delete-confirm"
             >
               {{ editingInstance?.isRecurring ? 'All occurrences' : 'Delete' }}
             </button>
-            <button
-              type="button"
-              class="rounded-sm px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200"
-              @click="confirmingDelete = false"
-            >
+            <button type="button" class="btn btn-ghost" @click="confirmingDelete = false">
               Cancel
             </button>
           </div>
@@ -1093,23 +1173,16 @@ async function remove(deleteScope: EditScope) {
           <button
             v-if="isEdit && !confirmingDelete"
             type="button"
-            class="rounded-sm px-3 py-1.5 text-[13px] font-medium text-red-600 hover:bg-red-50"
+            class="btn btn-danger"
             @click="confirmingDelete = true"
+            data-testid="delete-button"
           >
             Delete
           </button>
-          <button
-            type="button"
-            class="ml-auto cursor-pointer rounded-sm px-3 py-1.5 text-[13px] font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-            @click="ui.closeCreate()"
-          >
+          <button type="button" class="btn btn-ghost ml-auto" @click="ui.closeCreate()">
             Cancel
           </button>
-          <button
-            type="submit"
-            :disabled="busy"
-            class="inline-flex h-8 items-center rounded-sm bg-gray-900 px-3.5 text-[13px] font-semibold text-white hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900 disabled:opacity-60"
-          >
+          <button type="submit" :disabled="busy" class="btn btn-primary">
             {{ busy ? 'Saving…' : conflict ? 'Save again' : 'Save' }}
           </button>
         </div>

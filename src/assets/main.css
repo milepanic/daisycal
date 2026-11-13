@@ -15,8 +15,8 @@
   /* Text on the accent and on colored fills: stays white in dark mode (where white is the dark
      surface color). */
   --color-on-color: #ffffff;
-  /* Active segment of the view switcher: dark gray under white text, in both themes. */
-  --color-pill: #4b5260;
+  /* Active pills (view switcher, Calendar / Tasks, pickers): Prussian blue under white text. */
+  --color-pill: #003153;
   /* Soft lift for the white surfaces on the page background (grid, task columns, panel). */
   --shadow-card: 0 1px 2px rgb(0 0 0 / 0.025), 0 3px 12px rgb(0 0 0 / 0.03);
 
@@ -39,7 +39,7 @@ html.dark {
   color-scheme: dark;
   --color-white: #1a1c20;
   --color-zinc-100: #0f1013;
-  --color-pill: #565d6a;
+  --color-pill: #245a85;
   --shadow-card: 0 1px 2px rgb(0 0 0 / 0.2), 0 3px 12px rgb(0 0 0 / 0.16);
 
   --color-gray-50: #212328;
@@ -68,7 +68,7 @@ html.dark {
   --color-amber-900: #fbe3ad;
 }
 
-/* Theme switch (ThemeToggle): the browser's default cross-fade is replaced by a circle growing
+/* Theme switch (SettingsMenu, lib/themeSwitch): the browser's default cross-fade is replaced by a circle growing
    from the button over the old screenshot. */
 ::view-transition-old(root),
 ::view-transition-new(root) {
@@ -94,7 +94,11 @@ html.dark {
  * fill and text color are overridden here.
  */
 html.chips-tinted .chip-fill {
-  background-color: color-mix(in srgb, color-mix(in srgb, var(--chip-color) 15%, var(--color-white)) 70%, transparent) !important;
+  background-color: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--chip-color) 15%, var(--color-white)) 70%,
+    transparent
+  ) !important;
   --chip-fg: color-mix(in srgb, var(--chip-color) 70%, black) !important;
   border: 2px solid color-mix(in srgb, var(--chip-color) 45%, var(--color-white));
   /* Colored text on a light tint reads thinner than white on a fill: one step heavier. */
@@ -105,21 +109,124 @@ html.chips-tinted .chip-fill.font-medium {
   font-weight: 600;
 }
 html.dark.chips-tinted .chip-fill {
-  background-color: color-mix(in srgb, color-mix(in srgb, var(--chip-color) 22%, var(--color-white)) 70%, transparent) !important;
+  background-color: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--chip-color) 22%, var(--color-white)) 70%,
+    transparent
+  ) !important;
   --chip-fg: color-mix(in srgb, var(--chip-color) 45%, white) !important;
 }
 /* Hover: a slightly stronger tint instead of the solid style's brightening (which washed the
    light tint out to white). */
 html.chips-tinted .chip-fill:hover {
   filter: none;
-  background-color: color-mix(in srgb, color-mix(in srgb, var(--chip-color) 25%, var(--color-white)) 70%, transparent) !important;
+  background-color: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--chip-color) 25%, var(--color-white)) 70%,
+    transparent
+  ) !important;
 }
 html.dark.chips-tinted .chip-fill:hover {
-  background-color: color-mix(in srgb, color-mix(in srgb, var(--chip-color) 32%, var(--color-white)) 70%, transparent) !important;
+  background-color: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--chip-color) 32%, var(--color-white)) 70%,
+    transparent
+  ) !important;
 }
 /* The task checkmark on the filled dot: the surface color stays legible on the deep shade. */
 html.chips-tinted .chip-fill [data-testid='task-dot'] svg {
   color: var(--color-white);
+}
+
+/* Sidebar signature written in on page load: a soft-edged mask sweeps from left to right,
+   like a pen going over the line. Shown at once with reduced motion. */
+.signature-write {
+  -webkit-mask-image: linear-gradient(90deg, #000 40%, transparent 60%);
+  mask-image: linear-gradient(90deg, #000 40%, transparent 60%);
+  -webkit-mask-size: 250% 100%;
+  mask-size: 250% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  animation: signature-write 2.2s cubic-bezier(0.45, 0.05, 0.35, 1) 0.3s both;
+}
+@keyframes signature-write {
+  from {
+    -webkit-mask-position: 100% 0;
+    mask-position: 100% 0;
+  }
+  to {
+    -webkit-mask-position: 0 0;
+    mask-position: 0 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .signature-write {
+    animation: none;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+}
+
+/* Loading placeholders: a soft light sweeping over gray shapes. */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-gray-100) 25%,
+    var(--color-gray-200) 50%,
+    var(--color-gray-100) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton 1.4s ease-in-out infinite;
+}
+@keyframes skeleton {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
+/* Current time (TimeGrid): the dot sends out a soft ring every few seconds. */
+.now-pulse {
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent) 55%, transparent);
+  animation: now-pulse 2.4s ease-out infinite;
+}
+@keyframes now-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent) 55%, transparent);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 7px color-mix(in srgb, var(--color-accent) 0%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .now-pulse {
+    animation: none;
+  }
+}
+
+/*
+ * Travel time box above an event (iPhone style): long dashes (8px, 5px gaps) 2px wide on the
+ * top and sides, no bottom (it runs into the event), on a 60% see-through pale fill. Drawn as
+ * backgrounds because a dashed border cannot set the dash length.
+ */
+.travel-box {
+  --dash: var(--color-gray-300);
+  background:
+    repeating-linear-gradient(90deg, var(--dash) 0 8px, transparent 8px 13px) top / 100% 2px
+      no-repeat,
+    repeating-linear-gradient(180deg, var(--dash) 0 8px, transparent 8px 13px) left / 2px 100%
+      no-repeat,
+    repeating-linear-gradient(180deg, var(--dash) 0 8px, transparent 8px 13px) right / 2px 100%
+      no-repeat,
+    color-mix(in srgb, var(--color-gray-50) 40%, transparent);
 }
 
 /* Selected chip (events and tasks in the grids): a gap in the surface color, a thin ring in
@@ -130,6 +237,36 @@ html.chips-tinted .chip-fill [data-testid='task-dot'] svg {
     0 0 0 3.5px var(--chip-color),
     0 10px 22px -8px color-mix(in srgb, var(--chip-color) 65%, transparent);
   transform: translateY(-1px);
+}
+
+/*
+ * Buttons. One primary action per screen or popup (Prussian blue, like the active pills),
+ * secondary for other real actions, ghost for the least important (Cancel, small helpers),
+ * danger for deleting. The red Create pill in the header is the one exception.
+ */
+@layer components {
+  .btn {
+    @apply inline-flex h-8 shrink-0 cursor-pointer items-center justify-center gap-x-1.5 rounded-lg px-3 text-[13px] font-semibold whitespace-nowrap transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default disabled:opacity-60;
+  }
+  .btn-sm {
+    @apply h-7 px-2.5 text-xs;
+  }
+  .btn-primary {
+    @apply bg-pill text-on-color hover:bg-[color-mix(in_srgb,var(--color-pill)_85%,white)];
+  }
+  .btn-secondary {
+    @apply bg-gray-100 text-gray-900 hover:bg-gray-200;
+  }
+  .btn-ghost {
+    @apply font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900;
+  }
+  .btn-danger {
+    @apply font-medium text-red-600 hover:bg-red-50;
+  }
+  /* Confirming a delete. */
+  .btn-danger-solid {
+    @apply bg-red-600 text-on-color hover:bg-red-500;
+  }
 }
 
 /* Tailwind v4 resets buttons to the default cursor; restore the pointer for clickable buttons. */

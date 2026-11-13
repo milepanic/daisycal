@@ -74,7 +74,7 @@ function onKeydown(e: KeyboardEvent) {
 
 watch(active, async () => {
   await nextTick()
-  list.value?.querySelector('[data-active]')?.scrollIntoView({ block: 'nearest' })
+  list.value?.querySelector<HTMLElement>('[data-active]')?.scrollIntoView?.({ block: 'nearest' })
 })
 
 function onDocMouseDown(e: MouseEvent) {

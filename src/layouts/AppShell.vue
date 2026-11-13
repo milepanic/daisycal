@@ -118,11 +118,7 @@ async function retrySync() {
         <p v-if="auth.error?.kind === 'credentials'" class="mt-1 text-xs text-gray-500">
           Check RADICALE_USER / RADICALE_PASSWORD on the daisycal.home container.
         </p>
-        <button
-          type="button"
-          class="mt-5 h-10 w-full rounded-sm bg-gray-900 text-sm font-semibold text-white hover:bg-gray-700"
-          @click="reconnect"
-        >
+        <button type="button" class="btn btn-primary mt-5 h-10 w-full" @click="reconnect">
           Retry
         </button>
       </template>

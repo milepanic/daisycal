@@ -19,6 +19,7 @@ import { useEventsStore } from '@/stores/events'
 import { useTasksStore } from '@/stores/tasks'
 import { useUiStore } from '@/stores/ui'
 import AppIcon from '@/components/ui/AppIcon.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
 import TaskDot from '@/components/ui/TaskDot.vue'
 
 const ui = useUiStore()
@@ -208,9 +209,15 @@ async function scrollActive() {
           <AppIcon v-else name="calendar" class="size-4 shrink-0 text-gray-300" />
         </li>
       </ul>
-      <p v-else-if="query.trim()" class="px-4 py-6 text-center text-sm text-gray-500">
-        {{ loading ? 'Searching…' : 'Nothing found.' }}
+      <p v-else-if="query.trim() && loading" class="px-4 py-6 text-center text-sm text-gray-500">
+        Searching…
       </p>
+      <EmptyState
+        v-else-if="query.trim()"
+        icon="search"
+        :title="`No results for “${query.trim()}”`"
+        text="Try another word. Search covers titles, locations and notes."
+      />
       <p v-else class="px-4 py-6 text-center text-sm text-gray-400">
         Titles, locations and notes, six months back and ahead.
       </p>

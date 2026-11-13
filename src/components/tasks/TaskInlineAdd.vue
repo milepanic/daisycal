@@ -141,19 +141,8 @@ async function submitAdd() {
     </div>
     <div class="mt-1.5 flex items-center pl-7 text-xs">
       <span class="ml-auto flex gap-x-1">
-        <button
-          type="button"
-          class="rounded-sm px-2 py-1 font-medium text-gray-500 hover:bg-white hover:text-gray-900"
-          @click="cancelAdd"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          class="rounded-sm bg-gray-900 px-2.5 py-1 font-semibold text-white hover:bg-gray-700"
-        >
-          Add
-        </button>
+        <button type="button" class="btn btn-sm btn-ghost" @click="cancelAdd">Cancel</button>
+        <button type="submit" class="btn btn-sm btn-primary">Add</button>
       </span>
     </div>
   </form>

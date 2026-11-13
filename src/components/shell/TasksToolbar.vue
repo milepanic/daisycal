@@ -1,14 +1,12 @@
 <script setup lang="ts">
-import { useSyncStore } from '@/stores/sync'
 import { useUiStore } from '@/stores/ui'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import IconButton from '@/components/ui/IconButton.vue'
 import SectionSwitch from './SectionSwitch.vue'
-import ThemeToggle from './ThemeToggle.vue'
+import SettingsMenu from './SettingsMenu.vue'
 import SidebarToggle from './SidebarToggle.vue'
 
 const ui = useUiStore()
-const sync = useSyncStore()
 </script>
 
 <template>
@@ -21,26 +19,10 @@ const sync = useSyncStore()
     </h1>
     <div class="flex shrink-0 items-center gap-x-2">
       <IconButton icon="search" label="Search (Ctrl+K)" @click="ui.searchOpen = true" />
-      <ThemeToggle />
-      <IconButton
-        icon="refresh"
-        :label="sync.lastError ? `Sync failed: ${sync.lastError}` : 'Refresh'"
-        :class="sync.lastError ? 'text-red-600' : ''"
-        @click="sync.syncNow()"
-      />
-      <label
-        class="flex h-9 cursor-pointer items-center gap-x-2 rounded-sm px-2 text-sm text-gray-600 hover:bg-white/60"
-      >
-        <input
-          v-model="ui.showCompletedTasks"
-          type="checkbox"
-          class="size-4 rounded-sm accent-gray-900"
-        />
-        Show completed
-      </label>
+      <SettingsMenu />
       <button
         type="button"
-        class="inline-flex h-9 items-center gap-x-1.5 rounded-sm bg-gray-900 px-3 text-sm font-semibold text-white hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
+        class="btn btn-primary h-9 rounded-full pr-4 pl-3"
         @click="ui.openCreate({ kind: 'task' })"
       >
         <AppIcon name="plus" class="-ml-0.5 size-5" />

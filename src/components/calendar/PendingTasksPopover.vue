@@ -105,11 +105,11 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onDocMouseDown))
         </div>
         <button
           type="button"
-          class="-mt-1 -mr-1 rounded-sm p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+          class="-mt-1.5 -mr-1.5 flex size-8 shrink-0 items-center justify-center rounded-full text-gray-400 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-700"
           @click="emit('close')"
         >
           <span class="sr-only">Close</span>
-          <AppIcon name="close" class="size-5" />
+          <AppIcon name="close" class="size-4" />
         </button>
       </div>
       <ul class="mt-2 min-h-0 overflow-y-auto px-2 pb-2" :class="draggable ? 'cursor-grab' : ''">

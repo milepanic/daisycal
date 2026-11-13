@@ -4,19 +4,15 @@ import { computed } from 'vue'
 import { useCalendarRoute } from '@/composables/useCalendarRoute'
 import { type CalendarView, customLabel } from '@/lib/dates'
 import { viewTitle } from '@/lib/format'
-import { useSyncStore } from '@/stores/sync'
 import { useUiStore } from '@/stores/ui'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import IconButton from '@/components/ui/IconButton.vue'
 import SectionSwitch from './SectionSwitch.vue'
-import ChipStyleToggle from './ChipStyleToggle.vue'
-import ThemeToggle from './ThemeToggle.vue'
-import WeatherToggle from './WeatherToggle.vue'
+import SettingsMenu from './SettingsMenu.vue'
 import SidebarToggle from './SidebarToggle.vue'
 import ViewSwitcher from './ViewSwitcher.vue'
 
 const ui = useUiStore()
-const sync = useSyncStore()
 const nav = useCalendarRoute()
 
 const title = computed(() => viewTitle(ui.view, ui.currentDate, ui.selectedRange))
@@ -35,15 +31,7 @@ const title = computed(() => viewTitle(ui.view, ui.currentDate, ui.selectedRange
 
     <div class="flex shrink-0 items-center gap-x-2">
       <IconButton icon="search" label="Search (Ctrl+K)" @click="ui.searchOpen = true" />
-      <WeatherToggle />
-      <ThemeToggle />
-      <ChipStyleToggle />
-      <IconButton
-        icon="refresh"
-        :label="sync.lastError ? `Sync failed: ${sync.lastError}` : 'Refresh'"
-        :class="sync.lastError ? 'text-red-600' : ''"
-        @click="sync.syncNow()"
-      />
+      <SettingsMenu />
       <IconButton
         :icon="ui.tasksPanelOpen ? 'panel-right-open' : 'panel-right'"
         label="Show tasks panel"
@@ -80,7 +68,7 @@ const title = computed(() => viewTitle(ui.view, ui.currentDate, ui.selectedRange
       </div>
       <button
         type="button"
-        class="inline-flex h-9 items-center gap-x-1.5 rounded-full bg-accent pr-4 pl-3 text-sm font-semibold text-on-color shadow-[0_2px_10px_color-mix(in_srgb,var(--color-accent)_35%,transparent)] transition-[filter,box-shadow,transform] duration-150 hover:shadow-[0_4px_14px_color-mix(in_srgb,var(--color-accent)_45%,transparent)] hover:brightness-110 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        class="inline-flex h-9 items-center gap-x-1.5 rounded-full bg-accent pr-4 pl-3 text-sm font-semibold text-on-color transition-colors duration-150 hover:bg-[color-mix(in_srgb,var(--color-accent)_88%,black)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         @click="ui.openCreate({ kind: 'event' })"
       >
         <AppIcon name="plus" class="size-5" stroke-width="2.25" />

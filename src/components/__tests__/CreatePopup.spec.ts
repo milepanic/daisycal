@@ -374,7 +374,10 @@ describe('CreatePopup', () => {
     expect(wrapper.find('[data-testid="date-picker"]').text()).not.toMatch(/Today|No date/)
     await wrapper.find('button[aria-label^="Due date:"]').trigger('click')
     // The "x" removes the time first, then the date.
-    const clear = () => wrapper.find('button[class*="text-gray-400"][class*="size-8"]')
+    const clear = () =>
+      wrapper
+        .findAll('button')
+        .find((b) => b.text() === 'Remove time' || b.text() === 'Remove due date')!
     expect(clear().text()).toBe('Remove time')
     await clear().trigger('click')
     expect(wrapper.find('input[aria-label="Due time"]').exists()).toBe(false)
@@ -394,6 +397,65 @@ describe('CreatePopup', () => {
     wrapper.unmount()
   })
 
+  it('changes an existing event into a task and a task into an event, one undo step each', async () => {
+    const events = useEventsStore()
+    const review = events.instancesFor(WEEK).find((i) => i.summary === 'Review')!
+    const wrapper = await open({
+      kind: 'event',
+      edit: { objectUrl: review.objectUrl, recurrenceId: null },
+    })
+    await wrapper.find('input[type="radio"][value="task"]').setValue()
+    expect(wrapper.find('#task-list').attributes('data-value')).toBe(MY_TASKS.url)
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(client.objects.has(review.objectUrl)).toBe(false)
+    const task = [...client.objects.values()].find((o) => o.data.includes('SUMMARY:Review'))!
+    expect(task.data).toContain('BEGIN:VTODO')
+    expect(task.collectionUrl).toBe(MY_TASKS.url)
+    wrapper.unmount()
+
+    // And back: the task becomes an event at its due time.
+    const tasks = useTasksStore()
+    const asTask = tasks.tasksFor(MY_TASKS.url).find((t) => t.summary === 'Review')!
+    const again = await open({
+      kind: 'task',
+      edit: { objectUrl: asTask.objectUrl, recurrenceId: null },
+    })
+    await again.find('input[type="radio"][value="event"]').setValue()
+    await again.find('form').trigger('submit')
+    await flushPromises()
+    expect(client.objects.has(asTask.objectUrl)).toBe(false)
+    const event = [...client.objects.values()].find((o) => o.data.includes('SUMMARY:Review'))!
+    expect(event.data).toContain('BEGIN:VEVENT')
+    again.unmount()
+  })
+
+  it('does not offer a repeating event as a task', async () => {
+    const events = useEventsStore()
+    const mon = events.instancesFor(WEEK).find((i) => i.summary === 'Standup')!
+    const wrapper = await open({
+      kind: 'event',
+      edit: { objectUrl: mon.objectUrl, recurrenceId: mon.recurrenceId!.toString() },
+    })
+    expect(
+      (wrapper.find('input[type="radio"][value="task"]').element as HTMLInputElement).disabled,
+    ).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('starts new events and tasks in the default calendar and list from the settings', async () => {
+    const ui = useUiStore()
+    ui.defaultCalendar = PERSONAL.url
+    const wrapper = await open({ kind: 'event', start: new Date(2026, 9, 13, 10) })
+    expect(wrapper.find('#event-calendar').attributes('data-value')).toBe(PERSONAL.url)
+    // A default that is gone falls back to the first calendar.
+    wrapper.unmount()
+    ui.defaultCalendar = 'https://gone/'
+    const again = await open({ kind: 'event', start: new Date(2026, 9, 13, 10) })
+    expect(again.find('#event-calendar').attributes('data-value')).toBe(WORK.url)
+    again.unmount()
+  })
+
   it('creates an all-day task via the type switcher', async () => {
     const wrapper = await open({
       kind: 'event',
@@ -404,7 +466,10 @@ describe('CreatePopup', () => {
     expect(wrapper.find('#task-list').exists()).toBe(true)
     expect(wrapper.find('#task-list').attributes('data-value')).toBe(MY_TASKS.url)
     await wrapper.find('#create-name').setValue('Call plumber')
-    await wrapper.find('button[class*="text-gray-400"][class*="size-8"]').trigger('click') // Remove time
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Remove time')!
+      .trigger('click')
     await wrapper.find('#task-priority').trigger('click')
     await wrapper.find('[role="option"][data-value="high"]').trigger('mousedown')
     await wrapper.find('form').trigger('submit')
@@ -512,9 +577,9 @@ describe('CreatePopup', () => {
     wrapper.unmount()
 
     const w2 = await open({ kind: 'task', edit: { objectUrl: milk.objectUrl, recurrenceId: null } })
-    await w2.find('button.text-red-600').trigger('click')
+    await w2.find('[data-testid="delete-button"]').trigger('click')
     expect(w2.find('[data-testid="confirm-delete"]').text()).toContain('Delete this task?')
-    await w2.find('button.bg-red-600').trigger('click')
+    await w2.find('[data-testid="delete-confirm"]').trigger('click')
     await flushPromises()
     expect(client.objects.has(milk.objectUrl)).toBe(false)
     w2.unmount()
@@ -525,9 +590,9 @@ describe('CreatePopup', () => {
       kind: 'event',
       edit: { objectUrl: mon.objectUrl, recurrenceId: mon.recurrenceId!.toString() },
     })
-    await w3.find('button.text-red-600').trigger('click')
+    await w3.find('[data-testid="delete-button"]').trigger('click')
     expect(w3.find('[data-testid="confirm-delete"]').text()).toContain('repeating')
-    await w3.find('button.bg-red-600').trigger('click') // All occurrences
+    await w3.find('[data-testid="delete-confirm"]').trigger('click') // All occurrences
     await flushPromises()
     expect(client.objects.has(mon.objectUrl)).toBe(false)
     expect(events.instancesFor(WEEK).some((i) => i.uid === 'standup')).toBe(false)

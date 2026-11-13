@@ -132,11 +132,11 @@ async function remove(scope: EditScope) {
       </div>
       <button
         type="button"
-        class="-mt-1 -mr-1 rounded-sm p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+        class="-mt-1.5 -mr-1.5 flex size-8 shrink-0 items-center justify-center rounded-full text-gray-400 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-700"
         @click="emit('close')"
       >
         <span class="sr-only">Close</span>
-        <AppIcon name="close" class="size-5" />
+        <AppIcon name="close" class="size-4" />
       </button>
     </div>
 
@@ -180,7 +180,7 @@ async function remove(scope: EditScope) {
           v-if="instance.isRecurring"
           type="button"
           :disabled="busy"
-          class="rounded-sm bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-700 disabled:opacity-60"
+          class="btn btn-sm btn-secondary"
           @click="remove('this')"
         >
           Only this occurrence
@@ -188,16 +188,13 @@ async function remove(scope: EditScope) {
         <button
           type="button"
           :disabled="busy"
-          class="rounded-sm bg-red-600 px-3 py-1.5 text-xs font-semibold text-on-color hover:bg-red-500 disabled:opacity-60"
+          class="btn btn-sm btn-danger-solid"
           @click="remove('all')"
+          data-testid="delete-confirm"
         >
           {{ instance.isRecurring ? 'All occurrences' : 'Delete' }}
         </button>
-        <button
-          type="button"
-          class="rounded-sm px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200"
-          @click="confirming = false"
-        >
+        <button type="button" class="btn btn-sm btn-ghost" @click="confirming = false">
           Cancel
         </button>
       </div>
@@ -206,24 +203,15 @@ async function remove(scope: EditScope) {
       From your contacts. Change it in the contact.
     </p>
     <div v-else class="mt-4 flex gap-x-2">
-      <button
-        type="button"
-        class="rounded-sm bg-gray-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-gray-700"
-        @click="edit"
-      >
+      <button type="button" class="btn btn-primary" @click="edit" data-testid="edit-button">
         Edit
       </button>
+      <button type="button" class="btn btn-secondary" @click="duplicate">Duplicate</button>
       <button
         type="button"
-        class="rounded-sm px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100"
-        @click="duplicate"
-      >
-        Duplicate
-      </button>
-      <button
-        type="button"
-        class="rounded-sm px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+        class="btn btn-danger"
         @click="confirming = true"
+        data-testid="delete-button"
       >
         Delete
       </button>

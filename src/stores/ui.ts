@@ -27,6 +27,11 @@ interface Layout {
   theme: Theme
   /** Chips in the grids: solid calendar color, or a muted tint with colored border and text. */
   chipStyle: ChipStyle
+  /** Dots under the mini calendar's days for the calendars with events. */
+  miniDots: boolean
+  /** Calendar / task list picked first in the create popup (null = the first one). */
+  defaultCalendar: string | null
+  defaultTaskList: string | null
 }
 
 export type ChipStyle = 'solid' | 'tinted'
@@ -42,6 +47,9 @@ const DEFAULT_LAYOUT: Layout = {
   tasksPanelList: null,
   theme: 'system',
   chipStyle: 'solid',
+  miniDots: true,
+  defaultCalendar: null,
+  defaultTaskList: null,
 }
 
 export interface CreateDraft {
@@ -92,6 +100,9 @@ export const useUiStore = defineStore('ui', () => {
   const tasksPanelList = ref<string | null>(saved.tasksPanelList)
   const theme = ref<Theme>(saved.theme)
   const chipStyle = ref<ChipStyle>(saved.chipStyle === 'tinted' ? 'tinted' : 'solid')
+  const miniDots = ref(saved.miniDots !== false)
+  const defaultCalendar = ref<string | null>(saved.defaultCalendar ?? null)
+  const defaultTaskList = ref<string | null>(saved.defaultTaskList ?? null)
   const createDraft = ref<CreateDraft | null>(null)
   const selection = ref<Selection | null>(null)
   /** The search dialog (Ctrl/Cmd+K). */
@@ -107,6 +118,9 @@ export const useUiStore = defineStore('ui', () => {
       tasksPanelList,
       theme,
       chipStyle,
+      miniDots,
+      defaultCalendar,
+      defaultTaskList,
     ],
     () =>
       writeJson('local', LAYOUT_KEY, {
@@ -118,6 +132,9 @@ export const useUiStore = defineStore('ui', () => {
         tasksPanelList: tasksPanelList.value,
         theme: theme.value,
         chipStyle: chipStyle.value,
+        miniDots: miniDots.value,
+        defaultCalendar: defaultCalendar.value,
+        defaultTaskList: defaultTaskList.value,
       } satisfies Layout),
   )
 
@@ -181,6 +198,9 @@ export const useUiStore = defineStore('ui', () => {
     tasksPanelList,
     theme,
     chipStyle,
+    miniDots,
+    defaultCalendar,
+    defaultTaskList,
     createDraft,
     selection,
     searchOpen,

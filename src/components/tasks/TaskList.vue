@@ -13,6 +13,8 @@ import { useNotificationsStore } from '@/stores/notifications'
 import { useTasksStore } from '@/stores/tasks'
 import { useUiStore } from '@/stores/ui'
 import AppIcon from '@/components/ui/AppIcon.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import SkeletonRows from '@/components/ui/SkeletonRows.vue'
 import TaskInlineAdd from './TaskInlineAdd.vue'
 import { nestTasks, subtaskProgress } from '@/lib/subtasks'
 import TaskRow from './TaskRow.vue'
@@ -98,10 +100,13 @@ function openDetailed() {
     </p>
 
     <div class="mt-1 min-h-0 overflow-y-auto">
-      <p v-if="loading" class="px-2 py-2 text-sm text-gray-400">Loading…</p>
-      <p v-else-if="open.length === 0 && !adding" class="px-2 py-2 text-sm text-gray-400">
-        No open tasks.
-      </p>
+      <SkeletonRows v-if="loading" />
+      <EmptyState
+        v-else-if="open.length === 0 && !adding"
+        icon="tasks"
+        :title="completed.length ? 'All done' : 'Nothing here yet'"
+        :text="completed.length ? 'No open tasks in this list.' : 'Add the first task above.'"
+      />
       <TransitionGroup tag="ul" name="task-list" class="relative space-y-0.5">
         <template v-for="n in nestedOpen" :key="n.task.objectUrl">
           <TaskRow

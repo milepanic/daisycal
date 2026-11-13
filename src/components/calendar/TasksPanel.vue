@@ -9,6 +9,8 @@ import { useNotificationsStore } from '@/stores/notifications'
 import { useTasksStore } from '@/stores/tasks'
 import { useUiStore } from '@/stores/ui'
 import AppIcon from '@/components/ui/AppIcon.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import SkeletonRows from '@/components/ui/SkeletonRows.vue'
 import TaskInlineAdd from '@/components/tasks/TaskInlineAdd.vue'
 import TaskRow from '@/components/tasks/TaskRow.vue'
 import { nestTasks, subtaskProgress } from '@/lib/subtasks'
@@ -157,18 +159,13 @@ async function toggle(t: Task, done: boolean) {
 
     <div class="flex-1 overflow-y-auto px-2 pt-1 pb-4">
       <TaskInlineAdd v-model:adding="adding" :list="list" :color="color" />
-      <p
-        v-if="listUrl && tasks.isLoading(listUrl) && all.length === 0"
-        class="px-2 py-2 text-sm text-gray-400"
-      >
-        Loading…
-      </p>
-      <p
+      <SkeletonRows v-if="listUrl && tasks.isLoading(listUrl) && all.length === 0" />
+      <EmptyState
         v-else-if="listUrl && open.length === 0 && !adding"
-        class="px-2 py-2 text-sm text-gray-400"
-      >
-        No open tasks.
-      </p>
+        icon="tasks"
+        :title="completed.length ? 'All done' : 'Nothing here yet'"
+        :text="completed.length ? 'No open tasks in this list.' : 'Add the first task above.'"
+      />
 
       <TransitionGroup tag="ul" name="task-list" class="relative mt-1 space-y-0.5">
         <template v-for="n in nestedOpen" :key="n.task.objectUrl">

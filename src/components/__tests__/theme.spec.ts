@@ -3,8 +3,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { defineComponent, h, nextTick } from 'vue'
 
-import ChipStyleToggle from '@/components/shell/ChipStyleToggle.vue'
-import ThemeToggle from '@/components/shell/ThemeToggle.vue'
+import SettingsMenu from '@/components/shell/SettingsMenu.vue'
 import { useTheme } from '@/composables/useTheme'
 import { useUiStore } from '@/stores/ui'
 
@@ -28,26 +27,35 @@ afterEach(() => {
 const Host = defineComponent({
   setup() {
     useTheme()
-    return () => h(ThemeToggle)
+    return () => h(SettingsMenu)
   },
 })
 
+/** Opens the settings card and clicks the option with this text in a setting group. */
+async function pick(wrapper: ReturnType<typeof mount>, group: string, label: string) {
+  if (!wrapper.find('[data-testid="settings-menu"]').exists())
+    await wrapper.find('[data-testid="settings-button"]').trigger('click')
+  const button = wrapper
+    .find(`[data-testid="${group}"]`)
+    .findAll('button')
+    .find((b) => b.text() === label)!
+  await button.trigger('click')
+  await nextTick()
+}
+
 describe('dark mode', () => {
-  it('cycles System → Light → Dark, sets the class on <html> and remembers the choice', async () => {
+  it('switches System / Light / Dark from the settings, sets the class on <html> and remembers it', async () => {
     const wrapper = mount(Host)
     const html = document.documentElement
-    const button = () => wrapper.find('[data-testid="theme-toggle"]')
     expect(useUiStore().theme).toBe('system')
     expect(html.classList.contains('dark')).toBe(false)
-    await button().trigger('click')
+    await pick(wrapper, 'setting-theme', 'Light')
     expect(useUiStore().theme).toBe('light')
-    await button().trigger('click')
-    await nextTick()
+    await pick(wrapper, 'setting-theme', 'Dark')
     expect(useUiStore().theme).toBe('dark')
     expect(html.classList.contains('dark')).toBe(true)
     expect(JSON.parse(localStorage.getItem('daisycal.layout')!).theme).toBe('dark')
-    await button().trigger('click')
-    await nextTick()
+    await pick(wrapper, 'setting-theme', 'System')
     expect(html.classList.contains('dark')).toBe(false)
     wrapper.unmount()
   })
@@ -64,27 +72,29 @@ describe('dark mode', () => {
   })
 })
 
-describe('chip style', () => {
-  it('toggles solid / tinted chips from the header, with the class on <html> and the choice kept', async () => {
-    const ChipHost = defineComponent({
-      setup() {
-        useTheme()
-        return () => h(ChipStyleToggle)
-      },
-    })
-    const wrapper = mount(ChipHost)
+describe('settings', () => {
+  it('switches the event style, the first day of the week and completed tasks', async () => {
+    const wrapper = mount(Host, { attachTo: document.body })
+    const ui = useUiStore()
     const html = document.documentElement
-    const button = () => wrapper.find('[data-testid="chip-style-toggle"]')
-    expect(useUiStore().chipStyle).toBe('solid')
-    expect(html.classList.contains('chips-tinted')).toBe(false)
-    await button().trigger('click')
-    await nextTick()
+    await pick(wrapper, 'setting-style', 'Tinted')
     expect(html.classList.contains('chips-tinted')).toBe(true)
-    expect(button().attributes('aria-pressed')).toBe('true')
     expect(JSON.parse(localStorage.getItem('daisycal.layout')!).chipStyle).toBe('tinted')
-    await button().trigger('click')
-    await nextTick()
+    await pick(wrapper, 'setting-style', 'Solid')
     expect(html.classList.contains('chips-tinted')).toBe(false)
+    await pick(wrapper, 'setting-week', 'Sunday')
+    expect(ui.weekStart).toBe(0)
+    expect(ui.showCompletedTasks).toBe(true)
+    await wrapper.find('[data-testid="setting-completed"]').trigger('click')
+    expect(ui.showCompletedTasks).toBe(false)
+    expect(ui.miniDots).toBe(true)
+    await wrapper.find('[data-testid="setting-dots"]').trigger('click')
+    expect(ui.miniDots).toBe(false)
+    expect(JSON.parse(localStorage.getItem('daisycal.layout')!).miniDots).toBe(false)
+    // Escape closes the card.
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await nextTick()
+    expect(wrapper.find('[data-testid="settings-menu"]').exists()).toBe(false)
     wrapper.unmount()
   })
 })

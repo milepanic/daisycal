@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
 import { useCalendarRoute } from '@/composables/useCalendarRoute'
+import { type DateRange, addDays, startOfDay, toDateKey } from '@/lib/dates'
 import { stepLabel } from '@/lib/format'
+import { useEventsStore } from '@/stores/events'
 import { useAuthStore } from '@/stores/auth'
 import { useBirthdaysStore } from '@/stores/birthdays'
 import { useCalendarsStore } from '@/stores/calendars'
@@ -30,10 +32,68 @@ const bandRange = computed(() =>
     : null,
 )
 
+/**
+ * Dots under the mini calendar's days: the calendars with events that day, most events first
+ * (three at most). The weeks it shows are loaded like the grid's.
+ */
+const events = useEventsStore()
+const miniRange = ref<DateRange | null>(null)
+watch(
+  () => [miniRange.value, calendars.status, ui.miniDots] as const,
+  ([range, status]) => {
+    if (range && status === 'ready' && ui.miniDots) void events.ensureLoaded(range)
+  },
+)
+const dotsByDay = computed(() => {
+  const range = miniRange.value
+  const out = new Map<string, string[]>()
+  if (!range) return out
+  const counts = new Map<string, Map<string, number>>()
+  for (const i of events.instancesFor(range)) {
+    // Every day the event touches (an all-day end is exclusive, as is a timed end at midnight).
+    let d = startOfDay(i.start > range.start ? i.start : range.start)
+    const end = i.end < range.end ? i.end : range.end
+    do {
+      const key = toDateKey(d)
+      const byCal = counts.get(key) ?? new Map<string, number>()
+      byCal.set(i.collectionUrl, (byCal.get(i.collectionUrl) ?? 0) + 1)
+      counts.set(key, byCal)
+      d = addDays(d, 1)
+    } while (d < end)
+  }
+  for (const [key, byCal] of counts) {
+    out.set(
+      key,
+      [...byCal.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([url]) => calendars.colorFor(url)),
+    )
+  }
+  return out
+})
+function dotsFor(key: string) {
+  return dotsByDay.value.get(key) ?? []
+}
+
 /** Days dragged in the mini calendar: the calendar shows exactly those. */
 function pickRange(start: Date, days: number) {
   void nav.goCustom(start, days)
 }
+
+/**
+ * The signature is written in on page load. It waits for the Great Vibes font, so the
+ * animation does not start on the fallback font and jump.
+ */
+const signatureReady = ref(false)
+onMounted(async () => {
+  try {
+    await document.fonts?.load("30px 'Great Vibes'")
+  } catch {
+    // No font loading API or the font failed: show it anyway.
+  }
+  signatureReady.value = true
+})
 
 function pickDate(d: Date) {
   if (route.name === 'calendar') void nav.setDate(d)
@@ -56,8 +116,10 @@ function pickDate(d: Date) {
         :selected="ui.currentDate"
         :week-start="ui.weekStart"
         :range="bandRange"
+        :dots="ui.miniDots ? dotsFor : undefined"
         @select="pickDate"
         @select-range="pickRange"
+        @visible-range="miniRange = $event"
       />
 
       <!-- Prev / Today / next of the calendar view. -->
@@ -119,8 +181,11 @@ function pickDate(d: Date) {
     </div>
 
     <div class="flex shrink-0 items-center px-3 py-3">
+      <!-- Written in once the script font is there (see .signature-write). The padding (taken
+           back by the negative margin) gives the swashes room inside the mask. -->
       <p
-        class="font-signature text-[30px] leading-none whitespace-nowrap text-gray-500"
+        class="-mx-2 -my-3 px-2 py-3 font-signature text-[30px] leading-none whitespace-nowrap text-gray-500"
+        :class="signatureReady ? 'signature-write' : 'opacity-0'"
         :title="`${auth.username} · ${auth.serverUrl}`"
       >
         Mile's Calendar

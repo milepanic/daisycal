@@ -55,3 +55,22 @@ describe('MiniCalendar drag', () => {
     wrapper.unmount()
   })
 })
+
+describe('MiniCalendar dots', () => {
+  it('draws the calendar colors of a day under its number and reports the weeks shown', () => {
+    const wrapper = mount(MiniCalendar, {
+      props: {
+        selected: new Date(2026, 10, 13),
+        dots: (key: string) => (key === '2026-11-10' ? ['#ff0000', '#00ff00'] : []),
+      },
+    })
+    const day = wrapper.find('time[datetime="2026-11-10"]').element.parentElement!
+    expect(day.querySelectorAll('[data-testid="day-dots"] span')).toHaveLength(2)
+    expect(wrapper.findAll('[data-testid="day-dots"]')).toHaveLength(1)
+    // November 2026 starting on Monday: Oct 26 – Dec 7.
+    expect(wrapper.emitted('visibleRange')![0]![0]).toEqual({
+      start: new Date(2026, 9, 26),
+      end: new Date(2026, 11, 7),
+    })
+  })
+})

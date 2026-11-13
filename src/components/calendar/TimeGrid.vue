@@ -14,6 +14,7 @@ import type { EventInstance, Task } from '@/api/ical'
 import { addDays, isSameDay, startOfDay, toDateKey } from '@/lib/dates'
 import { WEEKDAYS_LONG, formatTime } from '@/lib/format'
 import {
+  COMPACT_PX,
   DAY_PX,
   DEFAULT_NEW_EVENT_MIN,
   HOUR_PX,
@@ -50,6 +51,8 @@ const props = defineProps<{
   draftColor?: string
   /** Overdue open tasks, shown as "N pending tasks" on today's column. */
   pendingTasks?: Task[]
+  /** The shown days are still loading: placeholder blocks while nothing is there yet. */
+  loading?: boolean
   /** Forecast for a day (by date key), shown above the day name when the weather is on. */
   weatherFor?: (dateKey: string) => DayWeather | undefined
 }>()
@@ -209,6 +212,21 @@ function placementsFor(day: Date, dayStart: Date, dayEnd: Date): GridPlacement[]
 }
 
 const nowTop = computed(() => minutesSinceMidnight(now.value, now.value) * PX_PER_MIN)
+/** Placeholder blocks while the first events of the shown days load (none on screen yet). */
+const showSkeleton = computed(
+  () => Boolean(props.loading) && props.instances.length === 0 && props.tasks.length === 0,
+)
+/** Two blocks a day at varied times (minutes from midnight), so it reads like a calendar. */
+function skeletonBlocks(index: number) {
+  return [
+    { start: (8 + (index % 3)) * 60 + 30 * (index % 2), length: 60 + 30 * (index % 2) },
+    { start: (13 + ((index * 2) % 4)) * 60, length: 45 + 30 * ((index + 1) % 3) },
+  ]
+}
+/** Day view with nothing timed on it: a quiet note in the grid. */
+const freeDay = computed(
+  () => props.days.length === 1 && !props.loading && columns.value[0]!.placements.length === 0,
+)
 
 function eventKey(i: EventInstance) {
   return `${i.objectUrl}|${i.recurrenceId?.toString() ?? ''}`
@@ -989,6 +1007,23 @@ function onGridKeydown(e: KeyboardEvent) {
           >
             {{ String(h).padStart(2, '0') }}:00
           </span>
+          <!-- Current time: the exact time in the hour gutter. When today is the first column,
+               a short piece joins it to the line, and the pill breathes instead of the dot. -->
+          <span
+            v-if="todayIndex === 0"
+            class="pointer-events-none absolute -right-px z-20 h-0.5 w-1.5 -translate-y-1/2 bg-accent"
+            :style="{ top: `${nowTop}px` }"
+            data-testid="now-joint"
+          ></span>
+          <span
+            v-if="todayIndex >= 0"
+            class="absolute right-1 z-20 -translate-y-1/2 rounded-full bg-accent px-1.5 py-px text-[10px] font-semibold text-on-color tabular-nums"
+            :class="todayIndex === 0 ? 'now-pulse' : ''"
+            :style="{ top: `${nowTop}px` }"
+            data-testid="now-pill"
+          >
+            {{ formatTime(now) }}
+          </span>
         </div>
         <div
           v-for="c in columns"
@@ -1032,7 +1067,7 @@ function onGridKeydown(e: KeyboardEvent) {
               <!-- Travel time (iPhone): a pale gray box with dashed sides running into the event. -->
               <div
                 v-if="p.travelPx > 0"
-                class="pointer-events-none absolute inset-x-0 top-0 flex items-start gap-x-1 overflow-hidden rounded-t-sm border border-b-0 border-dashed border-gray-300 bg-gray-50 px-1.5 text-[10px] leading-tight font-medium text-gray-500"
+                class="travel-box pointer-events-none absolute inset-x-0 top-0 flex items-start gap-x-1 overflow-hidden rounded-t-sm px-2 pt-0.5 text-[10px] leading-tight font-medium text-gray-500"
                 :style="{ height: `${p.travelPx}px` }"
                 data-testid="travel-time"
               >
@@ -1096,7 +1131,9 @@ function onGridKeydown(e: KeyboardEvent) {
                     'flex gap-x-1 pr-1.5 pl-1 text-(--chip-fg)',
                     'tall' in dragPreview && dragPreview.tall ? 'items-start pt-1' : 'items-center',
                   ]
-                : 'px-2 py-1 text-(--chip-fg)'
+                : dragPreview.height < COMPACT_PX
+                  ? 'flex items-center gap-x-1 px-1.5 text-[10px] leading-none text-(--chip-fg)'
+                  : 'px-2 py-1 text-(--chip-fg)'
             "
             :style="{
               top: `${dragPreview.top}px`,
@@ -1119,6 +1156,12 @@ function onGridKeydown(e: KeyboardEvent) {
                 formatTime(dragPreview.from)
               }}</span>
             </template>
+            <template v-else-if="dragPreview.height < COMPACT_PX">
+              <span class="min-w-0 truncate font-medium">{{ dragPreview.title }}</span>
+              <span class="ml-auto shrink-0 text-[11px] text-(--chip-fg)/80">
+                {{ formatTime(dragPreview.from) }}–{{ formatTime(dragPreview.to) }}
+              </span>
+            </template>
             <template v-else>
               <p class="truncate font-medium">{{ dragPreview.title }}</p>
               <p class="truncate text-[11px] text-(--chip-fg)/80">
@@ -1132,7 +1175,9 @@ function onGridKeydown(e: KeyboardEvent) {
             :class="
               draft?.kind === 'task'
                 ? 'flex items-center gap-x-1 pr-1.5 pl-1 text-(--chip-fg)'
-                : 'px-2 py-1 text-(--chip-fg)'
+                : draftPlacement(c.day)!.height < COMPACT_PX
+                  ? 'flex items-center gap-x-1 px-1.5 text-[10px] leading-none text-(--chip-fg)'
+                  : 'px-2 py-1 text-(--chip-fg)'
             "
             :style="{
               top: `${draftPlacement(c.day)!.top}px`,
@@ -1147,6 +1192,13 @@ function onGridKeydown(e: KeyboardEvent) {
               <TaskDot :color="draftColor ?? '#7c3aed'" size="sm" on-color />
               <span class="truncate font-medium">{{ draft?.title || '(No title)' }}</span>
             </template>
+            <!-- Short like a new 30-minute event: one line, as the saved chip will be. -->
+            <template v-else-if="draftPlacement(c.day)!.height < COMPACT_PX">
+              <span class="min-w-0 truncate font-medium">{{ draft?.title || '(No title)' }}</span>
+              <span class="ml-auto shrink-0 text-[11px] text-(--chip-fg)/80">
+                {{ formatTime(draft!.start!) }}–{{ formatTime(draft!.end!) }}
+              </span>
+            </template>
             <template v-else>
               <p class="truncate font-medium">{{ draft?.title || '(No title)' }}</p>
               <p class="truncate text-[11px] text-(--chip-fg)/80">
@@ -1154,14 +1206,42 @@ function onGridKeydown(e: KeyboardEvent) {
               </p>
             </template>
           </div>
+          <template v-if="showSkeleton">
+            <div
+              v-for="(b, bi) in skeletonBlocks(columns.indexOf(c))"
+              :key="bi"
+              class="skeleton pointer-events-none absolute inset-x-1 rounded-sm"
+              :style="{ top: `${b.start * PX_PER_MIN}px`, height: `${b.length * PX_PER_MIN}px` }"
+              data-testid="grid-skeleton"
+            ></div>
+          </template>
+          <div
+            v-if="freeDay"
+            class="pointer-events-none absolute inset-x-0 flex flex-col items-center text-center"
+            :style="{ top: `${9 * HOUR_PX}px` }"
+            data-testid="free-day"
+          >
+            <span class="grid size-10 place-items-center rounded-full bg-gray-50 text-gray-300">
+              <AppIcon name="calendar" class="size-5" />
+            </span>
+            <p class="mt-2 text-[13px] font-medium text-gray-400">Nothing planned</p>
+            <p class="text-xs text-gray-300">Click or drag in the grid to add an event.</p>
+          </div>
+          <!-- Current time (today only): a breathing dot and a line fading out to the right;
+               the time itself is the pill in the hour gutter. -->
           <div
             v-if="c.isToday"
-            class="pointer-events-none absolute inset-x-0 z-10 flex items-center"
+            class="pointer-events-none absolute inset-x-0 z-10 flex -translate-y-1/2 items-center"
             :style="{ top: `${nowTop}px` }"
             data-testid="now-line"
           >
-            <span class="-ml-1 size-2 rounded-sm bg-accent"></span>
-            <span class="h-0.5 flex-1 bg-accent"></span>
+            <span
+              v-if="todayIndex !== 0"
+              class="now-pulse -ml-1 size-2.5 shrink-0 rounded-full bg-accent"
+            ></span>
+            <span
+              class="h-0.5 flex-1 bg-linear-to-r from-accent via-accent/60 to-transparent"
+            ></span>
           </div>
         </div>
       </div>

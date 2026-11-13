@@ -56,6 +56,14 @@ export const useHistoryStore = defineStore('history', () => {
     }
   }
 
+  /** Renames the newest undo step (a change made of several writes, e.g. event → task). */
+  function relabelLast(label: string) {
+    const last = entries.value[entries.value.length - 1]
+    if (!last) return
+    last.label = label
+    showToast(last)
+  }
+
   /** Records a change. `undo` must put things back as they were before it. */
   function record(label: string, entryKey: string, undoFn: () => Promise<unknown>) {
     if (undoing.value) return
@@ -101,5 +109,14 @@ export const useHistoryStore = defineStore('history', () => {
   }
   useAuthStore().onDisconnect(clear)
 
-  return { entries, undoing, record, group, undo, canUndo, clear }
+  return {
+    relabelLast,
+    entries,
+    undoing,
+    record,
+    group,
+    undo,
+    canUndo,
+    clear,
+  }
 })
