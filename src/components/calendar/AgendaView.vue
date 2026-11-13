@@ -29,7 +29,7 @@ function eventKey(i: EventInstance) {
 </script>
 
 <template>
-  <div class="min-h-0 flex-1 overflow-auto px-2 pb-2" data-testid="agenda-view">
+  <div class="scroll-subtle min-h-0 flex-1 overflow-auto px-2 pb-2" data-testid="agenda-view">
     <div class="min-w-[480px]">
       <div
         class="sticky top-0 z-20 flex items-center justify-between border-b border-gray-200 bg-white px-2 py-2"

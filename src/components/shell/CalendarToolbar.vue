@@ -23,13 +23,12 @@ const unit = computed(() => stepLabel(ui.view))
 
 <template>
   <header class="flex h-14 shrink-0 items-center gap-x-3">
-    <SidebarToggle />
-
     <div class="flex min-w-0 items-center gap-x-2">
-      <div class="flex h-9 items-center rounded-sm bg-white/60 p-0.5">
+      <!-- Same outlined track as the view switcher. -->
+      <div class="flex h-9 items-center rounded-full ring-1 ring-gray-300">
         <button
           type="button"
-          class="flex h-full w-8 items-center justify-center rounded-sm text-gray-500 hover:bg-white hover:text-gray-900"
+          class="flex h-full w-9 items-center justify-center rounded-full text-gray-600 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-900"
           @click="nav.prev()"
         >
           <span class="sr-only">Previous {{ unit }}</span>
@@ -37,14 +36,14 @@ const unit = computed(() => stepLabel(ui.view))
         </button>
         <button
           type="button"
-          class="h-full rounded-sm px-2.5 text-sm font-semibold text-gray-900 hover:bg-white"
+          class="h-full rounded-full px-3 text-sm font-semibold text-gray-900 transition-colors duration-150 hover:bg-gray-100"
           @click="nav.today()"
         >
           Today
         </button>
         <button
           type="button"
-          class="flex h-full w-8 items-center justify-center rounded-sm text-gray-500 hover:bg-white hover:text-gray-900"
+          class="flex h-full w-9 items-center justify-center rounded-full text-gray-600 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-900"
           @click="nav.next()"
         >
           <span class="sr-only">Next {{ unit }}</span>
@@ -55,6 +54,7 @@ const unit = computed(() => stepLabel(ui.view))
     </div>
 
     <div class="ml-auto flex shrink-0 items-center gap-x-2">
+      <SidebarToggle />
       <IconButton icon="search" label="Search (Ctrl+K)" @click="ui.searchOpen = true" />
       <WeatherToggle />
       <ThemeToggle />
@@ -63,6 +63,12 @@ const unit = computed(() => stepLabel(ui.view))
         :label="sync.lastError ? `Sync failed: ${sync.lastError}` : 'Refresh'"
         :class="sync.lastError ? 'text-red-600' : ''"
         @click="sync.syncNow()"
+      />
+      <IconButton
+        :icon="ui.tasksPanelOpen ? 'panel-right-open' : 'panel-right'"
+        label="Show tasks panel"
+        :pressed="ui.tasksPanelOpen"
+        @click="ui.toggleTasksPanel()"
       />
       <ViewSwitcher :view="ui.view" class="hidden md:flex" @change="nav.setView" />
       <div class="relative md:hidden">
@@ -84,18 +90,12 @@ const unit = computed(() => stepLabel(ui.view))
           class="pointer-events-none absolute top-1/2 right-2 size-4 -translate-y-1/2 text-gray-500"
         />
       </div>
-      <IconButton
-        icon="tasks"
-        label="Show tasks panel"
-        :active="ui.tasksPanelOpen"
-        @click="ui.toggleTasksPanel()"
-      />
       <button
         type="button"
-        class="inline-flex h-9 items-center gap-x-1.5 rounded-sm bg-gray-900 px-3 text-sm font-semibold text-white hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
+        class="inline-flex h-9 items-center gap-x-1.5 rounded-full bg-accent pr-4 pl-3 text-sm font-semibold text-on-color shadow-[0_2px_10px_color-mix(in_srgb,var(--color-accent)_35%,transparent)] transition-[filter,box-shadow,transform] duration-150 hover:shadow-[0_4px_14px_color-mix(in_srgb,var(--color-accent)_45%,transparent)] hover:brightness-110 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         @click="ui.openCreate({ kind: 'event' })"
       >
-        <AppIcon name="plus" class="-ml-0.5 size-5" />
+        <AppIcon name="plus" class="size-5" stroke-width="2.25" />
         <span class="hidden sm:inline">Create</span>
         <span class="sr-only sm:hidden">Create</span>
       </button>

@@ -29,9 +29,9 @@ async function toggle() {
 
 <template>
   <IconButton
-    icon="cloud"
+    :icon="weather.enabled ? 'weather-partly' : 'cloud-off'"
     :label="label"
-    :active="weather.enabled"
+    :pressed="weather.enabled"
     data-testid="weather-toggle"
     @click="toggle"
   />

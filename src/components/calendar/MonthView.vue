@@ -70,7 +70,7 @@ function onCellClick(date: Date, e: MouseEvent) {
 </script>
 
 <template>
-  <div class="flex min-h-0 flex-1 flex-col overflow-auto px-2 pb-2" data-testid="month-view">
+  <div class="scroll-subtle flex min-h-0 flex-1 flex-col overflow-auto px-2 pb-2" data-testid="month-view">
     <div class="flex min-h-[600px] min-w-[640px] flex-1 flex-col">
       <div class="sticky top-0 z-20 grid grid-cols-7 border-b border-gray-200 bg-white">
         <div

@@ -693,7 +693,7 @@ function onGridKeydown(e: KeyboardEvent) {
 <template>
   <div
     ref="root"
-    class="min-h-0 flex-1 overflow-auto px-2 pb-2"
+    class="scroll-subtle min-h-0 flex-1 overflow-auto px-2 pb-2"
     :class="
       drag
         ? drag.kind === 'resize'

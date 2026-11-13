@@ -13,6 +13,8 @@
   /* Text on the accent and on colored fills: stays white in dark mode (where white is the dark
      surface color). */
   --color-on-color: #ffffff;
+  /* Active segment of the view switcher: dark gray under white text, in both themes. */
+  --color-pill: #4b5260;
 
   --color-cal-personal: #566c86;
   --color-cal-apartment: #7c94b8;
@@ -33,6 +35,7 @@ html.dark {
   color-scheme: dark;
   --color-white: #1a1c20;
   --color-zinc-100: #0f1013;
+  --color-pill: #565d6a;
 
   --color-gray-50: #212328;
   --color-gray-100: #272a30;
@@ -66,6 +69,16 @@ html.dark {
 ::view-transition-new(root) {
   animation: none;
   mix-blend-mode: normal;
+}
+
+/* Calendar views: a thin scrollbar that only shows while the pointer is over the view. */
+.scroll-subtle {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.scroll-subtle:hover,
+.scroll-subtle:focus-within {
+  scrollbar-color: var(--color-gray-300) transparent;
 }
 
 /* Tailwind v4 resets buttons to the default cursor; restore the pointer for clickable buttons. */

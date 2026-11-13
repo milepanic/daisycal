@@ -36,7 +36,7 @@ function pickDate(d: Date) {
         :aria-current="route.name === 'calendar' ? 'page' : undefined"
         :class="tabClass(route.name === 'calendar')"
       >
-        <AppIcon name="calendar" class="size-5 shrink-0" />
+        <AppIcon name="nav-calendar" class="size-5 shrink-0" />
         Calendar
       </RouterLink>
       <RouterLink
@@ -44,7 +44,7 @@ function pickDate(d: Date) {
         :aria-current="route.name === 'tasks' ? 'page' : undefined"
         :class="tabClass(route.name === 'tasks')"
       >
-        <AppIcon name="tasks" class="size-5 shrink-0" />
+        <AppIcon name="nav-tasks" class="size-5 shrink-0" />
         Tasks
       </RouterLink>
     </nav>

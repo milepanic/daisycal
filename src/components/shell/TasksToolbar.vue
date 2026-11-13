@@ -12,9 +12,9 @@ const sync = useSyncStore()
 
 <template>
   <header class="flex h-14 shrink-0 items-center gap-x-3 px-2">
-    <SidebarToggle />
     <h1 class="truncate font-display text-lg font-bold text-gray-900">Tasks</h1>
     <div class="ml-auto flex shrink-0 items-center gap-x-2">
+      <SidebarToggle />
       <IconButton icon="search" label="Search (Ctrl+K)" @click="ui.searchOpen = true" />
       <ThemeToggle />
       <IconButton

@@ -107,7 +107,7 @@ describe('app shell', () => {
     expect(client.fetchEvents).toHaveBeenCalledTimes(fetches)
 
     // Next week via the toolbar updates the URL and title.
-    await wrapper.find('button[class*="w-8"]:last-of-type').trigger('click') // "Next week" is the second w-8 button
+    await wrapper.findAll('button').find((b) => b.text() === 'Next week')!.trigger('click')
     await flushPromises()
     expect(router.currentRoute.value.fullPath).toBe('/week/2026-10-19')
     expect(wrapper.find('h1').text()).toBe('October 19 – 25, 2026')
