@@ -33,9 +33,9 @@ function onClick(e: MouseEvent) {
     class="flex w-full min-w-0 cursor-pointer items-center overflow-hidden text-left text-xs focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gray-900 data-selected:ring-2 data-selected:ring-gray-900 data-selected:ring-offset-1"
     :class="
       size === 'month'
-        ? 'gap-x-1.5 rounded-sm bg-gray-100 px-1.5 py-0.5 transition-colors duration-150 hover:bg-gray-200'
+        ? 'gap-x-1.5 rounded-sm bg-gray-100 px-1.5 py-0.5 transition-[background-color,opacity] duration-150 hover:bg-gray-200'
         : [
-            'h-full gap-x-1 rounded-sm pr-1.5 pl-1 transition-[filter,box-shadow] duration-150 hover:brightness-110',
+            'h-full gap-x-1 rounded-sm pr-1.5 pl-1 transition-[filter,box-shadow,opacity] duration-300 hover:brightness-110',
             task.completed ? 'opacity-60' : '',
           ]
     "

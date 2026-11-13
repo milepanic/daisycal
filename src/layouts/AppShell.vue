@@ -4,17 +4,20 @@
  * sync loop; both are torn down by the stores themselves on logout. On narrow screens the
  * sidebar is a drawer over the page and the tasks panel starts closed.
  */
-import { computed, onMounted, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { RouterView, useRouter } from 'vue-router'
 
+import { slideIn } from '@/lib/motion'
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
 import { NARROW_QUERY, useMediaQuery } from '@/composables/useMediaQuery'
 import { useAuthStore } from '@/stores/auth'
+import { useBirthdaysStore } from '@/stores/birthdays'
 import { useCalendarsStore } from '@/stores/calendars'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useSyncStore } from '@/stores/sync'
 import { useUiStore } from '@/stores/ui'
 import CreatePopup from '@/components/create/CreatePopup.vue'
+import SearchDialog from '@/components/shell/SearchDialog.vue'
 import AppSidebar from '@/components/sidebar/AppSidebar.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import ToastStack from '@/components/ui/ToastStack.vue'
@@ -22,9 +25,21 @@ import ToastStack from '@/components/ui/ToastStack.vue'
 const auth = useAuthStore()
 const calendars = useCalendarsStore()
 const sync = useSyncStore()
+const birthdays = useBirthdaysStore()
 const ui = useUiStore()
 const notifications = useNotificationsStore()
 const router = useRouter()
+
+/** Calendar ↔ Tasks: the new page fades in with a small rise. */
+const page = ref<HTMLElement | null>(null)
+watch(
+  () => router.currentRoute.value.name,
+  async (name, prev) => {
+    if (!prev || name === prev) return
+    await nextTick()
+    slideIn(page.value, 0, 8)
+  },
+)
 const narrow = useMediaQuery(NARROW_QUERY)
 
 useKeyboardShortcuts()
@@ -40,7 +55,10 @@ onMounted(async () => {
   } catch (err) {
     notifications.reportError(err, 'Could not load calendars', () => calendars.load())
   }
-  if (auth.isAuthenticated) sync.start()
+  if (auth.isAuthenticated) {
+    sync.start()
+    void birthdays.load()
+  }
 })
 
 // The banner shows while the ctag poll fails or a write hit a NetworkError.
@@ -90,7 +108,7 @@ async function retrySync() {
   >
     <div class="w-full max-w-sm rounded-2xl bg-white p-8 text-center shadow-sm">
       <span
-        class="mx-auto flex size-10 items-center justify-center rounded-xl bg-accent text-white"
+        class="mx-auto flex size-10 items-center justify-center rounded-xl bg-accent text-on-color"
       >
         <AppIcon name="calendar" class="size-6" />
       </span>
@@ -135,7 +153,7 @@ async function retrySync() {
       <!-- Drawer backdrop on narrow screens -->
       <div
         v-if="narrow && ui.sidebarOpen"
-        class="fixed inset-0 z-20 bg-gray-900/30"
+        class="fixed inset-0 z-20 bg-black/30"
         data-testid="drawer-backdrop"
         @click="ui.sidebarOpen = false"
       ></div>
@@ -145,13 +163,16 @@ async function retrySync() {
           :class="narrow ? 'fixed inset-y-0 left-0 z-30 h-full bg-zinc-100 px-2 shadow-xl' : ''"
         />
       </Transition>
-      <div class="flex min-w-0 flex-1 flex-col">
+      <div ref="page" class="flex min-w-0 flex-1 flex-col">
         <RouterView />
       </div>
     </div>
 
-    <Transition name="pop">
+    <Transition name="modal">
       <CreatePopup v-if="ui.createDraft" :key="ui.createDraft.edit?.objectUrl ?? 'new'" />
+    </Transition>
+    <Transition name="modal">
+      <SearchDialog v-if="ui.searchOpen" />
     </Transition>
     <ToastStack />
   </div>

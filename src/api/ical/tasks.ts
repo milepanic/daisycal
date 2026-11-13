@@ -55,6 +55,8 @@ export interface TaskForm {
   tzid?: string | null
   priority: TaskPriority
   alarm: AlarmMinutes
+  /** Parent task UID for a subtask, null for none; left out = keep what the task has. */
+  parentUid?: string | null
 }
 
 /** Apple Reminders writes 1 / 5 / 9 for high / medium / low. */
@@ -160,8 +162,25 @@ export function applyTaskForm(vtodo: ICAL.Component, form: TaskForm): void {
     else vtodo.removeAllProperties('priority')
   }
   applyAlarm(vtodo, form.alarm)
+  if (form.parentUid !== undefined) applyParent(vtodo, form.parentUid)
   const seq = vtodo.getFirstPropertyValue('sequence')
   vtodo.updatePropertyWithValue('sequence', (typeof seq === 'number' ? seq : 0) + 1)
+}
+
+/**
+ * Subtask link as Apple Reminders writes it: `RELATED-TO;RELTYPE=PARENT:<parent uid>`. Other
+ * relations (siblings, children) are left alone.
+ */
+function applyParent(vtodo: ICAL.Component, uid: string | null) {
+  for (const prop of vtodo.getAllProperties('related-to')) {
+    const reltype = (prop.getParameter('reltype') as string | undefined)?.toUpperCase() ?? 'PARENT'
+    if (reltype === 'PARENT') vtodo.removeProperty(prop)
+  }
+  if (!uid) return
+  const prop = new ICAL.Property('related-to', vtodo)
+  prop.setParameter('reltype', 'PARENT')
+  prop.setValue(uid)
+  vtodo.addProperty(prop)
 }
 
 /** Marks the VTODO completed / not completed the way Reminders does. */

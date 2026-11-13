@@ -1,15 +1,19 @@
 <script setup lang="ts">
 /** Calendar page: toolbar, the active view (day / work week / week / month / agenda) and the tasks panel. */
-import { computed, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
 import type { EventInstance, Task } from '@/api/ical'
 import { useCalendarRoute } from '@/composables/useCalendarRoute'
 import { eachDay } from '@/lib/dates'
+import { slideIn } from '@/lib/motion'
 import { eventToForm, taskToForm } from '@/api/ical'
 import { useCalendarsStore } from '@/stores/calendars'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useEventsStore } from '@/stores/events'
 import { useTasksStore } from '@/stores/tasks'
+import { useBirthdaysStore } from '@/stores/birthdays'
+import { BIRTHDAYS_COLOR, BIRTHDAYS_NAME, BIRTHDAYS_URL } from '@/lib/birthdays'
+import { useWeatherStore } from '@/stores/weather'
 import { type Anchor, useUiStore } from '@/stores/ui'
 import AgendaView from '@/components/calendar/AgendaView.vue'
 import EventPopover from '@/components/calendar/EventPopover.vue'
@@ -20,11 +24,20 @@ import TimeGrid from '@/components/calendar/TimeGrid.vue'
 import CalendarToolbar from '@/components/shell/CalendarToolbar.vue'
 
 const nav = useCalendarRoute()
+/** The time grid, so tasks dragged out of the tasks panel can be dropped onto it. */
+const grid = ref<InstanceType<typeof TimeGrid> | null>(null)
+function grabFromPanel(task: Task, e: PointerEvent) {
+  if (isGrid.value) grid.value?.grabExternalTask(task, e)
+}
 const ui = useUiStore()
 const calendars = useCalendarsStore()
 const events = useEventsStore()
 const tasks = useTasksStore()
 const notifications = useNotificationsStore()
+const weather = useWeatherStore()
+const birthdays = useBirthdaysStore()
+// A forecast older than 3 hours is reloaded when the calendar opens.
+weather.refresh()
 
 watch(
   () => [ui.visibleRange, calendars.status] as const,
@@ -37,9 +50,28 @@ watch(
   { immediate: true },
 )
 
-const instances = computed(() => events.instancesFor(ui.visibleRange))
+// Events plus the read-only birthdays from contacts.
+const instances = computed(() =>
+  [...events.instancesFor(ui.visibleRange), ...birthdays.instancesFor(ui.visibleRange)].sort(
+    (a, b) => +a.start - +b.start || +a.end - +b.end,
+  ),
+)
 const dueTasks = computed(() => tasks.tasksDueIn(ui.visibleRange))
 const pendingTasks = computed(() => tasks.overdueTasks())
+/**
+ * Prev / next / Today within the same view: the view slides in from the side it comes from
+ * (later dates from the right). Switching views uses the "view" transition instead.
+ */
+const viewport = ref<HTMLElement | null>(null)
+watch(
+  () => [ui.view, ui.visibleRange.start.getTime()] as const,
+  async ([view, start], [prevView, prevStart]) => {
+    if (view !== prevView || start === prevStart) return
+    await nextTick()
+    slideIn(viewport.value?.lastElementChild, start > prevStart ? 28 : -28, 0)
+  },
+)
+
 const loading = computed(() => calendars.status === 'loading' || events.isLoading(ui.visibleRange))
 const loadError = computed(() => events.loadError(ui.visibleRange))
 const days = computed(() => eachDay(ui.visibleRange))
@@ -57,8 +89,10 @@ const selectedInstance = computed(() =>
     : undefined,
 )
 
-const colorFor = (url: string) => calendars.colorFor(url)
-const nameFor = (url: string) => calendars.get(url)?.displayName ?? ''
+const colorFor = (url: string) =>
+  url === BIRTHDAYS_URL ? BIRTHDAYS_COLOR : calendars.colorFor(url)
+const nameFor = (url: string) =>
+  url === BIRTHDAYS_URL ? BIRTHDAYS_NAME : (calendars.get(url)?.displayName ?? '')
 
 function anchorOf(el: HTMLElement) {
   const r = el.getBoundingClientRect()
@@ -85,6 +119,7 @@ async function moveEvent(instance: EventInstance, start: Date, end: Date) {
       instance,
       { ...eventToForm(instance), start, end },
       instance.isRecurring ? 'this' : 'all',
+      { undoLabel: `Moved "${instance.summary || '(No title)'}"` },
     )
   try {
     await run()
@@ -95,11 +130,50 @@ async function moveEvent(instance: EventInstance, start: Date, end: Date) {
 
 /** A task chip dragged in the grid gets the new due date and time. */
 async function moveTask(task: Task, due: Date) {
-  const run = () => tasks.updateTask(task, { ...taskToForm(task), due, dueAllDay: false })
+  const run = () =>
+    tasks.updateTask(
+      task,
+      { ...taskToForm(task), due, dueAllDay: false },
+      { undoLabel: `Moved "${task.summary || '(No title)'}"` },
+    )
   try {
     await run()
   } catch (err) {
     notifications.reportError(err, `Could not move "${task.summary}"`, run)
+  }
+}
+
+/** Alt + drag: a single copy of the event (or of this occurrence) at the new time. */
+async function copyEvent(instance: EventInstance, start: Date, end: Date) {
+  const target = calendars.get(instance.collectionUrl)
+  if (!target) return
+  const run = () =>
+    events.createEvent(
+      target,
+      { ...eventToForm(instance), start, end, repeat: null },
+      { undoLabel: `Copied "${instance.summary || '(No title)'}"` },
+    )
+  try {
+    await run()
+  } catch (err) {
+    notifications.reportError(err, `Could not copy "${instance.summary}"`, run)
+  }
+}
+
+/** Alt + drag on a task: a copy with the new due time. */
+async function copyTask(task: Task, due: Date) {
+  const target = calendars.get(task.collectionUrl)
+  if (!target) return
+  const run = () =>
+    tasks.createTask(
+      target,
+      { ...taskToForm(task), due, dueAllDay: false },
+      { undoLabel: `Copied "${task.summary || '(No title)'}"` },
+    )
+  try {
+    await run()
+  } catch (err) {
+    notifications.reportError(err, `Could not copy "${task.summary}"`, run)
   }
 }
 
@@ -117,7 +191,10 @@ const draftColor = computed(() =>
   <CalendarToolbar />
 
   <div class="flex min-h-0 flex-1 gap-x-2">
-    <div class="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl bg-white">
+    <div
+      ref="viewport"
+      class="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl bg-white"
+    >
       <p
         v-if="loadError"
         class="mx-2 mt-2 rounded-sm bg-red-50 px-3 py-2 text-sm text-red-700"
@@ -133,9 +210,10 @@ const draftColor = computed(() =>
         <div class="h-full w-1/3 animate-pulse bg-accent"></div>
       </div>
 
-      <Transition name="fade" mode="out-in">
+      <Transition name="view" mode="out-in">
         <TimeGrid
           v-if="isGrid"
+          ref="grid"
           :key="ui.view"
           :days="days"
           :instances="instances"
@@ -145,11 +223,14 @@ const draftColor = computed(() =>
           :draft="ui.createDraft"
           :draft-color="draftColor"
           :pending-tasks="pendingTasks"
+          :weather-for="weather.forDay"
           @select-event="selectEvent"
           @select-task="selectTask"
           @create-at="createAt"
           @move-event="moveEvent"
           @move-task="moveTask"
+          @copy-event="copyEvent"
+          @copy-task="copyTask"
         />
         <MonthView
           v-else-if="ui.view === 'month'"
@@ -179,7 +260,9 @@ const draftColor = computed(() =>
       </Transition>
     </div>
 
-    <TasksPanel v-show="ui.tasksPanelOpen" />
+    <Transition name="panel">
+      <TasksPanel v-show="ui.tasksPanelOpen" @grab="grabFromPanel" />
+    </Transition>
   </div>
 
   <Transition name="pop">

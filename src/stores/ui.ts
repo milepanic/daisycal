@@ -22,7 +22,11 @@ interface Layout {
   showCompletedTasks: boolean
   /** Task list picked in the calendar's tasks panel (null = first visible list). */
   tasksPanelList: string | null
+  /** Color scheme; 'system' follows the OS / phone setting. */
+  theme: Theme
 }
+
+export type Theme = 'system' | 'light' | 'dark'
 
 const DEFAULT_LAYOUT: Layout = {
   sidebarOpen: true,
@@ -31,6 +35,7 @@ const DEFAULT_LAYOUT: Layout = {
   weekStart: 1,
   showCompletedTasks: true,
   tasksPanelList: null,
+  theme: 'system',
 }
 
 export interface CreateDraft {
@@ -45,6 +50,8 @@ export interface CreateDraft {
   anchor?: Anchor
   /** When set, the popup edits this existing object instead of creating one. */
   edit?: Selection
+  /** Duplicate: the form starts as a copy of this object and saves a new one. */
+  copyOf?: Selection
 }
 
 export interface Anchor {
@@ -74,18 +81,24 @@ export const useUiStore = defineStore('ui', () => {
   const tasksPanelOpen = ref(saved.tasksPanelOpen)
   const showCompletedTasks = ref(saved.showCompletedTasks)
   const tasksPanelList = ref<string | null>(saved.tasksPanelList)
+  const theme = ref<Theme>(saved.theme)
   const createDraft = ref<CreateDraft | null>(null)
   const selection = ref<Selection | null>(null)
+  /** The search dialog (Ctrl/Cmd+K). */
+  const searchOpen = ref(false)
 
-  watch([view, weekStart, sidebarOpen, tasksPanelOpen, showCompletedTasks, tasksPanelList], () =>
-    writeJson('local', LAYOUT_KEY, {
-      view: view.value,
-      weekStart: weekStart.value,
-      sidebarOpen: sidebarOpen.value,
-      tasksPanelOpen: tasksPanelOpen.value,
-      showCompletedTasks: showCompletedTasks.value,
-      tasksPanelList: tasksPanelList.value,
-    } satisfies Layout),
+  watch(
+    [view, weekStart, sidebarOpen, tasksPanelOpen, showCompletedTasks, tasksPanelList, theme],
+    () =>
+      writeJson('local', LAYOUT_KEY, {
+        view: view.value,
+        weekStart: weekStart.value,
+        sidebarOpen: sidebarOpen.value,
+        tasksPanelOpen: tasksPanelOpen.value,
+        showCompletedTasks: showCompletedTasks.value,
+        tasksPanelList: tasksPanelList.value,
+        theme: theme.value,
+      } satisfies Layout),
   )
 
   /** Dates the active view shows. */
@@ -139,8 +152,10 @@ export const useUiStore = defineStore('ui', () => {
     tasksPanelOpen,
     showCompletedTasks,
     tasksPanelList,
+    theme,
     createDraft,
     selection,
+    searchOpen,
     visibleRange,
     isCreateOpen,
     setDate,

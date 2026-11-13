@@ -338,6 +338,24 @@ function fill() {
     }
     return
   }
+  if (d.copyOf) {
+    // Duplicate: every field from the original, saved as a new object.
+    if (d.kind === 'task') {
+      const task = tasks.get(d.copyOf.objectUrl)
+      if (task) {
+        kind.value = 'task'
+        loadTask(task)
+        return
+      }
+    } else {
+      const instance = findEventInstance(d.copyOf.objectUrl, d.copyOf.recurrenceId)
+      if (instance) {
+        kind.value = 'event'
+        loadEvent(instance)
+        return
+      }
+    }
+  }
   kind.value = d.kind
   const s =
     d.start ??
@@ -599,7 +617,7 @@ async function remove(deleteScope: EditScope) {
             ? 'New task'
             : 'New event'
       "
-      class="fixed z-40 w-[26rem] max-w-[calc(100vw-1rem)] rounded-2xl bg-white text-left shadow-[0_8px_32px_rgba(0,0,0,0.16)] ring-1 ring-gray-200"
+      class="modal-panel fixed z-40 w-[26rem] max-w-[calc(100vw-1rem)] rounded-2xl bg-white text-left shadow-[0_8px_32px_rgba(0,0,0,0.16)] ring-1 ring-gray-200"
       :style="style"
       data-testid="create-popup"
     >
@@ -1047,7 +1065,7 @@ async function remove(deleteScope: EditScope) {
             <button
               type="button"
               :disabled="busy"
-              class="rounded-sm bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-60"
+              class="rounded-sm bg-red-600 px-3 py-1.5 text-xs font-semibold text-on-color hover:bg-red-500 disabled:opacity-60"
               @click="remove('all')"
             >
               {{ editingInstance?.isRecurring ? 'All occurrences' : 'Delete' }}

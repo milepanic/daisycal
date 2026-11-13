@@ -3,6 +3,7 @@ import { useSyncStore } from '@/stores/sync'
 import { useUiStore } from '@/stores/ui'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import IconButton from '@/components/ui/IconButton.vue'
+import ThemeToggle from './ThemeToggle.vue'
 import SidebarToggle from './SidebarToggle.vue'
 
 const ui = useUiStore()
@@ -14,6 +15,8 @@ const sync = useSyncStore()
     <SidebarToggle />
     <h1 class="truncate text-lg font-semibold text-gray-900">Tasks</h1>
     <div class="ml-auto flex shrink-0 items-center gap-x-2">
+      <IconButton icon="search" label="Search (Ctrl+K)" @click="ui.searchOpen = true" />
+      <ThemeToggle />
       <IconButton
         icon="refresh"
         :label="sync.lastError ? `Sync failed: ${sync.lastError}` : 'Refresh'"

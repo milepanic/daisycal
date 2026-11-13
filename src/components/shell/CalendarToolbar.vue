@@ -8,6 +8,8 @@ import { useSyncStore } from '@/stores/sync'
 import { useUiStore } from '@/stores/ui'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import IconButton from '@/components/ui/IconButton.vue'
+import ThemeToggle from './ThemeToggle.vue'
+import WeatherToggle from './WeatherToggle.vue'
 import SidebarToggle from './SidebarToggle.vue'
 import ViewSwitcher from './ViewSwitcher.vue'
 
@@ -53,6 +55,9 @@ const unit = computed(() => stepLabel(ui.view))
     </div>
 
     <div class="ml-auto flex shrink-0 items-center gap-x-2">
+      <IconButton icon="search" label="Search (Ctrl+K)" @click="ui.searchOpen = true" />
+      <WeatherToggle />
+      <ThemeToggle />
       <IconButton
         icon="refresh"
         :label="sync.lastError ? `Sync failed: ${sync.lastError}` : 'Refresh'"

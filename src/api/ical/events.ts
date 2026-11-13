@@ -74,6 +74,8 @@ export interface EventInstance {
   /** Apple travel time before the start, in minutes (X-APPLE-TRAVEL-DURATION), or null. */
   travel: number | null
   status: 'CONFIRMED' | 'TENTATIVE' | 'CANCELLED' | null
+  /** Shown but not editable (birthdays from contacts). */
+  readOnly?: boolean
 }
 
 /** What the create/edit form edits. */

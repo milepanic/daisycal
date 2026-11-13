@@ -3,6 +3,7 @@ import { RouterLink, useRoute } from 'vue-router'
 
 import { useCalendarRoute } from '@/composables/useCalendarRoute'
 import { useAuthStore } from '@/stores/auth'
+import { useBirthdaysStore } from '@/stores/birthdays'
 import { useCalendarsStore } from '@/stores/calendars'
 import { useUiStore } from '@/stores/ui'
 import AppIcon from '@/components/ui/AppIcon.vue'
@@ -13,6 +14,7 @@ const route = useRoute()
 const ui = useUiStore()
 const auth = useAuthStore()
 const calendars = useCalendarsStore()
+const birthdays = useBirthdaysStore()
 const nav = useCalendarRoute()
 
 const tabClass = (active: boolean) =>
@@ -52,7 +54,11 @@ function pickDate(d: Date) {
 
       <CollectionList
         title="My calendars"
-        :collections="calendars.calendars"
+        :collections="
+          birthdays.collection
+            ? [...calendars.calendars, birthdays.collection]
+            : calendars.calendars
+        "
         :is-visible="calendars.isVisible"
         :loading="calendars.status === 'loading'"
         @toggle="calendars.setVisible"

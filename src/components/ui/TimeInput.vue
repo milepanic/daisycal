@@ -169,33 +169,35 @@ function pick(o: Option) {
       @keydown="onKeydown"
       @blur="onBlur"
     />
-    <ul
-      v-show="open"
-      :id="listId"
-      ref="list"
-      role="listbox"
-      :aria-label="label"
-      class="absolute top-full left-0 z-50 mt-1 max-h-64 overflow-y-auto rounded-sm bg-white py-2 text-sm shadow-[0_4px_16px_rgba(0,0,0,0.18)]"
-      :class="from ? 'w-44' : 'w-28'"
-    >
-      <li
-        v-for="(o, i) in options"
-        :id="`${listId}-${i}`"
-        :key="o.value + (o.duration ?? '')"
-        role="option"
-        :aria-selected="o.value === modelValue"
-        class="flex cursor-pointer items-baseline gap-x-1.5 px-4 py-2 tabular-nums"
-        :class="[
-          i === active ? 'bg-gray-200/70' : 'hover:bg-gray-100',
-          o.value === modelValue ? 'font-semibold text-gray-900' : 'text-gray-700',
-        ]"
-        @mousedown.prevent="pick(o)"
+    <Transition name="dropdown">
+      <ul
+        v-show="open"
+        :id="listId"
+        ref="list"
+        role="listbox"
+        :aria-label="label"
+        class="absolute top-full left-0 z-50 origin-top mt-1 max-h-64 overflow-y-auto rounded-sm bg-white py-2 text-sm shadow-[0_4px_16px_rgba(0,0,0,0.18)]"
+        :class="from ? 'w-44' : 'w-28'"
       >
-        {{ o.value }}
-        <span v-if="o.duration != null" class="font-normal text-gray-500">
-          ({{ formatDuration(o.duration) }})
-        </span>
-      </li>
-    </ul>
+        <li
+          v-for="(o, i) in options"
+          :id="`${listId}-${i}`"
+          :key="o.value + (o.duration ?? '')"
+          role="option"
+          :aria-selected="o.value === modelValue"
+          class="flex cursor-pointer items-baseline gap-x-1.5 px-4 py-2 tabular-nums"
+          :class="[
+            i === active ? 'bg-gray-200/70' : 'hover:bg-gray-100',
+            o.value === modelValue ? 'font-semibold text-gray-900' : 'text-gray-700',
+          ]"
+          @mousedown.prevent="pick(o)"
+        >
+          {{ o.value }}
+          <span v-if="o.duration != null" class="font-normal text-gray-500">
+            ({{ formatDuration(o.duration) }})
+          </span>
+        </li>
+      </ul>
+    </Transition>
   </div>
 </template>

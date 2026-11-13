@@ -9,6 +9,8 @@ export interface Toast {
   message: string
   kind: 'error' | 'info' | 'success'
   retry?: () => void | Promise<unknown>
+  /** A button on the toast, e.g. Undo. */
+  action?: { label: string; run: () => void | Promise<unknown> }
   /** ms; 0 keeps it until dismissed */
   timeout: number
 }
@@ -34,6 +36,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
       message,
       kind: options.kind ?? 'error',
       retry: options.retry,
+      action: options.action,
       timeout: options.timeout ?? (options.retry ? 0 : 6000),
     }
     toasts.value = [...toasts.value, toast]

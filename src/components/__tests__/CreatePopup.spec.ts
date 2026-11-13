@@ -295,6 +295,38 @@ describe('CreatePopup', () => {
     again.unmount()
   })
 
+  it('duplicates an event and a task: a filled-in form that saves a new object', async () => {
+    const events = useEventsStore()
+    const review = events.instancesFor(WEEK).find((i) => i.summary === 'Review')!
+    const before = client.objects.get(review.objectUrl)!.data
+    const wrapper = await open({
+      kind: 'event',
+      copyOf: { objectUrl: review.objectUrl, recurrenceId: null },
+    })
+    expect(wrapper.find('[role="dialog"]').attributes('aria-label')).toBe('New event')
+    expect((wrapper.find('#create-name').element as HTMLInputElement).value).toBe('Review')
+    expect(timeValue(wrapper, 'Start time')).toBe(review.start.toTimeString().slice(0, 5))
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    const reviews = [...client.objects.values()].filter((o) => o.data.includes('SUMMARY:Review'))
+    expect(reviews).toHaveLength(2)
+    expect(client.objects.get(review.objectUrl)!.data).toBe(before)
+    wrapper.unmount()
+
+    const milk = useTasksStore().get(`${MY_TASKS.url}milk.ics`)!
+    const copy = await open({
+      kind: 'task',
+      copyOf: { objectUrl: milk.objectUrl, recurrenceId: null },
+    })
+    expect(timeValue(copy, 'Due time')).toBe('17:00')
+    await copy.find('form').trigger('submit')
+    await flushPromises()
+    expect(
+      [...client.objects.values()].filter((o) => o.data.includes('SUMMARY:Buy milk')),
+    ).toHaveLength(2)
+    copy.unmount()
+  })
+
   it('sets and clears a task due date with the picker', async () => {
     const wrapper = await open({ kind: 'task' })
     await wrapper.find('#create-name').setValue('Plan trip')

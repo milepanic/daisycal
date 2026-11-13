@@ -103,7 +103,7 @@ function onCellClick(date: Date, e: MouseEvent) {
               class="flex size-7 items-center justify-center text-sm font-semibold"
               :class="
                 cell.isToday
-                  ? 'rounded-full bg-accent text-white'
+                  ? 'rounded-full bg-accent text-on-color'
                   : cell.inMonth
                     ? 'text-gray-900'
                     : 'text-gray-400'

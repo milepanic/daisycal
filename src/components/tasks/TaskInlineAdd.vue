@@ -1,14 +1,15 @@
 <script setup lang="ts">
 /**
- * "Add a task" button that turns into an inline form: title, optional due date and 24h time.
- * Used by the task list columns (Tasks view) and the calendar's tasks panel.
+ * "Add a task" button that turns into an inline form: title, optional due date and 24h time
+ * (the same date / time pickers as the create popup).
+ * Used by the task list columns (Tasks view) and the calendar's tasks panel. With `parent` it
+ * is the open form for a new subtask of that task (no button; Esc / Cancel emit `close`).
  */
-import { computed, nextTick, ref } from 'vue'
+import { nextTick, onMounted, ref } from 'vue'
 
 import type { Collection } from '@/api/collections'
-import type { TaskForm } from '@/api/ical'
-import { parseDateKey, toDateKey } from '@/lib/dates'
-import { dateShortcuts, formatPickerDate } from '@/lib/timeInput'
+import type { Task, TaskForm } from '@/api/ical'
+import { parseDateKey } from '@/lib/dates'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useTasksStore } from '@/stores/tasks'
 import { useUiStore } from '@/stores/ui'
@@ -17,9 +18,14 @@ import TaskDot from '@/components/ui/TaskDot.vue'
 import DatePicker from '@/components/ui/DatePicker.vue'
 import TimeInput from '@/components/ui/TimeInput.vue'
 
-const props = defineProps<{ list: Collection | undefined; color: string }>()
+const props = defineProps<{ list: Collection | undefined; color: string; parent?: Task }>()
+const emit = defineEmits<{ close: [] }>()
 /** Whether the form is open (the parent hides its "No open tasks" hint meanwhile). */
 const adding = defineModel<boolean>('adding', { default: false })
+
+onMounted(() => {
+  if (props.parent) void startAdd()
+})
 
 const tasks = useTasksStore()
 const notifications = useNotificationsStore()
@@ -30,18 +36,10 @@ const newDate = ref('')
 const newTime = ref('')
 const newInput = ref<HTMLInputElement | null>(null)
 
-const shortcuts = computed(() => dateShortcuts(new Date(), ui.weekStart))
-/** A picked date that is none of the chips is shown on the calendar button. */
-const otherDate = computed(() => {
-  const d = parseDateKey(newDate.value)
-  return d && !shortcuts.value.some((q) => toDateKey(q.date) === newDate.value)
-    ? formatPickerDate(d, { short: true })
-    : ''
-})
-
-function toggleShortcut(key: string) {
-  newDate.value = newDate.value === key ? '' : key
-  if (!newDate.value) newTime.value = ''
+/** The × clears the time first, then the date (as in the create popup). */
+function clearDue() {
+  if (newTime.value) newTime.value = ''
+  else newDate.value = ''
 }
 
 async function startAdd() {
@@ -55,6 +53,7 @@ function cancelAdd() {
   newTitle.value = ''
   newDate.value = ''
   newTime.value = ''
+  if (props.parent) emit('close')
 }
 
 function newDue(): { due: Date | null; dueAllDay: boolean } {
@@ -80,6 +79,7 @@ async function submitAdd() {
     ...newDue(),
     priority: null,
     alarm: null,
+    parentUid: props.parent?.uid ?? null,
   }
   newTitle.value = ''
   newDate.value = ''
@@ -95,7 +95,8 @@ async function submitAdd() {
 <template>
   <form
     v-if="adding"
-    class="mt-1 rounded-sm bg-gray-50 px-2 py-1.5"
+    class="mt-1 rounded-sm bg-gray-50 px-2 py-2"
+    :class="parent ? 'ml-7' : ''"
     data-testid="inline-add"
     @submit.prevent="submitAdd"
   >
@@ -105,66 +106,40 @@ async function submitAdd() {
         ref="newInput"
         v-model="newTitle"
         type="text"
-        placeholder="Task title"
-        aria-label="New task title"
+        :placeholder="parent ? 'Subtask title' : 'Task title'"
+        :aria-label="parent ? `New subtask of ${parent.summary}` : 'New task title'"
         class="min-w-0 flex-1 bg-transparent text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
         @keydown.escape.prevent="cancelAdd"
       />
     </div>
-    <div class="mt-1.5 flex flex-wrap items-center gap-1 pl-7 text-xs" data-testid="due-shortcuts">
-      <button
-        v-for="q in shortcuts"
-        :key="q.key"
-        type="button"
-        class="rounded-sm px-1.5 py-0.5 font-medium ring-1"
-        :class="
-          newDate === toDateKey(q.date)
-            ? 'bg-gray-900 text-white ring-gray-900'
-            : 'bg-white text-gray-600 ring-gray-200 hover:text-gray-900'
-        "
-        :aria-pressed="newDate === toDateKey(q.date)"
-        @click="toggleShortcut(toDateKey(q.date))"
-      >
-        {{ q.label }}
-      </button>
+    <!-- Same date / time fields as the event and task popup. -->
+    <div class="mt-2 flex flex-wrap items-center gap-1 pl-7 text-sm">
       <DatePicker
         v-model="newDate"
         label="New task due date"
         :week-start="ui.weekStart"
-        ghost
-        :text="otherDate"
-        title="Pick a date"
-      >
-        <template #icon><AppIcon name="calendar" class="size-4" /></template>
-      </DatePicker>
-      <button
-        v-if="otherDate"
-        type="button"
-        class="rounded-sm p-0.5 text-gray-400 hover:bg-white hover:text-gray-700"
-        @click="toggleShortcut(newDate)"
-      >
-        <span class="sr-only">Remove due date</span>
-        <AppIcon name="close" class="size-3.5" />
-      </button>
-    </div>
-    <div class="mt-1.5 flex flex-wrap items-center gap-1.5 pl-7 text-xs">
-      <TimeInput v-if="newDate && newTime" v-model="newTime" label="New task due time" size="sm" />
+        placeholder="No due date"
+      />
+      <TimeInput v-if="newDate && newTime" v-model="newTime" label="New task due time" />
       <button
         v-if="newDate && !newTime"
         type="button"
-        class="rounded-sm px-2 py-1 font-medium text-gray-500 hover:bg-white hover:text-gray-900"
+        class="rounded-sm px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-900"
         @click="newTime = '09:00'"
       >
         Add time
       </button>
       <button
-        v-if="newTime"
+        v-if="newDate"
         type="button"
-        class="rounded-sm px-2 py-1 font-medium text-gray-500 hover:bg-white hover:text-gray-900"
-        @click="newTime = ''"
+        class="flex size-7 items-center justify-center rounded-sm text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+        @click="clearDue"
       >
-        No time
+        <span class="sr-only">{{ newTime ? 'Remove time' : 'Remove due date' }}</span>
+        <AppIcon name="close" class="size-4" />
       </button>
+    </div>
+    <div class="mt-1.5 flex items-center pl-7 text-xs">
       <span class="ml-auto flex gap-x-1">
         <button
           type="button"
@@ -183,7 +158,7 @@ async function submitAdd() {
     </div>
   </form>
   <button
-    v-else
+    v-else-if="!parent"
     type="button"
     class="mt-1 flex w-full items-center gap-x-3 rounded-sm px-2 py-2 text-sm font-semibold text-accent hover:bg-accent/10"
     :disabled="!list"

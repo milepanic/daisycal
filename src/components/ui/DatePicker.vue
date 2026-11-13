@@ -72,7 +72,7 @@ const days = computed(() => {
 const disabled = (d: Date) => Boolean(minDate.value && d < minDate.value)
 
 function dayClass(d: Date) {
-  if (isSameDay(d, today)) return 'bg-accent text-white'
+  if (isSameDay(d, today)) return 'bg-accent text-on-color'
   if (value.value && isSameDay(d, value.value)) return 'bg-accent/15 font-semibold text-accent'
   if (disabled(d)) return 'text-gray-300'
   return `${d.getMonth() === month.value.getMonth() ? 'text-gray-800' : 'text-gray-400'} hover:bg-gray-100`
@@ -178,62 +178,64 @@ function shiftMonth(by: number) {
       {{ triggerText }}
     </button>
 
-    <div
-      v-if="open"
-      role="dialog"
-      :aria-label="label"
-      class="absolute z-50 w-68 rounded-xl bg-white p-3 shadow-xl ring-1 ring-gray-200"
-      :class="[
-        placement.up ? 'bottom-full mb-1' : 'top-full mt-1',
-        placement.right ? 'right-0' : 'left-0',
-      ]"
-      data-testid="date-picker"
-    >
-      <div class="mb-1 flex items-center justify-between">
-        <h3 class="pl-1 text-sm font-semibold text-gray-900">{{ monthTitle(month) }}</h3>
-        <div class="flex items-center">
+    <Transition name="dropdown">
+      <div
+        v-if="open"
+        role="dialog"
+        :aria-label="label"
+        class="absolute z-50 w-68 rounded-xl bg-white p-3 shadow-xl ring-1 ring-gray-200"
+        :class="[
+          placement.up ? 'bottom-full mb-1 origin-bottom' : 'top-full mt-1 origin-top',
+          placement.right ? 'right-0' : 'left-0',
+        ]"
+        data-testid="date-picker"
+      >
+        <div class="mb-1 flex items-center justify-between">
+          <h3 class="pl-1 text-sm font-semibold text-gray-900">{{ monthTitle(month) }}</h3>
+          <div class="flex items-center">
+            <button
+              type="button"
+              class="rounded-sm p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+              @click="shiftMonth(-1)"
+            >
+              <span class="sr-only">Previous month</span>
+              <AppIcon name="chevron-left" class="size-4" />
+            </button>
+            <button
+              type="button"
+              class="rounded-sm p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+              @click="shiftMonth(1)"
+            >
+              <span class="sr-only">Next month</span>
+              <AppIcon name="chevron-right" class="size-4" />
+            </button>
+          </div>
+        </div>
+        <div class="grid grid-cols-7 text-center text-[11px] font-medium text-gray-400">
+          <div v-for="(letter, i) in weekdayLetters" :key="i" class="py-1">{{ letter }}</div>
+        </div>
+        <div
+          ref="grid"
+          class="grid grid-cols-7 gap-y-0.5 text-center text-xs font-medium"
+          @keydown="onGridKeydown"
+        >
           <button
+            v-for="d in days"
+            :key="toDateKey(d)"
             type="button"
-            class="rounded-sm p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
-            @click="shiftMonth(-1)"
+            class="mx-auto flex size-8 items-center justify-center rounded-full tabular-nums focus-visible:outline-2 focus-visible:outline-accent"
+            :class="dayClass(d)"
+            :data-date="toDateKey(d)"
+            :tabindex="isSameDay(d, cursor) ? 0 : -1"
+            :disabled="disabled(d)"
+            :aria-current="isSameDay(d, today) ? 'date' : undefined"
+            :aria-pressed="Boolean(value && isSameDay(d, value))"
+            @click="pick(d)"
           >
-            <span class="sr-only">Previous month</span>
-            <AppIcon name="chevron-left" class="size-4" />
-          </button>
-          <button
-            type="button"
-            class="rounded-sm p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
-            @click="shiftMonth(1)"
-          >
-            <span class="sr-only">Next month</span>
-            <AppIcon name="chevron-right" class="size-4" />
+            {{ d.getDate() }}
           </button>
         </div>
       </div>
-      <div class="grid grid-cols-7 text-center text-[11px] font-medium text-gray-400">
-        <div v-for="(letter, i) in weekdayLetters" :key="i" class="py-1">{{ letter }}</div>
-      </div>
-      <div
-        ref="grid"
-        class="grid grid-cols-7 gap-y-0.5 text-center text-xs font-medium"
-        @keydown="onGridKeydown"
-      >
-        <button
-          v-for="d in days"
-          :key="toDateKey(d)"
-          type="button"
-          class="mx-auto flex size-8 items-center justify-center rounded-full tabular-nums focus-visible:outline-2 focus-visible:outline-accent"
-          :class="dayClass(d)"
-          :data-date="toDateKey(d)"
-          :tabindex="isSameDay(d, cursor) ? 0 : -1"
-          :disabled="disabled(d)"
-          :aria-current="isSameDay(d, today) ? 'date' : undefined"
-          :aria-pressed="Boolean(value && isSameDay(d, value))"
-          @click="pick(d)"
-        >
-          {{ d.getDate() }}
-        </button>
-      </div>
-    </div>
+    </Transition>
   </div>
 </template>

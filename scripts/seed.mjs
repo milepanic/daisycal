@@ -12,8 +12,9 @@ const PASSWORD = process.env.RADICALE_PASSWORD ?? 'daisy'
 const AUTH = 'Basic ' + Buffer.from(`${USER}:${PASSWORD}`).toString('base64')
 
 // ---------------------------------------------------------------------------
-// Collections. Mirrors the mockup sidebar; "mixed" and "contacts" exist only to
-// verify that the app ignores unsupported collection types (CHECKLIST.md §0).
+// Collections. Mirrors the mockup sidebar; "mixed" exists only to verify that the app
+// ignores unsupported collection types (CHECKLIST.md §0). "contacts" is an address book whose
+// birthdays show as the read-only "Contact birthdays" calendar.
 // ---------------------------------------------------------------------------
 const COLLECTIONS = [
   { id: 'personal', name: 'Personal', color: '#566c86', components: ['VEVENT'] },
@@ -24,7 +25,7 @@ const COLLECTIONS = [
   { id: 'my-tasks', name: 'My tasks', color: '#7c3aed', components: ['VTODO'] },
   { id: 'shopping', name: 'Shopping', color: '#0ea5e9', components: ['VTODO'] },
   { id: 'mixed', name: 'Mixed (unsupported)', color: '#999999', components: ['VEVENT', 'VTODO'] },
-  { id: 'contacts', name: 'Contacts (unsupported)', addressbook: true },
+  { id: 'contacts', name: 'Contacts', addressbook: true },
 ]
 
 // ---------------------------------------------------------------------------
@@ -216,6 +217,33 @@ function mkcolBody(c) {
 </D:mkcol>`
 }
 
+// ---------------------------------------------------------------------------
+// Contacts with birthdays (vCard BDAY in the forms clients write), dated around this week.
+// ---------------------------------------------------------------------------
+const ymd = (d) => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`
+const md = (d) => `${pad(d.getMonth() + 1)}${pad(d.getDate())}`
+const vcard = (uid, fn, bday) =>
+  [
+    'BEGIN:VCARD',
+    'VERSION:3.0',
+    `UID:${uid}`,
+    `FN:${fn}`,
+    `N:${fn.split(' ').reverse().join(';')};;;`,
+    bday,
+    'END:VCARD',
+    '',
+  ].join('\r\n')
+const CONTACTS = [
+  // With a year: shown with the age.
+  { uid: 'contact-ana', vcf: vcard('contact-ana', 'Ana Petrović', `BDAY:${ymd(new Date(1990, at(2).getMonth(), at(2).getDate()))}`) },
+  // Apple Contacts without a year.
+  { uid: 'contact-marko', vcf: vcard('contact-marko', 'Marko Jovanović', `BDAY;X-APPLE-OMIT-YEAR=1604:1604-${md(at(4)).slice(0, 2)}-${md(at(4)).slice(2)}`) },
+  // vCard 4 style without a year, next week.
+  { uid: 'contact-lena', vcf: vcard('contact-lena', 'Lena Kovač', `BDAY:--${md(at(9))}`) },
+  // No birthday: not shown.
+  { uid: 'contact-nobday', vcf: vcard('contact-nobday', 'Ivo Ivić', 'TEL:+38761000000') },
+]
+
 async function main() {
   const probe = await fetch(`${BASE}/${USER}/`, { method: 'PROPFIND', headers: { Authorization: AUTH, Depth: '0' } })
   if (probe.status === 401) throw new Error(`Login failed for '${USER}' at ${BASE}`)
@@ -226,6 +254,17 @@ async function main() {
     const path = `/${USER}/${c.id}/`
     await dav('DELETE', path)
     await dav('MKCOL', path, { headers: { 'Content-Type': 'application/xml; charset=utf-8' }, body: mkcolBody(c) })
+    if (c.addressbook) {
+      for (const { uid, vcf } of CONTACTS) {
+        await dav('PUT', `${path}${uid}.vcf`, {
+          headers: { 'Content-Type': 'text/vcard; charset=utf-8', 'If-None-Match': '*' },
+          body: vcf,
+        })
+        items++
+      }
+      console.log(`✓ ${c.name.padEnd(24)} ${String(CONTACTS.length).padStart(2)} contacts`)
+      continue
+    }
     const objects = [...(EVENTS[c.id] ?? []), ...(TODOS[c.id] ?? [])]
     for (const { uid, ics } of objects) {
       await dav('PUT', `${path}${uid}.ics`, {

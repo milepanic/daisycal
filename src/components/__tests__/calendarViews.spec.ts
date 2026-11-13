@@ -257,6 +257,49 @@ describe('TimeGrid', () => {
     wrapper.unmount()
   })
 
+  it('copies an event or task with Alt + drag and leaves the original in place', async () => {
+    markDragged(0)
+    const { instances, tasks } = seeded()
+    const wrapper = mount(TimeGrid, {
+      props: { days: eachDay(WEEK), instances, tasks, colorFor },
+      attachTo: document.body,
+    })
+    wrapper.findAll('[data-day]').forEach((c, i) => {
+      c.element.getBoundingClientRect = () => ({
+        top: 0,
+        left: i * 100,
+        width: 100,
+        height: DAY_PX,
+        bottom: DAY_PX,
+        right: (i + 1) * 100,
+        x: i * 100,
+        y: 0,
+        toJSON: () => ({}),
+      })
+    })
+    // "Design review" (Wed 10:00–11:30) to Thursday 13:00 with Alt held.
+    const review = wrapper.find('[data-chip$="review.ics|"]')
+    await pointer(review, 'pointerdown', { clientX: 250, clientY: px(610) })
+    await pointer(review, 'pointermove', { clientX: 350, clientY: px(790), altKey: true })
+    expect(wrapper.find('[data-chip$="review.ics|"]').classes()).not.toContain('opacity-40')
+    expect(wrapper.find('[data-testid="time-grid"]').classes()).toContain('cursor-copy')
+    await pointer(review, 'pointerup', { clientX: 350, clientY: px(790), altKey: true })
+    expect(wrapper.emitted('moveEvent')).toBeUndefined()
+    const [copied, start, end] = wrapper.emitted('copyEvent')![0]!
+    expect(copied).toMatchObject({ summary: 'Design review' })
+    expect(start).toEqual(new Date(2026, 9, 15, 13, 0))
+    expect(end).toEqual(new Date(2026, 9, 15, 14, 30))
+
+    // A task chip the same way.
+    const chip = wrapper.find('[data-task-chip$="slides.ics"]')
+    await pointer(chip, 'pointerdown', { clientX: 250, clientY: px(725) })
+    await pointer(chip, 'pointermove', { clientX: 350, clientY: px(905), altKey: true })
+    await pointer(chip, 'pointerup', { clientX: 350, clientY: px(905), altKey: true })
+    expect(wrapper.emitted('moveTask')).toBeUndefined()
+    expect(wrapper.emitted('copyTask')![0]![1]).toEqual(new Date(2026, 9, 15, 15, 0))
+    wrapper.unmount()
+  })
+
   it('drags a task chip to a new due date and time', async () => {
     const { instances, tasks } = seeded()
     const wrapper = mount(TimeGrid, {
@@ -386,6 +429,48 @@ describe('TimeGrid', () => {
     const [task, due] = wrapper.emitted('moveTask')![0]!
     expect(task).toMatchObject({ summary: 'Late report' })
     expect(due).toEqual(new Date(today.getFullYear(), today.getMonth(), today.getDate(), 15))
+    wrapper.unmount()
+  })
+
+  it('takes a task dragged in from the tasks panel and drops it at the time under the pointer', async () => {
+    markDragged(0)
+    const { instances, tasks } = seeded()
+    const wrapper = mount(TimeGrid, {
+      props: { days: eachDay(WEEK), instances, tasks: [], colorFor },
+      attachTo: document.body,
+    })
+    const rect = (left: number, width: number, height: number) => () => ({
+      top: 0,
+      left,
+      width,
+      height,
+      bottom: height,
+      right: left + width,
+      x: left,
+      y: 0,
+      toJSON: () => ({}),
+    })
+    wrapper.element.getBoundingClientRect = rect(0, 700, 2000)
+    wrapper.findAll('[data-day]').forEach((c, i) => {
+      c.element.getBoundingClientRect = rect(i * 100, 100, DAY_PX)
+    })
+    // The panel sits to the right of the grid.
+    const slides = tasks.find((t) => t.summary === 'Prepare slides')!
+    ;(
+      wrapper.vm as unknown as { grabExternalTask: (t: unknown, e: PointerEvent) => void }
+    ).grabExternalTask(slides, new PointerEvent('pointerdown', { clientX: 900, clientY: 300 }))
+    const body = { element: document.body }
+    await pointer(body, 'pointermove', { clientX: 900, clientY: 340 })
+    expect(document.querySelector('[data-testid="pending-drag-ghost"]')!.textContent).toContain(
+      'Prepare slides',
+    )
+    // Thursday at 09:00 (plus half the chip height).
+    await pointer(body, 'pointermove', { clientX: 350, clientY: px(540) + 11 })
+    expect(wrapper.find('[data-testid="drag-preview"]').text()).toContain('09:00')
+    await pointer(body, 'pointerup', { clientX: 350, clientY: px(540) + 11 })
+    const [task, due] = wrapper.emitted('moveTask')![0]!
+    expect(task).toMatchObject({ summary: 'Prepare slides' })
+    expect(due).toEqual(new Date(2026, 9, 15, 9, 0))
     wrapper.unmount()
   })
 
@@ -575,6 +660,13 @@ describe('TasksPanel and EventPopover', () => {
     expect(wrapper.text()).toContain('Call the dentist')
     await wrapper.find('input[aria-label="New task title"]').trigger('keydown', { key: 'Escape' })
     expect(wrapper.find('[data-testid="inline-add"]').exists()).toBe(false)
+  })
+
+  it('lets its rows be dragged towards the calendar', async () => {
+    const wrapper = mount(TasksPanel)
+    const row = wrapper.find('li[data-task="slides"]')
+    await pointer(row.find('p'), 'pointerdown', { clientX: 5, clientY: 5 })
+    expect(wrapper.emitted('grab')![0]![0]).toMatchObject({ summary: 'Prepare slides' })
   })
 
   it('remembers the picked task list, also while it is hidden', async () => {

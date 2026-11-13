@@ -78,6 +78,8 @@ export class FakeClient implements CalDavClient {
   /** When set, the next matching call throws this error once. */
   failNext: { op: 'create' | 'update' | 'delete' | 'fetch'; error: Error } | null = null
   calls: string[] = []
+  /** vCards by address book URL (contact birthdays). */
+  vcards = new Map<string, string[]>()
 
   private etagCounter = 0
 
@@ -99,6 +101,14 @@ export class FakeClient implements CalDavClient {
       throw error
     }
   }
+
+  listAddressBooks = vi.fn<CalDavClient['listAddressBooks']>(async () =>
+    [...this.vcards.keys()].map((url) => ({ url, displayName: 'Contacts' })),
+  )
+
+  fetchVCards = vi.fn<CalDavClient['fetchVCards']>(async (book) =>
+    (this.vcards.get(book.url) ?? []).map((data, i) => ({ url: `${book.url}${i}.vcf`, data })),
+  )
 
   login = vi.fn<CalDavClient['login']>(async () => ({
     principalUrl: `${SERVER}daisy/`,
@@ -158,6 +168,21 @@ export class FakeClient implements CalDavClient {
       return obj
     },
   )
+
+  restoreObject = vi.fn<CalDavClient['restoreObject']>(async (collection, url, data) => {
+    this.calls.push(`restore ${url.split('/').pop()}`)
+    this.maybeFail('create')
+    if (this.objects.has(url)) throw new ConflictError(url)
+    const obj = {
+      url,
+      collectionUrl: collection.url,
+      etag: `"e${++this.etagCounter}"`,
+      data: stampForWrite(data),
+    }
+    this.objects.set(url, obj)
+    this.touch(collection.url)
+    return obj
+  })
 
   updateObject = vi.fn<CalDavClient['updateObject']>(async (object, data) => {
     this.calls.push(`update ${object.url.split('/').pop()}`)

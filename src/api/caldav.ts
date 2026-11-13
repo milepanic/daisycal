@@ -6,6 +6,7 @@
  * Collections other than Calendar (VEVENT) and Tasks (VTODO) are filtered out (CHECKLIST.md §0).
  */
 import {
+  addressBookQuery,
   calendarQuery,
   createObject,
   davRequest,
@@ -30,6 +31,16 @@ export interface CalendarObject {
   collectionUrl: string
   etag: string
   /** Raw iCalendar text. */
+  data: string
+}
+
+export interface AddressBook {
+  url: string
+  displayName: string
+}
+
+export interface VCardObject {
+  url: string
   data: string
 }
 
@@ -58,6 +69,10 @@ export interface CalDavClient {
   login(): Promise<{ principalUrl: string; homeUrl: string }>
   /** All supported collections (Calendar and Tasks) under the calendar home. */
   listCollections(): Promise<Collection[]>
+  /** Address books (CardDAV) next to the calendars, read only for contact birthdays. */
+  listAddressBooks(): Promise<AddressBook[]>
+  /** Every vCard of an address book. */
+  fetchVCards(addressBook: AddressBook): Promise<VCardObject[]>
   /** Current `getctag` of every supported collection, keyed by collection URL. */
   fetchCtags(): Promise<Map<string, string>>
   /** VEVENTs overlapping the range. Recurrences are NOT expanded; the client does that. */
@@ -68,6 +83,11 @@ export interface CalDavClient {
   fetchObjects(collection: Collection, urls: string[]): Promise<CalendarObject[]>
   /** PUT with `If-None-Match: *`. `uid` becomes the file name; DTSTAMP/LAST-MODIFIED are set. */
   createObject(collection: Collection, ics: string, uid?: string): Promise<CalendarObject>
+  /**
+   * PUT with `If-None-Match: *` at a given URL: puts a deleted object back where it was (undo),
+   * whatever its file name.
+   */
+  restoreObject(collection: Collection, url: string, ics: string): Promise<CalendarObject>
   /** PUT with `If-Match: <etag>`; throws `ConflictError` when the server copy changed. */
   updateObject(object: CalendarObject, ics: string): Promise<CalendarObject>
   /** DELETE with `If-Match: <etag>`; throws `ConflictError` when the server copy changed. */
@@ -189,6 +209,40 @@ export function createCalDavClient(options: CalDavClientOptions): CalDavClient {
       return username
     },
 
+    async listAddressBooks() {
+      const { homeUrl: home } = await discover()
+      const responses = await propfind({
+        url: home,
+        props: { 'd:displayname': {}, 'd:resourcetype': {} },
+        depth: '1',
+        fetch: davFetch,
+      })
+      return responses
+        .filter((r) => r.href && 'addressbook' in ((r.props?.resourcetype as object) ?? {}))
+        .map((r) => {
+          const url = new URL(r.href!, serverUrl).href
+          return {
+            url: url.endsWith('/') ? url : `${url}/`,
+            displayName: davText(r.props?.displayname)?.trim() || 'Contacts',
+          }
+        })
+    },
+
+    async fetchVCards(addressBook) {
+      const responses = await addressBookQuery({
+        url: addressBook.url,
+        props: { 'd:getetag': {}, 'card:address-data': {} },
+        depth: '1',
+        fetch: davFetch,
+      })
+      return responses
+        .map((r) => ({
+          url: r.href ? new URL(r.href, serverUrl).href : '',
+          data: davText(r.props?.addressData) ?? '',
+        }))
+        .filter((v) => v.url && v.data)
+    },
+
     async login() {
       loggedIn = false
       principalUrl = null
@@ -274,6 +328,17 @@ export function createCalDavClient(options: CalDavClientOptions): CalDavClient {
 
     async createObject(collection, ics, uid = newUid()) {
       const url = objectUrlFor(collection, uid)
+      const data = stampForWrite(ics)
+      const res = await createObject({
+        url,
+        data,
+        headers: { 'content-type': 'text/calendar; charset=utf-8', 'If-None-Match': '*' },
+        fetch: davFetch,
+      })
+      return readBack(collection, url, res.headers.get('etag'), data)
+    },
+
+    async restoreObject(collection, url, ics) {
       const data = stampForWrite(ics)
       const res = await createObject({
         url,

@@ -23,6 +23,7 @@ import {
 import { type DateRange, monthKeysIn, monthRange } from '@/lib/dates'
 import { useAuthStore } from './auth'
 import { useCalendarsStore } from './calendars'
+import { useHistoryStore } from './history'
 
 type ChunkStatus = 'loading' | 'ready' | 'error'
 
@@ -40,6 +41,7 @@ const chunkKey = (collectionUrl: string, monthKey: string) => `${collectionUrl}|
 export const useEventsStore = defineStore('events', () => {
   const auth = useAuthStore()
   const calendars = useCalendarsStore()
+  const history = useHistoryStore()
 
   /** All known documents by object URL. */
   const docs = shallowRef(new Map<string, EventDocument>())
@@ -203,7 +205,12 @@ export const useEventsStore = defineStore('events', () => {
     return markRaw(parseEventObject(object))
   }
 
-  async function createEvent(collection: Collection, form: EventForm): Promise<EventDocument> {
+  /** `undoLabel` offers Undo (removing the new event), e.g. for copies. */
+  async function createEvent(
+    collection: Collection,
+    form: EventForm,
+    options: { undoLabel?: string } = {},
+  ): Promise<EventDocument> {
     const { uid, ics } = buildEventIcs(form)
     const url = new URL(`${encodeURIComponent(uid)}.ics`, collection.url).href
     const optimistic = toDoc({ url, collectionUrl: collection.url, etag: '', data: ics })
@@ -212,6 +219,13 @@ export const useEventsStore = defineStore('events', () => {
       const saved = await auth.requireClient().createObject(collection, ics, uid)
       const doc = toDoc(saved)
       setDoc(doc)
+      if (options.undoLabel)
+        history.record(options.undoLabel, uid, async () => {
+          const now = docs.value.get(doc.object.url)
+          if (!now) return
+          await auth.requireClient().deleteObject(now.object)
+          dropDoc(now.object.url)
+        })
       return doc
     } catch (err) {
       dropDoc(url)
@@ -249,36 +263,66 @@ export const useEventsStore = defineStore('events', () => {
     }
   }
 
+  /**
+   * Undo of a write: puts the object back as `snapshot` had it, over whatever is there now,
+   * or recreates it at its old URL when it was deleted.
+   */
+  async function restore(snapshot: CalendarObject): Promise<void> {
+    const current = docs.value.get(snapshot.url)
+    if (current) {
+      await writeDocument(current, snapshot.data)
+      return
+    }
+    const collection = calendars.get(snapshot.collectionUrl)
+    if (!collection) throw new NotFoundError(snapshot.url)
+    const saved = await auth.requireClient().restoreObject(collection, snapshot.url, snapshot.data)
+    setDoc(toDoc(saved))
+  }
+
+  const titleOf = (doc: EventDocument) => doc.master.summary || '(No title)'
+
   async function updateEvent(
     instance: EventInstance,
     form: EventForm,
     scope: EditScope = 'all',
+    options: { undoLabel?: string } = {},
   ): Promise<EventDocument> {
     const doc = docs.value.get(instance.objectUrl)
     if (!doc) throw new NotFoundError(instance.objectUrl)
     // Work on a copy so a failed write leaves the cached document untouched.
     const copy = toDoc({ ...doc.object })
     const ics = updateEventIcs(copy, form, instance, scope)
-    return writeDocument(doc, ics)
+    const saved = await writeDocument(doc, ics)
+    const before = doc.object
+    history.record(options.undoLabel ?? `Updated "${form.summary || titleOf(doc)}"`, doc.uid, () =>
+      restore(before),
+    )
+    return saved
   }
 
   async function deleteEvent(instance: EventInstance, scope: EditScope = 'all'): Promise<void> {
     const doc = docs.value.get(instance.objectUrl)
     if (!doc) return
+    const label = `Deleted "${instance.summary || '(No title)'}"`
+    const before = doc.object
     if (scope === 'this' && instance.isRecurring && instance.recurrenceId) {
       const copy = toDoc({ ...doc.object })
       await writeDocument(doc, excludeOccurrenceIcs(copy, instance))
+      history.record(label, doc.uid, () => restore(before))
       return
     }
     dropDoc(doc.object.url)
     try {
       await auth.requireClient().deleteObject(doc.object)
     } catch (err) {
-      if (err instanceof NotFoundError) return
-      setDoc(doc)
-      if (err instanceof ConflictError) await reloadObject(doc.object.collectionUrl, doc.object.url)
-      throw err
+      if (!(err instanceof NotFoundError)) {
+        setDoc(doc)
+        if (err instanceof ConflictError)
+          await reloadObject(doc.object.collectionUrl, doc.object.url)
+        throw err
+      }
     }
+    history.record(label, doc.uid, () => restore(before))
   }
 
   /** Moves an event to another calendar: create there with the same UID, then delete here. */
@@ -299,6 +343,16 @@ export const useEventsStore = defineStore('events', () => {
         throw err
       }
     }
+    const before = doc.object
+    history.record(`Moved "${titleOf(doc)}" to ${target.displayName}`, doc.uid, async () => {
+      // Remove the copy in the new calendar (as it is now), then bring the original back.
+      const copyNow = docs.value.get(moved.object.url)
+      if (copyNow) {
+        await client.deleteObject(copyNow.object)
+        dropDoc(copyNow.object.url)
+      }
+      await restore(before)
+    })
     return moved
   }
 

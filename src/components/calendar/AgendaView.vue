@@ -50,7 +50,7 @@ function eventKey(i: EventInstance) {
             <span
               class="flex size-8 shrink-0 items-center justify-center text-base font-semibold"
               :class="
-                day.isToday ? 'rounded-full bg-accent text-white' : 'rounded-sm text-gray-900'
+                day.isToday ? 'rounded-full bg-accent text-on-color' : 'rounded-sm text-gray-900'
               "
               :aria-current="day.isToday ? 'date' : undefined"
             >

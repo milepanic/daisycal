@@ -13,6 +13,16 @@
     />
   </head>
   <body class="h-full text-gray-900 antialiased">
+    <script>
+      // Dark mode before the app loads (no light flash); useTheme() keeps it in step afterwards.
+      try {
+        var theme = (JSON.parse(localStorage.getItem('daisycal.layout') || '{}') || {}).theme
+        var dark =
+          theme === 'dark' ||
+          (theme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        if (dark) document.documentElement.classList.add('dark')
+      } catch (e) {}
+    </script>
     <div id="app" class="h-full"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

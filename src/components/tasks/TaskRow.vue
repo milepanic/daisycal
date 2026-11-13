@@ -9,10 +9,23 @@ import { dueBadge } from '@/lib/taskBadge'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import ColorCheckbox from '@/components/ui/ColorCheckbox.vue'
 
-const props = defineProps<{ task: Task; color: string }>()
+const props = withDefaults(
+  defineProps<{
+    task: Task
+    color: string
+    /** Subtask level: indented under its parent. */
+    depth?: number
+    /** Done / total of its subtasks, shown next to the title. */
+    subtasks?: { done: number; total: number } | null
+    /** Shows the "Add subtask" button on hover. */
+    canAddSubtask?: boolean
+  }>(),
+  { depth: 0, subtasks: null, canAddSubtask: false },
+)
 const emit = defineEmits<{
   toggle: [task: Task, completed: boolean]
   open: [task: Task]
+  addSubtask: [task: Task]
   /** Primary-button press on the row (not the checkbox): the parent may start a drag. */
   grab: [task: Task, event: PointerEvent]
 }>()
@@ -92,7 +105,9 @@ const priorityClass = computed(() =>
 <template>
   <li
     class="group/task flex items-start gap-x-3 rounded-sm p-2 hover:bg-gray-50"
+    :style="depth ? { paddingLeft: `${0.5 + depth * 1.75}rem` } : undefined"
     :data-task="task.uid"
+    :data-depth="depth || undefined"
     @pointerdown="onPointerDown"
   >
     <span
@@ -142,6 +157,13 @@ const priorityClass = computed(() =>
           :title="`${task.priority} priority`"
         />
         <span class="truncate">{{ task.summary || '(No title)' }}</span>
+        <span
+          v-if="subtasks"
+          class="shrink-0 text-xs text-gray-400 tabular-nums no-underline"
+          :title="`${subtasks.done} of ${subtasks.total} subtasks done`"
+          data-testid="subtask-progress"
+          >{{ subtasks.done }}/{{ subtasks.total }}</span
+        >
       </p>
       <p v-if="task.completed && task.completedAt" class="mt-0.5 text-xs text-gray-400">
         Completed {{ formatShortDateTime(task.completedAt, false) }}
@@ -156,6 +178,17 @@ const priorityClass = computed(() =>
           {{ badge.label }}
         </span>
       </p>
+    </button>
+    <button
+      v-if="canAddSubtask && !task.completed"
+      type="button"
+      class="shrink-0 rounded-sm p-0.5 text-gray-400 opacity-0 group-hover/task:opacity-100 hover:bg-gray-200 hover:text-gray-700 focus-visible:opacity-100"
+      title="Add subtask"
+      @pointerdown.stop
+      @click="emit('addSubtask', task)"
+    >
+      <span class="sr-only">Add subtask to {{ task.summary }}</span>
+      <AppIcon name="plus" class="size-4" />
     </button>
   </li>
 </template>

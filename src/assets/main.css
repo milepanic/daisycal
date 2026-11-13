@@ -8,6 +8,9 @@
   --font-signature: 'Great Vibes', cursive;
 
   --color-accent: #e30000;
+  /* Text on the accent and on colored fills: stays white in dark mode (where white is the dark
+     surface color). */
+  --color-on-color: #ffffff;
 
   --color-cal-personal: #566c86;
   --color-cal-apartment: #7c94b8;
@@ -15,6 +18,52 @@
   --color-cal-travel: #8094aa;
   --color-cal-tasks: #2a4d88;
   --color-cal-work: #225688;
+}
+
+/*
+ * Dark mode (`dark` on <html>, see useTheme): instead of `dark:` variants everywhere, the
+ * colors the app is built from are redefined. White becomes the card surface, the gray scale
+ * turns around (text-gray-900 is light, bg-gray-100 is a dark fill), and the light red / green
+ * / amber backgrounds become dark tints. Calendar colors are untouched; chip text still picks
+ * white or near-black by contrast (src/lib/color.ts).
+ */
+html.dark {
+  color-scheme: dark;
+  --color-white: #1a1c20;
+  --color-zinc-100: #0f1013;
+
+  --color-gray-50: #212328;
+  --color-gray-100: #272a30;
+  --color-gray-200: #33373e;
+  --color-gray-300: #474c55;
+  --color-gray-400: #7a808b;
+  --color-gray-500: #9aa0aa;
+  --color-gray-600: #b9bec6;
+  --color-gray-700: #d0d4da;
+  --color-gray-800: #e2e5e9;
+  --color-gray-900: #f1f3f5;
+
+  --color-red-50: #3a1618;
+  --color-red-200: #6e262b;
+  --color-red-500: #f26b6b;
+  --color-red-600: #f58a8a;
+  --color-red-700: #f8a5a5;
+  --color-red-800: #fbc4c4;
+  --color-emerald-50: #10291f;
+  --color-emerald-200: #1d5a40;
+  --color-emerald-800: #a7f0cf;
+  --color-amber-50: #33260c;
+  --color-amber-100: #46340f;
+  --color-amber-800: #f6d58e;
+  --color-amber-900: #fbe3ad;
+}
+
+/* Theme switch (ThemeToggle): the browser's default cross-fade is replaced by a circle growing
+   from the button over the old screenshot. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
 }
 
 /* Tailwind v4 resets buttons to the default cursor; restore the pointer for clickable buttons. */
@@ -68,6 +117,132 @@
   opacity: 0;
   transform: translateY(12px);
 }
+/* Calendar view switch (Week → Month …) and Calendar ↔ Tasks: fade with a small rise. */
+.view-enter-active {
+  transition:
+    opacity 180ms ease-out,
+    transform 220ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+.view-leave-active {
+  transition: opacity 90ms ease-in;
+}
+.view-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+.view-leave-to {
+  opacity: 0;
+}
+
+/* Modal dialogs (create / edit popup, search): the backdrop fades, the panel (.modal-panel)
+   grows in from slightly smaller with a soft overshoot. The root keeps a transition of the
+   same length so Vue waits for the panel (the create popup's root is display: contents). */
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 200ms ease;
+}
+.modal-enter-active .modal-panel {
+  transition:
+    opacity 180ms ease-out,
+    transform 220ms cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+.modal-leave-active .modal-panel {
+  transition:
+    opacity 120ms ease-in,
+    transform 120ms ease-in;
+}
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+.modal-enter-from .modal-panel {
+  opacity: 0;
+  transform: translateY(10px) scale(0.96);
+}
+.modal-leave-to .modal-panel {
+  opacity: 0;
+  transform: scale(0.98);
+}
+
+/* Dropdowns (date / time pickers, list pickers): unfold from their top edge. */
+.dropdown-enter-active {
+  transition:
+    opacity 140ms ease-out,
+    transform 160ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+.dropdown-leave-active {
+  transition: opacity 90ms ease-in;
+}
+.dropdown-enter-from {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.97);
+}
+.dropdown-leave-to {
+  opacity: 0;
+}
+
+/* Right-hand tasks panel: slides in from the right. */
+.panel-enter-active,
+.panel-leave-active {
+  transition:
+    opacity 180ms ease,
+    transform 220ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+.panel-enter-from,
+.panel-leave-to {
+  opacity: 0;
+  transform: translateX(24px);
+}
+
+/* Task rows (TransitionGroup): new rows fade in, finished ones fade out to the side and the
+   others slide into place. */
+.task-list-enter-active {
+  transition:
+    opacity 200ms ease-out,
+    transform 200ms ease-out;
+}
+.task-list-leave-active {
+  /* Out of the flow so the rows below can slide up (stays at its static position). */
+  position: absolute;
+  inset-inline: 0;
+  transition:
+    opacity 180ms ease-in,
+    transform 180ms ease-in;
+}
+.task-list-move {
+  transition: transform 220ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+.task-list-enter-from {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+.task-list-leave-to {
+  opacity: 0;
+  transform: translateX(12px);
+}
+
+/* "Completed (N)" opening. */
+details[open] > .details-body {
+  animation: details-open 180ms ease-out;
+}
+@keyframes details-open {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+/* Small fade-in for things that appear in place (weather in the day headers). */
+.appear {
+  animation: appear 240ms ease-out;
+}
+@keyframes appear {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .fade-enter-active,
   .fade-leave-active,
@@ -77,8 +252,25 @@
   .slide-leave-active,
   .toast-enter-active,
   .toast-leave-active,
-  .toast-move {
+  .toast-move,
+  .view-enter-active,
+  .view-leave-active,
+  .modal-enter-active,
+  .modal-leave-active,
+  .modal-enter-active .modal-panel,
+  .modal-leave-active .modal-panel,
+  .dropdown-enter-active,
+  .dropdown-leave-active,
+  .panel-enter-active,
+  .panel-leave-active,
+  .task-list-enter-active,
+  .task-list-leave-active,
+  .task-list-move {
     transition: none;
+  }
+  details[open] > .details-body,
+  .appear {
+    animation: none;
   }
 }
 

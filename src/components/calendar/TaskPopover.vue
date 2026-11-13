@@ -96,6 +96,15 @@ function edit() {
   })
 }
 
+/** Opens the popup with a copy of this task; Save creates it. */
+function duplicate() {
+  ui.openCreate({
+    kind: 'task',
+    collectionUrl: props.task.collectionUrl,
+    copyOf: { objectUrl: props.task.objectUrl, recurrenceId: null },
+  })
+}
+
 async function remove() {
   busy.value = true
   error.value = null
@@ -171,7 +180,7 @@ async function remove() {
         <button
           type="button"
           :disabled="busy"
-          class="rounded-sm bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-60"
+          class="rounded-sm bg-red-600 px-3 py-1.5 text-xs font-semibold text-on-color hover:bg-red-500 disabled:opacity-60"
           @click="remove"
         >
           Delete
@@ -200,6 +209,13 @@ async function remove() {
         @click="edit"
       >
         Edit
+      </button>
+      <button
+        type="button"
+        class="rounded-sm px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100"
+        @click="duplicate"
+      >
+        Duplicate
       </button>
       <button
         type="button"

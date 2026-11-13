@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /** Month grid in the sidebar: navigates months, highlights today and the selected date. */
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
 import {
   type WeekStart,
@@ -12,6 +12,7 @@ import {
   toDateKey,
 } from '@/lib/dates'
 import { WEEKDAYS_LETTER, monthTitle } from '@/lib/format'
+import { slideIn } from '@/lib/motion'
 import AppIcon from '@/components/ui/AppIcon.vue'
 
 const props = withDefaults(defineProps<{ selected: Date; weekStart?: WeekStart }>(), {
@@ -27,6 +28,14 @@ watch(
   },
 )
 
+/** The days slide in from the side of the month they come from. */
+const dayGrid = ref<HTMLElement | null>(null)
+watch(month, async (next, prev) => {
+  if (next.getTime() === prev.getTime()) return
+  await nextTick()
+  slideIn(dayGrid.value, next > prev ? 16 : -16, 0, 200)
+})
+
 const today = new Date()
 const weekdayLetters = computed(() =>
   Array.from({ length: 7 }, (_, i) => WEEKDAYS_LETTER[(props.weekStart + i) % 7]!),
@@ -37,7 +46,7 @@ const days = computed(() => {
 })
 
 function classFor(d: Date) {
-  if (isSameDay(d, today)) return 'rounded-full bg-accent text-white'
+  if (isSameDay(d, today)) return 'rounded-full bg-accent text-on-color'
   const base = d.getMonth() === month.value.getMonth() ? 'text-gray-700' : 'text-gray-400'
   if (isSameDay(d, props.selected))
     return `rounded-sm bg-white text-gray-900 ring-1 ring-gray-300 ${base}`
@@ -71,7 +80,7 @@ function classFor(d: Date) {
     <div class="grid grid-cols-7 text-center text-[11px] font-medium text-gray-500">
       <div v-for="(letter, i) in weekdayLetters" :key="i">{{ letter }}</div>
     </div>
-    <div class="mt-2 grid grid-cols-7 gap-y-0.5 text-center text-xs font-semibold">
+    <div ref="dayGrid" class="mt-2 grid grid-cols-7 gap-y-0.5 text-center text-xs font-semibold">
       <button
         v-for="d in days"
         :key="toDateKey(d)"

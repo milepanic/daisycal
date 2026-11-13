@@ -16,8 +16,10 @@ import {
   updateTaskIcs,
 } from '@/api/ical'
 import { type DateRange, startOfDay } from '@/lib/dates'
+import { descendantsOf } from '@/lib/subtasks'
 import { useAuthStore } from './auth'
 import { useCalendarsStore } from './calendars'
+import { useHistoryStore } from './history'
 import { useUiStore } from './ui'
 
 type ListStatus = 'loading' | 'ready' | 'error'
@@ -48,6 +50,7 @@ export function compareTasks(a: Task, b: Task): number {
 export const useTasksStore = defineStore('tasks', () => {
   const auth = useAuthStore()
   const calendars = useCalendarsStore()
+  const history = useHistoryStore()
   const ui = useUiStore()
 
   const docs = shallowRef(new Map<string, TaskDocument>())
@@ -168,9 +171,12 @@ export const useTasksStore = defineStore('tasks', () => {
 
   const openTasks = computed(() => visibleTasks.value.filter((t) => !t.completed))
 
-  /** Open tasks of visible lists due within the range (for the calendar grid / tasks panel). */
+  /**
+   * Tasks of visible lists due within the range, completed ones included (the calendar shows
+   * them struck through, as Google Calendar does).
+   */
   function tasksDueIn(range: DateRange): Task[] {
-    return openTasks.value.filter((t) => t.due && t.due >= range.start && t.due < range.end)
+    return visibleTasks.value.filter((t) => t.due && t.due >= range.start && t.due < range.end)
   }
 
   /**
@@ -199,7 +205,12 @@ export const useTasksStore = defineStore('tasks', () => {
     bump()
   }
 
-  async function createTask(collection: Collection, form: TaskForm): Promise<Task> {
+  /** `undoLabel` offers Undo (removing the new task), e.g. for copies. */
+  async function createTask(
+    collection: Collection,
+    form: TaskForm,
+    options: { undoLabel?: string } = {},
+  ): Promise<Task> {
     const { uid, ics } = buildTaskIcs(form)
     const url = new URL(`${encodeURIComponent(uid)}.ics`, collection.url).href
     setDoc(toDoc({ url, collectionUrl: collection.url, etag: '', data: ics }))
@@ -207,6 +218,13 @@ export const useTasksStore = defineStore('tasks', () => {
       const saved = await auth.requireClient().createObject(collection, ics, uid)
       const doc = toDoc(saved)
       setDoc(doc)
+      if (options.undoLabel)
+        history.record(options.undoLabel, uid, async () => {
+          const now = docs.value.get(doc.object.url)
+          if (!now) return
+          await auth.requireClient().deleteObject(now.object)
+          dropDoc(now.object.url)
+        })
       return taskFromDocument(doc)
     } catch (err) {
       dropDoc(url)
@@ -242,18 +260,66 @@ export const useTasksStore = defineStore('tasks', () => {
     }
   }
 
-  async function updateTask(task: Task, form: TaskForm): Promise<Task> {
-    const doc = docs.value.get(task.objectUrl)
-    if (!doc) throw new NotFoundError(task.objectUrl)
-    const copy = toDoc({ ...doc.object })
-    return writeDocument(doc, updateTaskIcs(copy, form))
+  /** Undo of a write: back to `snapshot`, or recreated at its old URL when it was deleted. */
+  async function restore(snapshot: CalendarObject): Promise<void> {
+    const current = docs.value.get(snapshot.url)
+    if (current) {
+      await writeDocument(current, snapshot.data)
+      return
+    }
+    const collection = calendars.get(snapshot.collectionUrl)
+    if (!collection) throw new NotFoundError(snapshot.url)
+    const saved = await auth.requireClient().restoreObject(collection, snapshot.url, snapshot.data)
+    setDoc(toDoc(saved))
   }
 
-  async function setCompleted(task: Task, completed: boolean): Promise<Task> {
+  const titleOf = (t: Task) => t.summary || '(No title)'
+
+  async function updateTask(
+    task: Task,
+    form: TaskForm,
+    options: { undoLabel?: string } = {},
+  ): Promise<Task> {
     const doc = docs.value.get(task.objectUrl)
     if (!doc) throw new NotFoundError(task.objectUrl)
     const copy = toDoc({ ...doc.object })
-    return writeDocument(doc, toggleTaskIcs(copy, completed))
+    const saved = await writeDocument(doc, updateTaskIcs(copy, form))
+    const before = doc.object
+    history.record(
+      options.undoLabel ?? `Updated "${form.summary || titleOf(task)}"`,
+      task.uid,
+      () => restore(before),
+    )
+    return saved
+  }
+
+  /**
+   * Completes or reopens a task. Completing a parent also completes its open subtasks (Google
+   * Tasks, Apple Reminders); it is one undo step.
+   */
+  async function setCompleted(task: Task, completed: boolean): Promise<Task> {
+    const open = completed
+      ? descendantsOf(task.uid, all.value.values()).filter((t) => !t.completed)
+      : []
+    if (open.length === 0) return setCompletedOne(task, completed)
+    return history.group(task.uid, async () => {
+      for (const sub of open) await setCompletedOne(sub, true)
+      return setCompletedOne(task, completed)
+    })
+  }
+
+  async function setCompletedOne(task: Task, completed: boolean): Promise<Task> {
+    const doc = docs.value.get(task.objectUrl)
+    if (!doc) throw new NotFoundError(task.objectUrl)
+    const copy = toDoc({ ...doc.object })
+    const saved = await writeDocument(doc, toggleTaskIcs(copy, completed))
+    const before = doc.object
+    history.record(
+      completed ? `Completed "${titleOf(task)}"` : `Marked "${titleOf(task)}" not completed`,
+      task.uid,
+      () => restore(before),
+    )
+    return saved
   }
 
   /** Moves a task to another list: create there with the same UID, then delete here. */
@@ -274,21 +340,44 @@ export const useTasksStore = defineStore('tasks', () => {
         throw err
       }
     }
+    const before = doc.object
+    history.record(`Moved "${titleOf(task)}" to ${target.displayName}`, task.uid, async () => {
+      const copyNow = docs.value.get(moved.object.url)
+      if (copyNow) {
+        await client.deleteObject(copyNow.object)
+        dropDoc(copyNow.object.url)
+      }
+      await restore(before)
+    })
     return taskFromDocument(moved)
   }
 
+  /** Deletes a task with its subtasks (as Apple Reminders does); one undo step brings all back. */
   async function deleteTask(task: Task): Promise<void> {
+    const subs = descendantsOf(task.uid, all.value.values())
+    if (subs.length === 0) return deleteOne(task)
+    await history.group(task.uid, async () => {
+      for (const sub of subs.reverse()) await deleteOne(sub)
+      await deleteOne(task)
+    })
+  }
+
+  async function deleteOne(task: Task): Promise<void> {
     const doc = docs.value.get(task.objectUrl)
     if (!doc) return
     dropDoc(task.objectUrl)
     try {
       await auth.requireClient().deleteObject(doc.object)
     } catch (err) {
-      if (err instanceof NotFoundError) return
-      setDoc(doc)
-      if (err instanceof ConflictError) await reloadObject(doc.object.collectionUrl, doc.object.url)
-      throw err
+      if (!(err instanceof NotFoundError)) {
+        setDoc(doc)
+        if (err instanceof ConflictError)
+          await reloadObject(doc.object.collectionUrl, doc.object.url)
+        throw err
+      }
     }
+    const before = doc.object
+    history.record(`Deleted "${titleOf(task)}"`, task.uid, () => restore(before))
   }
 
   function reset() {

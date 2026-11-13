@@ -31,7 +31,10 @@ withDefaults(
   >
     <svg
       v-if="checked"
-      :class="[size === 'sm' ? 'size-2' : 'size-2.5', onColor ? 'text-(--cb-color)' : 'text-white']"
+      :class="[
+        size === 'sm' ? 'size-2' : 'size-2.5',
+        onColor ? 'text-(--cb-color)' : 'text-on-color',
+      ]"
       fill="none"
       stroke="currentColor"
       stroke-width="2"

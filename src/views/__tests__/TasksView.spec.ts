@@ -112,6 +112,38 @@ describe('TasksView', () => {
     wrapper.unmount()
   })
 
+  it('nests subtasks under their parent and adds new ones from the row', async () => {
+    client.seed(MY_TASKS, 'sub', todoIcs('sub', 'Book room', 'RELATED-TO;RELTYPE=PARENT:none\r\n'))
+    const wrapper = await mountView()
+    const mine = wrapper.findAll('section[data-list]')[0]!
+    const rows = () =>
+      mine
+        .findAll('li[data-task]')
+        .map((li) => [li.attributes('data-task'), li.attributes('data-depth') ?? '0'])
+    const ids = rows().map((r) => r[0])
+    // "Book room" sits right under "Plan Q4 goals", one level in.
+    expect(ids.indexOf('sub')).toBe(ids.indexOf('none') + 1)
+    expect(rows().find((r) => r[0] === 'sub')![1]).toBe('1')
+    expect(mine.find('li[data-task="none"] [data-testid="subtask-progress"]').text()).toBe('0/1')
+
+    await mine.find('li[data-task="none"] button[title="Add subtask"]').trigger('click')
+    const input = mine.find('input[aria-label="New subtask of Plan Q4 goals"]')
+    await input.setValue('Draft agenda')
+    await mine.find('form').trigger('submit')
+    await flushPromises()
+    const created = [...client.objects.values()].find((o) =>
+      o.data.includes('SUMMARY:Draft agenda'),
+    )!
+    expect(created.data).toContain('RELATED-TO;RELTYPE=PARENT:none')
+    expect(mine.find('li[data-task="none"] [data-testid="subtask-progress"]').text()).toBe('0/2')
+    // Escape closes the subtask form.
+    await mine
+      .find('input[aria-label="New subtask of Plan Q4 goals"]')
+      .trigger('keydown', { key: 'Escape' })
+    expect(mine.find('input[aria-label="New subtask of Plan Q4 goals"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
   it('adds a task inline with Enter, cancels with Esc, opens edit on click', async () => {
     const wrapper = await mountView()
     const shopping = wrapper.findAll('section[data-list]')[1]!

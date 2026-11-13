@@ -138,3 +138,36 @@ describe('toggleTaskIcs', () => {
     expect(parseTask(obj(undone, TASKS_URL)).completed).toBe(false)
   })
 })
+
+describe('subtasks (RELATED-TO;RELTYPE=PARENT)', () => {
+  const base = {
+    summary: 'Pack',
+    description: '',
+    due: null,
+    dueAllDay: false,
+    priority: null,
+    alarm: null,
+  } as const
+
+  it('writes the parent link like Apple Reminders and reads it back', () => {
+    const { ics } = buildTaskIcs({ ...base, parentUid: 'trip-uid' })
+    expect(ics).toContain('RELATED-TO;RELTYPE=PARENT:trip-uid')
+    expect(parseTask(obj(ics)).parentUid).toBe('trip-uid')
+  })
+
+  it('keeps the link on edits, changes or removes it on request, and leaves siblings alone', () => {
+    const withSibling = buildTaskIcs({ ...base, parentUid: 'trip-uid' }).ics.replace(
+      'RELATED-TO;RELTYPE=PARENT:trip-uid',
+      'RELATED-TO;RELTYPE=PARENT:trip-uid\r\nRELATED-TO;RELTYPE=SIBLING:other-uid',
+    )
+    const doc = parseTaskObject(obj(withSibling))
+    const kept = updateTaskIcs(doc, { ...base, summary: 'Pack bags' })
+    expect(kept).toContain('RELATED-TO;RELTYPE=PARENT:trip-uid')
+    const moved = updateTaskIcs(parseTaskObject(obj(withSibling)), { ...base, parentUid: 'x' })
+    expect(moved).toContain('RELATED-TO;RELTYPE=PARENT:x')
+    expect(moved).not.toContain('trip-uid')
+    const top = updateTaskIcs(parseTaskObject(obj(withSibling)), { ...base, parentUid: null })
+    expect(top).not.toContain('RELTYPE=PARENT')
+    expect(top).toContain('RELATED-TO;RELTYPE=SIBLING:other-uid')
+  })
+})

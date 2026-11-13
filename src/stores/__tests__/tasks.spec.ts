@@ -57,6 +57,25 @@ describe('tasks store', () => {
     expect(client.fetchTasks).toHaveBeenCalledTimes(1)
   })
 
+  it('includes completed tasks in the calendar range', async () => {
+    client.seed(
+      MY_TASKS,
+      'e',
+      todoIcs(
+        'e',
+        'Done on time',
+        'DUE:20261016T120000Z\r\nSTATUS:COMPLETED\r\nCOMPLETED:20261016T110000Z\r\n',
+      ),
+    )
+    const tasks = useTasksStore()
+    await tasks.ensureLoaded()
+    const due = tasks.tasksDueIn({ start: new Date(2026, 9, 16), end: new Date(2026, 9, 17) })
+    expect(due.map((t) => [t.summary, t.completed])).toEqual([
+      ['Due soon high', false],
+      ['Done on time', true],
+    ])
+  })
+
   it('lists pending (overdue) tasks: open, due before today, oldest first', async () => {
     const tasks = useTasksStore()
     await tasks.ensureLoaded()

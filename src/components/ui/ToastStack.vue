@@ -56,6 +56,14 @@ async function retry(toast: Toast) {
         {{ retrying.has(t.id) ? 'Retrying…' : 'Retry' }}
       </button>
       <button
+        v-if="t.action"
+        type="button"
+        class="shrink-0 rounded-sm px-2 py-1 text-xs font-semibold text-accent hover:bg-accent/10"
+        @click="t.action.run()"
+      >
+        {{ t.action.label }}
+      </button>
+      <button
         type="button"
         class="-mr-1 shrink-0 rounded-sm p-1 hover:bg-white/60"
         @click="notifications.dismiss(t.id)"

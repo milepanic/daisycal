@@ -4,6 +4,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 import { ConflictError } from '@/api/errors'
 import { type EditScope, type EventInstance, describeRepeat } from '@/api/ical'
+import { BIRTHDAYS_COLOR, BIRTHDAYS_NAME, BIRTHDAYS_URL } from '@/lib/birthdays'
 import { isSameDay } from '@/lib/dates'
 import { dayTitle, formatShortDateTime, formatTime } from '@/lib/format'
 import { useFocusTrap } from '@/composables/useFocusTrap'
@@ -25,8 +26,15 @@ const confirming = ref(false)
 const busy = ref(false)
 const error = ref<string | null>(null)
 
-const color = computed(() => calendars.colorFor(props.instance.collectionUrl))
-const calendarName = computed(() => calendars.get(props.instance.collectionUrl)?.displayName ?? '')
+const isBirthday = computed(() => props.instance.collectionUrl === BIRTHDAYS_URL)
+const color = computed(() =>
+  isBirthday.value ? BIRTHDAYS_COLOR : calendars.colorFor(props.instance.collectionUrl),
+)
+const calendarName = computed(() =>
+  isBirthday.value
+    ? BIRTHDAYS_NAME
+    : (calendars.get(props.instance.collectionUrl)?.displayName ?? ''),
+)
 const when = computed(() => {
   const { start, end, allDay } = props.instance
   const lastDay = new Date(end.getTime() - 1)
@@ -62,6 +70,18 @@ onMounted(() => {
   setTimeout(() => document.addEventListener('mousedown', onDocClick), 0)
 })
 onBeforeUnmount(() => document.removeEventListener('mousedown', onDocClick))
+
+/** Opens the popup with a copy of this event (Google Calendar's Duplicate); Save creates it. */
+function duplicate() {
+  ui.openCreate({
+    kind: 'event',
+    collectionUrl: props.instance.collectionUrl,
+    copyOf: {
+      objectUrl: props.instance.objectUrl,
+      recurrenceId: props.instance.recurrenceId?.toString() ?? null,
+    },
+  })
+}
 
 function edit() {
   ui.openCreate({
@@ -168,7 +188,7 @@ async function remove(scope: EditScope) {
         <button
           type="button"
           :disabled="busy"
-          class="rounded-sm bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-60"
+          class="rounded-sm bg-red-600 px-3 py-1.5 text-xs font-semibold text-on-color hover:bg-red-500 disabled:opacity-60"
           @click="remove('all')"
         >
           {{ instance.isRecurring ? 'All occurrences' : 'Delete' }}
@@ -182,6 +202,9 @@ async function remove(scope: EditScope) {
         </button>
       </div>
     </div>
+    <p v-else-if="instance.readOnly" class="mt-4 text-xs text-gray-500">
+      From your contacts. Change it in the contact.
+    </p>
     <div v-else class="mt-4 flex gap-x-2">
       <button
         type="button"
@@ -189,6 +212,13 @@ async function remove(scope: EditScope) {
         @click="edit"
       >
         Edit
+      </button>
+      <button
+        type="button"
+        class="rounded-sm px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100"
+        @click="duplicate"
+      >
+        Duplicate
       </button>
       <button
         type="button"

@@ -14,6 +14,7 @@ import { useTasksStore } from '@/stores/tasks'
 import { useUiStore } from '@/stores/ui'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import TaskInlineAdd from './TaskInlineAdd.vue'
+import { nestTasks, subtaskProgress } from '@/lib/subtasks'
 import TaskRow from './TaskRow.vue'
 
 const props = defineProps<{ list: Collection; dropTarget?: boolean }>()
@@ -32,6 +33,10 @@ const loading = computed(() => tasks.isLoading(props.list.url) && all.value.leng
 const listError = computed(() => tasks.listError(props.list.url))
 
 const adding = ref(false)
+/** Open tasks with their subtasks right under them. */
+const nestedOpen = computed(() => nestTasks(open.value))
+/** UID of the task getting a new subtask (its inline form is open). */
+const addingUnder = ref<string | null>(null)
 
 async function toggle(task: Task, done: boolean) {
   try {
@@ -97,17 +102,29 @@ function openDetailed() {
       <p v-else-if="open.length === 0 && !adding" class="px-2 py-2 text-sm text-gray-400">
         No open tasks.
       </p>
-      <ul class="space-y-0.5">
-        <TaskRow
-          v-for="t in open"
-          :key="t.objectUrl"
-          :task="t"
-          :color="color"
-          @toggle="toggle"
-          @open="openTask"
-          @grab="forwardGrab"
-        />
-      </ul>
+      <TransitionGroup tag="ul" name="task-list" class="relative space-y-0.5">
+        <template v-for="n in nestedOpen" :key="n.task.objectUrl">
+          <TaskRow
+            :task="n.task"
+            :color="color"
+            :depth="n.depth"
+            :subtasks="subtaskProgress(n.task.uid, all)"
+            can-add-subtask
+            @toggle="toggle"
+            @open="openTask"
+            @grab="forwardGrab"
+            @add-subtask="(t) => (addingUnder = t.uid)"
+          />
+          <li v-if="addingUnder === n.task.uid" class="list-none">
+            <TaskInlineAdd
+              :list="list"
+              :color="color"
+              :parent="n.task"
+              @close="addingUnder = null"
+            />
+          </li>
+        </template>
+      </TransitionGroup>
 
       <details v-if="completed.length && ui.showCompletedTasks" class="group mt-2">
         <summary
@@ -119,7 +136,7 @@ function openDetailed() {
           />
           Completed ({{ completed.length }})
         </summary>
-        <ul class="mt-1 space-y-0.5">
+        <TransitionGroup tag="ul" name="task-list" class="details-body relative mt-1 space-y-0.5">
           <TaskRow
             v-for="t in completed"
             :key="t.objectUrl"
@@ -129,7 +146,7 @@ function openDetailed() {
             @open="openTask"
             @grab="forwardGrab"
           />
-        </ul>
+        </TransitionGroup>
       </details>
     </div>
   </section>

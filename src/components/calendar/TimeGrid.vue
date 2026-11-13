@@ -25,11 +25,13 @@ import {
   minutesSinceMidnight,
   slotFromOffset,
 } from '@/lib/layout'
-import { DARK_TEXT, contrastRatio, textOn } from '@/lib/color'
+import { textOn } from '@/lib/color'
+import { type DayWeather, describeWeather } from '@/lib/weather'
 import { markDragged, wasJustDragged } from '@/lib/dragGuard'
 import type { Anchor, CreateDraft } from '@/stores/ui'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import TaskDot from '@/components/ui/TaskDot.vue'
+import WeatherCard from './WeatherCard.vue'
 import EventChip from './EventChip.vue'
 import PendingTasksPopover from './PendingTasksPopover.vue'
 import TaskChip from './TaskChip.vue'
@@ -47,6 +49,8 @@ const props = defineProps<{
   draftColor?: string
   /** Overdue open tasks, shown as "N pending tasks" on today's column. */
   pendingTasks?: Task[]
+  /** Forecast for a day (by date key), shown above the day name when the weather is on. */
+  weatherFor?: (dateKey: string) => DayWeather | undefined
 }>()
 const emit = defineEmits<{
   selectEvent: [instance: EventInstance, el: HTMLElement]
@@ -56,6 +60,10 @@ const emit = defineEmits<{
   moveEvent: [instance: EventInstance, start: Date, end: Date]
   /** A task chip was dragged to a new due date/time. */
   moveTask: [task: Task, due: Date]
+  /** Alt + drag: a copy of the event at the new time (the original stays). */
+  copyEvent: [instance: EventInstance, start: Date, end: Date]
+  /** Alt + drag: a copy of the task with the new due time. */
+  copyTask: [task: Task, due: Date]
 }>()
 
 const root = ref<HTMLElement | null>(null)
@@ -135,6 +143,9 @@ const columns = computed(() =>
   }),
 )
 
+/** Some shown day has a forecast: every day header then keeps a weather row. */
+const weatherOn = computed(() => columns.value.some((c) => props.weatherFor?.(c.key)))
+
 /** A grid chip: an event, or a task (laid over the events it overlaps, Google Calendar style). */
 interface GridPlacement extends Omit<TimedPlacement, 'instance'> {
   item: GridItem
@@ -167,11 +178,6 @@ const nowTop = computed(() => minutesSinceMidnight(now.value, now.value) * PX_PE
 function eventKey(i: EventInstance) {
   return `${i.objectUrl}|${i.recurrenceId?.toString() ?? ''}`
 }
-/** Travel band text: the event color on its light tint, or near-black when that is too pale. */
-function travelText(color: string) {
-  return contrastRatio(color, '#ffffff') >= 3 ? color : DARK_TEXT
-}
-
 /** "30 min", "1 h", "1 h 30 min" for the travel band. */
 function formatTravel(minutes: number) {
   const h = Math.floor(minutes / 60)
@@ -260,6 +266,8 @@ type Drag =
     }
 
 const drag = shallowRef<Drag | null>(null)
+/** Alt held while moving an event or task chip: the drop makes a copy (Google Calendar). */
+const copying = ref(false)
 
 const snap = (min: number) => Math.round(min / SNAP) * SNAP
 const clampMin = (min: number) => Math.max(0, Math.min(24 * 60, min))
@@ -380,6 +388,12 @@ function onPendingGrab(task: Task, e: PointerEvent) {
   trackPointer()
 }
 
+/**
+ * A task dragged in from outside the grid (the tasks panel): handled like a row of the
+ * pending popover, so it gets the ghost off the grid and the preview over a day.
+ */
+defineExpose({ grabExternalTask: onPendingGrab })
+
 /** Day column under the pointer, only inside the scrolled time area (not under the header). */
 function timeColumnAt(clientX: number, clientY: number): { el: HTMLElement; day: Date } | null {
   const box = root.value?.getBoundingClientRect()
@@ -413,6 +427,7 @@ function onResizePointerDown(instance: EventInstance, day: Date, e: PointerEvent
 function onPointerMove(e: PointerEvent) {
   const d = drag.value
   if (!d) return
+  copying.value = (d.kind === 'move' || d.kind === 'task') && e.altKey
   if (d.kind === 'create') {
     drag.value = {
       ...d,
@@ -505,15 +520,23 @@ function onPointerUp(e: PointerEvent) {
     if (d.day) emit('moveTask', d.task, dateAt(d.day, d.startMin))
     return
   }
+  const copy = (d.kind === 'move' || d.kind === 'task') && e.altKey
+  copying.value = false
   if (d.kind === 'task') {
     const due = dateAt(d.day, d.startMin)
-    if (due.getTime() !== d.task.due!.getTime()) emit('moveTask', d.task, due)
+    if (due.getTime() !== d.task.due!.getTime()) {
+      if (copy) emit('copyTask', d.task, due)
+      else emit('moveTask', d.task, due)
+    }
     return
   }
   if (d.kind === 'move') {
     const start = dateAt(d.day, d.startMin)
     const end = new Date(start.getTime() + d.durationMin * 60_000)
-    if (start.getTime() !== d.instance.start.getTime()) emit('moveEvent', d.instance, start, end)
+    if (start.getTime() !== d.instance.start.getTime()) {
+      if (copy) emit('copyEvent', d.instance, start, end)
+      else emit('moveEvent', d.instance, start, end)
+    }
   } else {
     const end = dateAt(d.day, d.endMin)
     if (end.getTime() !== d.instance.end.getTime())
@@ -524,6 +547,7 @@ function onPointerUp(e: PointerEvent) {
 function onPointerCancel() {
   untrackPointer()
   drag.value = null
+  copying.value = false
 }
 
 function onSelectEvent(instance: EventInstance, el: HTMLElement) {
@@ -595,7 +619,8 @@ const dragPreview = computed(() => {
 })
 const draggingKey = computed(() => {
   const d = drag.value
-  if (!d || !d.moved || d.kind === 'create') return null
+  // A copy leaves the original where it is, so it is not faded.
+  if (!d || !d.moved || d.kind === 'create' || copying.value) return null
   return d.kind === 'task' || d.kind === 'pending' ? d.task.objectUrl : eventKey(d.instance)
 })
 
@@ -673,9 +698,11 @@ function onGridKeydown(e: KeyboardEvent) {
       drag
         ? drag.kind === 'resize'
           ? 'cursor-ns-resize select-none'
-          : drag.kind === 'move' || (drag.kind === 'pending' && drag.moved)
-            ? 'cursor-grabbing select-none'
-            : 'select-none'
+          : copying
+            ? 'cursor-copy select-none'
+            : drag.kind === 'move' || (drag.kind === 'pending' && drag.moved)
+              ? 'cursor-grabbing select-none'
+              : 'select-none'
         : ''
     "
     data-testid="time-grid"
@@ -687,6 +714,44 @@ function onGridKeydown(e: KeyboardEvent) {
         <div class="grid" :style="{ gridTemplateColumns: gridCols }">
           <div></div>
           <div v-for="c in columns" :key="c.key" class="flex flex-col items-center py-2">
+            <!-- Same height on every day so the names stay aligned past the forecast's end. -->
+            <span v-if="weatherOn" class="mb-1 flex h-5 items-center">
+              <!-- Hover / focus shows the full forecast for the day. -->
+              <span
+                v-if="weatherFor?.(c.key)"
+                class="group/weather relative"
+                tabindex="0"
+                :aria-label="`${describeWeather(weatherFor(c.key)!.code).label}, ${weatherFor(c.key)!.min}° to ${weatherFor(c.key)!.max}°`"
+              >
+                <span
+                  class="appear flex cursor-default items-center gap-x-1 rounded-sm px-1 text-xs text-gray-600 tabular-nums group-hover/weather:bg-gray-100"
+                  data-testid="day-weather"
+                >
+                  <AppIcon
+                    :name="describeWeather(weatherFor(c.key)!.code).icon"
+                    class="size-3.5 shrink-0 text-gray-500"
+                    :stroke-width="1.75"
+                  />
+                  <span
+                    ><span class="text-gray-400">{{ weatherFor(c.key)!.min }}°/</span
+                    >{{ weatherFor(c.key)!.max }}°</span
+                  >
+                </span>
+                <WeatherCard
+                  :weather="weatherFor(c.key)!"
+                  class="pointer-events-none invisible absolute top-full z-40 mt-1.5 opacity-0 transition-[opacity,visibility] duration-150 group-focus-visible/weather:visible group-focus-visible/weather:opacity-100 group-hover/weather:visible group-hover/weather:opacity-100 group-hover/weather:delay-200"
+                  :class="
+                    columns.length === 1
+                      ? 'left-1/2 -translate-x-1/2'
+                      : c === columns[0]
+                        ? 'left-0'
+                        : c === columns[columns.length - 1]
+                          ? 'right-0'
+                          : 'left-1/2 -translate-x-1/2'
+                  "
+                />
+              </span>
+            </span>
             <span
               class="text-sm font-medium"
               :class="c.isToday ? 'text-accent' : 'text-gray-500'"
@@ -694,7 +759,9 @@ function onGridKeydown(e: KeyboardEvent) {
             >
             <span
               class="mx-auto mt-1 flex size-8 items-center justify-center text-base font-semibold"
-              :class="c.isToday ? 'rounded-full bg-accent text-white' : 'rounded-sm text-gray-900'"
+              :class="
+                c.isToday ? 'rounded-full bg-accent text-on-color' : 'rounded-sm text-gray-900'
+              "
               :aria-current="c.isToday ? 'date' : undefined"
             >
               {{ c.day.getDate() }}
@@ -812,20 +879,16 @@ function onGridKeydown(e: KeyboardEvent) {
             "
           >
             <template v-if="p.item.kind === 'event'">
-              <!-- Travel time (iPhone): a lighter band in the event color above the start. -->
+              <!-- Travel time (iPhone): a pale gray box with dashed sides running into the event. -->
               <div
                 v-if="p.travelPx > 0"
-                class="pointer-events-none absolute inset-x-0 top-0 flex items-start gap-x-1 overflow-hidden rounded-t-sm px-1.5 pt-0.5 text-[10px] leading-tight font-medium"
-                :style="{
-                  height: `${p.travelPx}px`,
-                  color: travelText(colorFor(p.item.instance.collectionUrl)),
-                  backgroundColor: `color-mix(in srgb, ${colorFor(p.item.instance.collectionUrl)} 18%, white)`,
-                }"
+                class="pointer-events-none absolute inset-x-0 top-0 flex items-start gap-x-1 overflow-hidden rounded-t-sm border border-b-0 border-dashed border-gray-300 bg-gray-50 px-1.5 text-[10px] leading-tight font-medium text-gray-500"
+                :style="{ height: `${p.travelPx}px` }"
                 data-testid="travel-time"
               >
-                <template v-if="p.travelPx >= 12">
-                  <AppIcon name="car" class="size-3 shrink-0" />
-                  <span class="truncate">{{ formatTravel(p.item.instance.travel!) }}</span>
+                <template v-if="p.travelPx >= 14">
+                  <AppIcon name="car" class="mt-px size-3 shrink-0" />
+                  <span class="mt-px truncate">{{ formatTravel(p.item.instance.travel!) }}</span>
                 </template>
               </div>
               <EventChip

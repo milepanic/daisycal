@@ -173,7 +173,9 @@ describe('app shell', () => {
     await flushPromises()
     expect(client.objects.get(`${MY_TASKS.url}a.ics`)!.data).toContain('STATUS:COMPLETED')
     expect(useNotificationsStore().offline).toBe(false)
-    expect(wrapper.find('[data-testid="toasts"]').text()).toBe('')
+    // The error toast is gone; what is left is the Undo offer for the completion.
+    expect(wrapper.find('[data-testid="toasts"]').text()).not.toContain('Could not')
+    expect(wrapper.find('[data-testid="toasts"]').text()).toContain('Completed "Send invoice"')
   })
 
   it('uses a drawer sidebar and the day view by default on narrow screens', async () => {
@@ -242,7 +244,45 @@ describe('app shell', () => {
     await flushPromises()
     const saved = client.objects.get(`${MY_TASKS.url}a.ics`)!.data
     expect(saved).toContain('DUE;TZID=Europe/Belgrade:20261015T190000')
+    // No error, and Undo puts the task back exactly as it was (17:00 local, stored in UTC).
+    const toasts = wrapper.find('[data-testid="toasts"]')
+    expect(toasts.text()).toContain('Moved "Send invoice"')
+    await toasts
+      .findAll('button')
+      .find((b) => b.text() === 'Undo')!
+      .trigger('click')
+    await flushPromises()
+    const restored = client.objects.get(`${MY_TASKS.url}a.ics`)!.data
+    expect(restored).toContain('DUE:20261015T150000Z')
+    expect(restored).not.toContain('20261015T190000')
     expect(wrapper.find('[data-testid="toasts"]').text()).toBe('')
+  })
+
+  it('searches with Ctrl+K and opens what was found', async () => {
+    useAuthStore()._setClient(client)
+    const wrapper = await mountApp('/week/2026-11-09')
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }))
+    await flushPromises()
+    const dialog = () => wrapper.find('[data-testid="search-dialog"]')
+    expect(dialog().exists()).toBe(true)
+    await dialog().find('input').setValue('REVIEW')
+    await flushPromises()
+    expect(dialog().text()).toContain('Design review')
+    expect(dialog().text()).toContain('Wed, Oct 14 · 14:00')
+    await dialog().find('input').setValue('invoice')
+    expect(dialog().text()).toContain('Send invoice')
+    await dialog().find('input').setValue('review')
+    // Enter jumps to the event's week and shows its details.
+    await dialog().trigger('keydown', { key: 'Enter' })
+    await routeIs(() => expect(router.currentRoute.value.fullPath).toBe('/week/2026-10-14'))
+    expect(dialog().exists()).toBe(false)
+    expect(wrapper.find('[data-testid="event-popover"]').text()).toContain('Design review')
+    // "/" opens it too; Escape closes it.
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: '/' }))
+    await flushPromises()
+    expect(dialog().exists()).toBe(true)
+    await dialog().trigger('keydown', { key: 'Escape' })
+    expect(dialog().exists()).toBe(false)
   })
 
   it('drops to the error screen when the server starts rejecting the proxy credentials', async () => {

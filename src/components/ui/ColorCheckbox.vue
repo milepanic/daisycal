@@ -19,7 +19,7 @@ const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>()
       @change="emit('update:modelValue', ($event.target as HTMLInputElement).checked)"
     />
     <svg
-      class="pointer-events-none col-start-1 row-start-1 hidden text-white peer-checked:block"
+      class="pointer-events-none col-start-1 row-start-1 hidden text-on-color peer-checked:block"
       :class="round ? 'size-3' : 'size-3.5'"
       fill="none"
       stroke="currentColor"
