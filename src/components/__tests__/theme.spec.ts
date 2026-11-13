@@ -3,6 +3,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { defineComponent, h, nextTick } from 'vue'
 
+import ChipStyleToggle from '@/components/shell/ChipStyleToggle.vue'
 import ThemeToggle from '@/components/shell/ThemeToggle.vue'
 import { useTheme } from '@/composables/useTheme'
 import { useUiStore } from '@/stores/ui'
@@ -59,6 +60,31 @@ describe('dark mode', () => {
     useUiStore().theme = 'light'
     await nextTick()
     expect(document.documentElement.classList.contains('dark')).toBe(false)
+    wrapper.unmount()
+  })
+})
+
+describe('chip style', () => {
+  it('toggles solid / tinted chips from the header, with the class on <html> and the choice kept', async () => {
+    const ChipHost = defineComponent({
+      setup() {
+        useTheme()
+        return () => h(ChipStyleToggle)
+      },
+    })
+    const wrapper = mount(ChipHost)
+    const html = document.documentElement
+    const button = () => wrapper.find('[data-testid="chip-style-toggle"]')
+    expect(useUiStore().chipStyle).toBe('solid')
+    expect(html.classList.contains('chips-tinted')).toBe(false)
+    await button().trigger('click')
+    await nextTick()
+    expect(html.classList.contains('chips-tinted')).toBe(true)
+    expect(button().attributes('aria-pressed')).toBe('true')
+    expect(JSON.parse(localStorage.getItem('daisycal.layout')!).chipStyle).toBe('tinted')
+    await button().trigger('click')
+    await nextTick()
+    expect(html.classList.contains('chips-tinted')).toBe(false)
     wrapper.unmount()
   })
 })

@@ -1089,7 +1089,7 @@ function onGridKeydown(e: KeyboardEvent) {
           </div>
           <div
             v-if="dragPreview && dragPreview.dayKey === c.key"
-            class="pointer-events-none absolute inset-x-0.5 z-40 overflow-hidden rounded-sm text-xs ring-2 ring-white"
+            class="chip-fill pointer-events-none absolute inset-x-0.5 z-40 overflow-hidden rounded-sm text-xs ring-2 ring-white"
             :class="
               dragPreview.task
                 ? [
@@ -1103,6 +1103,7 @@ function onGridKeydown(e: KeyboardEvent) {
               height: `${dragPreview.height}px`,
               backgroundColor: dragPreview.color,
               '--chip-fg': textOn(dragPreview.color ?? '#566c86'),
+              '--chip-color': dragPreview.color ?? '#566c86',
             }"
             data-testid="drag-preview"
           >
@@ -1127,7 +1128,7 @@ function onGridKeydown(e: KeyboardEvent) {
           </div>
           <div
             v-if="draftPlacement(c.day)"
-            class="pointer-events-none absolute inset-x-0.5 z-40 overflow-hidden rounded-sm text-xs ring-2 ring-white"
+            class="chip-fill pointer-events-none absolute inset-x-0.5 z-40 overflow-hidden rounded-sm text-xs ring-2 ring-white"
             :class="
               draft?.kind === 'task'
                 ? 'flex items-center gap-x-1 pr-1.5 pl-1 text-(--chip-fg)'
@@ -1138,6 +1139,7 @@ function onGridKeydown(e: KeyboardEvent) {
               height: `${draftPlacement(c.day)!.height}px`,
               backgroundColor: draftColor,
               '--chip-fg': textOn(draftColor ?? '#566c86'),
+              '--chip-color': draftColor ?? '#566c86',
             }"
             data-testid="draft-chip"
           >

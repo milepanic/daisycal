@@ -9,6 +9,7 @@ import { useUiStore } from '@/stores/ui'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import IconButton from '@/components/ui/IconButton.vue'
 import SectionSwitch from './SectionSwitch.vue'
+import ChipStyleToggle from './ChipStyleToggle.vue'
 import ThemeToggle from './ThemeToggle.vue'
 import WeatherToggle from './WeatherToggle.vue'
 import SidebarToggle from './SidebarToggle.vue'
@@ -36,6 +37,7 @@ const title = computed(() => viewTitle(ui.view, ui.currentDate, ui.selectedRange
       <IconButton icon="search" label="Search (Ctrl+K)" @click="ui.searchOpen = true" />
       <WeatherToggle />
       <ThemeToggle />
+      <ChipStyleToggle />
       <IconButton
         icon="refresh"
         :label="sync.lastError ? `Sync failed: ${sync.lastError}` : 'Refresh'"

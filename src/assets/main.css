@@ -86,6 +86,42 @@ html.dark {
   scrollbar-color: var(--color-gray-300) transparent;
 }
 
+/*
+ * Alternative chip style (ui.chipStyle 'tinted', class on <html>): instead of a solid fill, a
+ * muted tint of the calendar color with a 2px border in a softened shade of it, and
+ * the title / time in a deep shade of it. The tint is see-through (70%), so the
+ * hour lines show faintly behind the chips. `.chip-fill` marks every colored chip; the inline
+ * fill and text color are overridden here.
+ */
+html.chips-tinted .chip-fill {
+  background-color: color-mix(in srgb, color-mix(in srgb, var(--chip-color) 15%, var(--color-white)) 70%, transparent) !important;
+  --chip-fg: color-mix(in srgb, var(--chip-color) 70%, black) !important;
+  border: 2px solid color-mix(in srgb, var(--chip-color) 45%, var(--color-white));
+  /* Colored text on a light tint reads thinner than white on a fill: one step heavier. */
+  font-weight: 500;
+}
+html.chips-tinted .chip-fill .font-medium,
+html.chips-tinted .chip-fill.font-medium {
+  font-weight: 600;
+}
+html.dark.chips-tinted .chip-fill {
+  background-color: color-mix(in srgb, color-mix(in srgb, var(--chip-color) 22%, var(--color-white)) 70%, transparent) !important;
+  --chip-fg: color-mix(in srgb, var(--chip-color) 45%, white) !important;
+}
+/* Hover: a slightly stronger tint instead of the solid style's brightening (which washed the
+   light tint out to white). */
+html.chips-tinted .chip-fill:hover {
+  filter: none;
+  background-color: color-mix(in srgb, color-mix(in srgb, var(--chip-color) 25%, var(--color-white)) 70%, transparent) !important;
+}
+html.dark.chips-tinted .chip-fill:hover {
+  background-color: color-mix(in srgb, color-mix(in srgb, var(--chip-color) 32%, var(--color-white)) 70%, transparent) !important;
+}
+/* The task checkmark on the filled dot: the surface color stays legible on the deep shade. */
+html.chips-tinted .chip-fill [data-testid='task-dot'] svg {
+  color: var(--color-white);
+}
+
 /* Selected chip (events and tasks in the grids): a gap in the surface color, a thin ring in
    the chip's own color (--chip-color) and a soft colored lift. */
 .chip-selectable[data-selected] {

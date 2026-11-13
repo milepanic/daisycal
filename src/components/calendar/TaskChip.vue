@@ -58,7 +58,7 @@ function onClick(e: MouseEvent) {
       size === 'month'
         ? 'items-center gap-x-1.5 rounded-sm bg-gray-100 px-1.5 py-0.5 transition-[background-color,opacity,box-shadow,transform] duration-150 hover:bg-gray-200'
         : [
-            'h-full gap-x-1 rounded-sm pr-1.5 pl-1 transition-[filter,box-shadow,opacity,transform] duration-300 hover:brightness-110',
+            'chip-fill h-full gap-x-1 rounded-sm pr-1.5 pl-1 transition-[filter,box-shadow,opacity,transform] duration-300 hover:brightness-110',
             tall ? 'items-start pt-1' : 'items-center',
             task.completed ? 'opacity-60' : '',
           ]

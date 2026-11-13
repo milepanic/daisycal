@@ -32,7 +32,7 @@ function onClick(e: MouseEvent) {
     :title="instance.summary"
     :style="{ backgroundColor: color, '--chip-fg': textOn(color), '--chip-color': color }"
     :data-selected="selected || undefined"
-    class="block w-full min-w-0 cursor-pointer overflow-hidden text-left text-(--chip-fg) chip-selectable transition-[filter,box-shadow,transform] duration-150 hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gray-900"
+    class="chip-fill block w-full min-w-0 cursor-pointer overflow-hidden text-left text-(--chip-fg) chip-selectable transition-[filter,box-shadow,transform] duration-150 hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gray-900"
     :class="[
       variant === 'allday' ? 'truncate rounded-sm px-2 py-0.5 text-xs font-medium' : '',
       variant === 'month'

@@ -17,6 +17,7 @@ export function useTheme() {
   watchEffect(() => {
     if (typeof document === 'undefined') return
     document.documentElement.classList.toggle('dark', dark.value)
+    document.documentElement.classList.toggle('chips-tinted', ui.chipStyle === 'tinted')
   })
   return { dark }
 }
