@@ -8,6 +8,7 @@ import { useSyncStore } from '@/stores/sync'
 import { useUiStore } from '@/stores/ui'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import IconButton from '@/components/ui/IconButton.vue'
+import SectionSwitch from './SectionSwitch.vue'
 import ThemeToggle from './ThemeToggle.vue'
 import WeatherToggle from './WeatherToggle.vue'
 import SidebarToggle from './SidebarToggle.vue'
@@ -22,14 +23,16 @@ const title = computed(() => viewTitle(ui.view, ui.currentDate, ui.selectedRange
 
 <template>
   <header class="flex h-14 shrink-0 items-center gap-x-3">
-    <div class="flex min-w-0 items-center gap-x-2">
-      <h1 class="ml-2 truncate font-display text-base font-bold text-gray-900 sm:text-lg">
-        {{ title }}
-      </h1>
-    </div>
+    <SectionSwitch />
+    <SidebarToggle />
+    <!-- Centered in the space between the section switch and the actions. -->
+    <h1
+      class="min-w-0 flex-1 truncate text-center font-display text-base font-bold text-gray-900 sm:text-lg"
+    >
+      {{ title }}
+    </h1>
 
-    <div class="ml-auto flex shrink-0 items-center gap-x-2">
-      <SidebarToggle />
+    <div class="flex shrink-0 items-center gap-x-2">
       <IconButton icon="search" label="Search (Ctrl+K)" @click="ui.searchOpen = true" />
       <WeatherToggle />
       <ThemeToggle />

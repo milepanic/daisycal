@@ -9,6 +9,7 @@ import { useBirthdaysStore } from '@/stores/birthdays'
 import { useCalendarsStore } from '@/stores/calendars'
 import { useUiStore } from '@/stores/ui'
 import AppIcon from '@/components/ui/AppIcon.vue'
+import AppLogo from '@/components/brand/AppLogo.vue'
 import CollectionList from './CollectionList.vue'
 import MiniCalendar from './MiniCalendar.vue'
 
@@ -18,12 +19,6 @@ const auth = useAuthStore()
 const calendars = useCalendarsStore()
 const birthdays = useBirthdaysStore()
 const nav = useCalendarRoute()
-
-/** Calendar / Tasks: the active one is a pill, like the view switcher. */
-const tabClass = (active: boolean) =>
-  active
-    ? 'flex h-full items-center justify-center gap-x-2 rounded-full bg-pill px-3 text-sm font-semibold text-on-color'
-    : 'flex h-full items-center justify-center gap-x-2 rounded-full px-3 text-sm font-medium text-gray-600 transition-colors duration-150 hover:text-gray-900'
 
 /** "week", "day", "month"… for the prev / next labels. */
 const unit = computed(() => stepLabel(ui.view, ui.customDays))
@@ -48,26 +43,12 @@ function pickDate(d: Date) {
 
 <template>
   <aside id="sidebar" class="flex w-64 shrink-0 flex-col">
-    <nav class="flex h-14 shrink-0 items-center px-3" aria-label="Sections">
-      <div class="grid h-9 w-full grid-cols-2">
-        <RouterLink
-          :to="route.name === 'calendar' ? route.fullPath : `/${ui.view}`"
-          :aria-current="route.name === 'calendar' ? 'page' : undefined"
-          :class="tabClass(route.name === 'calendar')"
-        >
-          <AppIcon name="nav-calendar" class="size-5 shrink-0" />
-          Calendar
-        </RouterLink>
-        <RouterLink
-          to="/tasks"
-          :aria-current="route.name === 'tasks' ? 'page' : undefined"
-          :class="tabClass(route.name === 'tasks')"
-        >
-          <AppIcon name="nav-tasks" class="size-5 shrink-0" />
-          Tasks
-        </RouterLink>
-      </div>
-    </nav>
+    <!-- Logo (the Calendar / Tasks switch lives in the page header). -->
+    <div class="flex h-14 shrink-0 items-center px-3">
+      <RouterLink :to="`/${ui.view}`" class="rounded-sm" title="DaisyCal">
+        <AppLogo />
+      </RouterLink>
+    </div>
 
     <div class="flex-1 overflow-y-auto px-2 pb-4">
       <MiniCalendar
@@ -92,7 +73,7 @@ function pickDate(d: Date) {
           @click="nav.prev()"
         >
           <span class="sr-only">Previous {{ unit }}</span>
-          <AppIcon name="chevron-left" class="size-4" stroke-width="2" />
+          <AppIcon name="arrow-left" class="size-4" stroke-width="1.75" />
         </button>
         <button
           type="button"
@@ -109,7 +90,7 @@ function pickDate(d: Date) {
           @click="nav.next()"
         >
           <span class="sr-only">Next {{ unit }}</span>
-          <AppIcon name="chevron-right" class="size-4" stroke-width="2" />
+          <AppIcon name="arrow-right" class="size-4" stroke-width="1.75" />
         </button>
       </div>
 

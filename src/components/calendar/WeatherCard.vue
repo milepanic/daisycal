@@ -1,11 +1,15 @@
 <script setup lang="ts">
-/** Hover card on a day header's forecast: conditions, temperatures, rain, wind, UV, sun times. */
+/**
+ * Card on a day header's forecast: conditions, temperatures, rain, wind, UV, sun times. Shown
+ * on hover; once clicked it stays (`pinned`) with a close button.
+ */
 import { computed } from 'vue'
 
 import { type DayWeather, describeWeather, uvLevel, weatherDetail } from '@/lib/weather'
 import AppIcon from '@/components/ui/AppIcon.vue'
 
-const props = defineProps<{ weather: DayWeather }>()
+const props = defineProps<{ weather: DayWeather; pinned?: boolean }>()
+const emit = defineEmits<{ close: [] }>()
 
 const rows = computed(() => {
   const w = props.weather
@@ -33,16 +37,28 @@ const rows = computed(() => {
 <template>
   <div
     class="w-56 rounded-xl bg-white p-3 text-left text-xs shadow-xl ring-1 ring-gray-200"
-    role="tooltip"
+    :role="pinned ? 'dialog' : 'tooltip'"
+    :aria-label="pinned ? 'Weather details' : undefined"
     data-testid="weather-card"
   >
+    <button
+      v-if="pinned"
+      type="button"
+      class="absolute top-2 right-2 flex size-6 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+      title="Close"
+      data-testid="weather-card-close"
+      @click.stop="emit('close')"
+    >
+      <span class="sr-only">Close weather details</span>
+      <AppIcon name="close" class="size-3.5" />
+    </button>
     <div class="flex items-center gap-x-2.5">
       <AppIcon
         :name="describeWeather(weather.code).icon"
         class="size-7 shrink-0 text-gray-500"
         :stroke-width="1.5"
       />
-      <div class="min-w-0">
+      <div class="min-w-0" :class="pinned ? 'pr-5' : ''">
         <p class="truncate text-sm font-semibold text-gray-900">
           {{ weatherDetail(weather.code) }}
         </p>

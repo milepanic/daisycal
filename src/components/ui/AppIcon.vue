@@ -7,6 +7,9 @@ const PATHS: Record<string, string> = {
   'chevron-left': 'M15 18l-6-6 6-6',
   'chevron-right': 'M9 18l6-6-6-6',
   'chevron-down': 'M6 9l6 6 6-6',
+  /** Arrows with a tail: move the calendar's period (the chevrons page the mini calendar). */
+  'arrow-left': 'M19.5 12h-15m0 0 6-6m-6 6 6 6',
+  'arrow-right': 'M4.5 12h15m0 0-6-6m6 6-6 6',
   menu: 'M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5',
   plus: 'M12 5v14M5 12h14',
   close: 'M6 18 18 6M6 6l12 12',

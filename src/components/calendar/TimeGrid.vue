@@ -143,6 +143,20 @@ const columns = computed(() =>
   }),
 )
 
+/** Day whose weather card was clicked open (stays until closed). */
+const pinnedWeather = ref<string | null>(null)
+function togglePinnedWeather(key: string) {
+  pinnedWeather.value = pinnedWeather.value === key ? null : key
+}
+function onWeatherEscape(e: KeyboardEvent) {
+  if (e.key === 'Escape' && pinnedWeather.value) {
+    e.stopPropagation()
+    pinnedWeather.value = null
+  }
+}
+onMounted(() => window.addEventListener('keydown', onWeatherEscape, true))
+onBeforeUnmount(() => window.removeEventListener('keydown', onWeatherEscape, true))
+
 /** Some shown day has a forecast: every day header then keeps a weather row. */
 const weatherOn = computed(() => columns.value.some((c) => props.weatherFor?.(c.key)))
 
@@ -716,15 +730,22 @@ function onGridKeydown(e: KeyboardEvent) {
           <div v-for="c in columns" :key="c.key" class="flex flex-col items-center py-2">
             <!-- Same height on every day so the names stay aligned past the forecast's end. -->
             <span v-if="weatherOn" class="flex h-4 items-center">
-              <!-- Hover / focus shows the full forecast for the day. -->
+              <!-- Hover / focus shows the full forecast for the day; a click keeps it open. -->
               <span
                 v-if="weatherFor?.(c.key)"
                 class="group/weather relative"
                 tabindex="0"
+                role="button"
+                :aria-expanded="pinnedWeather === c.key"
+                @mousedown.prevent
+                @click="togglePinnedWeather(c.key)"
+                @keydown.enter.prevent="togglePinnedWeather(c.key)"
+                @keydown.space.prevent="togglePinnedWeather(c.key)"
                 :aria-label="`${describeWeather(weatherFor(c.key)!.code).label}, ${weatherFor(c.key)!.min}° to ${weatherFor(c.key)!.max}°`"
               >
                 <span
-                  class="appear flex cursor-default items-center gap-x-1 rounded-sm px-1 text-[11px] text-gray-400 tabular-nums group-hover/weather:bg-gray-100"
+                  class="appear flex cursor-pointer items-center gap-x-1 rounded-sm px-1 text-[11px] text-gray-400 tabular-nums group-hover/weather:bg-gray-100"
+                  :class="pinnedWeather === c.key ? 'bg-gray-100' : ''"
                   data-testid="day-weather"
                 >
                   <AppIcon
@@ -736,16 +757,22 @@ function onGridKeydown(e: KeyboardEvent) {
                 </span>
                 <WeatherCard
                   :weather="weatherFor(c.key)!"
-                  class="pointer-events-none invisible absolute top-full z-40 mt-1.5 opacity-0 transition-[opacity,visibility] duration-150 group-focus-visible/weather:visible group-focus-visible/weather:opacity-100 group-hover/weather:visible group-hover/weather:opacity-100 group-hover/weather:delay-200"
-                  :class="
+                  :pinned="pinnedWeather === c.key"
+                  class="absolute top-full z-40 mt-1.5 cursor-auto transition-[opacity,visibility] duration-150"
+                  :class="[
+                    pinnedWeather === c.key
+                      ? 'visible opacity-100'
+                      : 'pointer-events-none invisible opacity-0 group-focus-visible/weather:visible group-focus-visible/weather:opacity-100 group-hover/weather:visible group-hover/weather:opacity-100 group-hover/weather:delay-200',
                     columns.length === 1
                       ? 'left-1/2 -translate-x-1/2'
                       : c === columns[0]
                         ? 'left-0'
                         : c === columns[columns.length - 1]
                           ? 'right-0'
-                          : 'left-1/2 -translate-x-1/2'
-                  "
+                          : 'left-1/2 -translate-x-1/2',
+                  ]"
+                  @click.stop
+                  @close="pinnedWeather = null"
                 />
               </span>
             </span>
@@ -755,7 +782,7 @@ function onGridKeydown(e: KeyboardEvent) {
               >{{ WEEKDAYS_LONG[c.day.getDay()] }}</span
             >
             <span
-              class="mx-auto mt-1 flex size-8 items-center justify-center font-numeric text-sm font-normal"
+              class="mx-auto mt-1 flex size-8 items-center justify-center font-numeric text-lg font-normal"
               :class="
                 c.isToday ? 'rounded-full bg-accent text-on-color' : 'rounded-sm text-gray-900'
               "

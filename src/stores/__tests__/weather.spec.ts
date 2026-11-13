@@ -119,7 +119,7 @@ describe('weather', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('shows icon and temperatures above the day name in the time grid', () => {
+  it('shows icon and temperatures above the day name in the time grid', async () => {
     const days = parseForecast(FORECAST)
     const wrapper = mount(TimeGrid, {
       props: {
@@ -139,5 +139,14 @@ describe('weather', () => {
     expect(card.text()).toContain('Precipitation4.2 mm')
     expect(card.text()).toContain('Wind18 km/h, gusts 42')
     expect(card.text()).toContain('Sunrise / sunset07:05 / 18:12')
+
+    // A click keeps the card open with a close button.
+    expect(card.find('[data-testid="weather-card-close"]').exists()).toBe(false)
+    await shown[1]!.element.parentElement!.click()
+    await wrapper.vm.$nextTick()
+    const pinned = wrapper.findAll('[data-testid="weather-card"]')[1]!
+    expect(pinned.attributes('role')).toBe('dialog')
+    await pinned.find('[data-testid="weather-card-close"]').trigger('click')
+    expect(wrapper.findAll('[data-testid="weather-card"]')[1]!.attributes('role')).toBe('tooltip')
   })
 })

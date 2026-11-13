@@ -3,6 +3,7 @@ import { useSyncStore } from '@/stores/sync'
 import { useUiStore } from '@/stores/ui'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import IconButton from '@/components/ui/IconButton.vue'
+import SectionSwitch from './SectionSwitch.vue'
 import ThemeToggle from './ThemeToggle.vue'
 import SidebarToggle from './SidebarToggle.vue'
 
@@ -12,9 +13,13 @@ const sync = useSyncStore()
 
 <template>
   <header class="flex h-14 shrink-0 items-center gap-x-3 px-2">
-    <h1 class="truncate font-display text-lg font-bold text-gray-900">Tasks</h1>
-    <div class="ml-auto flex shrink-0 items-center gap-x-2">
-      <SidebarToggle />
+    <SectionSwitch />
+    <SidebarToggle />
+    <!-- Centered in the space between the section switch and the actions. -->
+    <h1 class="min-w-0 flex-1 truncate text-center font-display text-lg font-bold text-gray-900">
+      Tasks
+    </h1>
+    <div class="flex shrink-0 items-center gap-x-2">
       <IconButton icon="search" label="Search (Ctrl+K)" @click="ui.searchOpen = true" />
       <ThemeToggle />
       <IconButton

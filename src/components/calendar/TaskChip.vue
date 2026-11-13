@@ -2,10 +2,16 @@
 /**
  * Gray task chip with the round list-color marker; completed tasks are struck through. In the
  * time grid it is a block like an event and shows the due time after the title ("Call, 15:30").
+ *
+ * The marker is the checkbox: a click on it (only there) completes / reopens the task, with the
+ * sound and an Undo toast; the rest of the chip opens the details and starts drags.
  */
 import type { Task } from '@/api/ical'
 import { textOn } from '@/lib/color'
 import { formatTime } from '@/lib/format'
+import { playCompleteSound } from '@/lib/sounds'
+import { useNotificationsStore } from '@/stores/notifications'
+import { useTasksStore } from '@/stores/tasks'
 import TaskDot from '@/components/ui/TaskDot.vue'
 
 const props = defineProps<{
@@ -17,6 +23,21 @@ const props = defineProps<{
   showTime?: boolean
 }>()
 const emit = defineEmits<{ select: [task: Task, el: HTMLElement] }>()
+
+async function toggleDone() {
+  // Stores fetched on click: the chip is also rendered where no store is needed (tests, previews).
+  const tasks = useTasksStore()
+  const notifications = useNotificationsStore()
+  const done = !props.task.completed
+  if (done) playCompleteSound()
+  try {
+    await tasks.setCompleted(props.task, done)
+  } catch (err) {
+    notifications.reportError(err, `Could not update "${props.task.summary}"`, () =>
+      tasks.setCompleted(props.task, done),
+    )
+  }
+}
 
 function onClick(e: MouseEvent) {
   e.stopPropagation()
@@ -42,7 +63,18 @@ function onClick(e: MouseEvent) {
     :style="size === 'month' ? undefined : { backgroundColor: color, '--chip-fg': textOn(color) }"
     @click="onClick"
   >
-    <TaskDot :color="color" :checked="task.completed" size="sm" :on-color="size !== 'month'" />
+    <!-- The checkbox: a bigger invisible hit area around the dot; no drag, no details. -->
+    <span
+      role="checkbox"
+      :aria-checked="task.completed"
+      :aria-label="`${task.completed ? 'Mark as not completed' : 'Mark as completed'}: ${task.summary}`"
+      class="-m-1 shrink-0 cursor-pointer rounded-full p-1 transition-transform duration-150 hover:scale-125"
+      data-testid="chip-checkbox"
+      @pointerdown.stop
+      @click.stop="toggleDone"
+    >
+      <TaskDot :color="color" :checked="task.completed" size="sm" :on-color="size !== 'month'" />
+    </span>
     <span
       class="min-w-0 truncate"
       :class="
