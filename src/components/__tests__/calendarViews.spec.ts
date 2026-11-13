@@ -189,6 +189,30 @@ describe('TimeGrid', () => {
     wrapper.unmount()
   })
 
+  it('changes the travel time by dragging the top edge of its box', async () => {
+    const { instances } = seeded()
+    const withTravel = instances.map((i) =>
+      i.summary === 'Design review' ? { ...i, travel: 30 } : i,
+    )
+    const wrapper = mount(TimeGrid, {
+      props: { days: eachDay(WEEK), instances: withTravel, tasks: [], colorFor },
+      attachTo: document.body,
+    })
+    const handle = wrapper.find('[data-day="2026-10-14"] [data-testid="travel-handle"]')
+    // Review starts at 10:00; drag the top edge from 09:30 up to 09:15 (45 minutes).
+    await pointer(handle, 'pointerdown', { clientX: 450, clientY: px(570) })
+    await pointer(handle, 'pointermove', { clientX: 450, clientY: px(555) })
+    // The box follows while dragging.
+    expect(
+      wrapper.find('[data-day="2026-10-14"] [data-testid="travel-time"]').attributes('style'),
+    ).toContain(`height: ${px(45)}px`)
+    await pointer(handle, 'pointerup', { clientX: 450, clientY: px(555) })
+    const [instance, minutes] = wrapper.emitted('setTravel')![0]!
+    expect(instance).toMatchObject({ summary: 'Design review' })
+    expect(minutes).toBe(45)
+    wrapper.unmount()
+  })
+
   it('drags on empty space to pick a slot, drags chips to move them and resizes from the bottom edge', async () => {
     const { instances } = seeded()
     const wrapper = mount(TimeGrid, {
@@ -297,6 +321,31 @@ describe('TimeGrid', () => {
     await pointer(chip, 'pointerup', { clientX: 350, clientY: px(905), altKey: true })
     expect(wrapper.emitted('moveTask')).toBeUndefined()
     expect(wrapper.emitted('copyTask')![0]![1]).toEqual(new Date(2026, 9, 15, 15, 0))
+    wrapper.unmount()
+  })
+
+  it('lengthens a task chip from its bottom edge', async () => {
+    const { instances, tasks } = seeded()
+    const wrapper = mount(TimeGrid, {
+      props: { days: eachDay(WEEK), instances, tasks, colorFor },
+      attachTo: document.body,
+    })
+    // "Prepare slides" is due Wednesday 12:00 and takes the default 30 minutes.
+    const chip = () => wrapper.find('[data-task-chip$="slides.ics"]').element.parentElement!
+    const handle = wrapper
+      .find('[data-task-chip$="slides.ics"]')
+      .element.parentElement!.querySelector('[data-testid="task-resize-handle"]')!
+    handle.dispatchEvent(
+      new PointerEvent('pointerdown', { bubbles: true, button: 0, clientY: px(750) }),
+    )
+    window.dispatchEvent(new PointerEvent('pointermove', { clientY: px(780) }))
+    await nextTick()
+    // The chip follows while dragging: 12:00 – 13:00.
+    expect(chip().getAttribute('style')).toContain(`height: ${px(60) - 2}px`)
+    window.dispatchEvent(new PointerEvent('pointerup', { clientY: px(780) }))
+    const [task, minutes] = wrapper.emitted('setTaskDuration')![0]!
+    expect(task).toMatchObject({ summary: 'Prepare slides' })
+    expect(minutes).toBe(60)
     wrapper.unmount()
   })
 

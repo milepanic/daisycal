@@ -57,6 +57,7 @@ function task(due: Date | null, extra: Partial<Task> = {}): Task {
     created: null,
     sortOrder: null,
     parentUid: null,
+    duration: null,
     ...extra,
   }
 }

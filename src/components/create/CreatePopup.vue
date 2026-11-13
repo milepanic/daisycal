@@ -41,6 +41,7 @@ import { useUiStore } from '@/stores/ui'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import DatePicker from '@/components/ui/DatePicker.vue'
 import TimeInput from '@/components/ui/TimeInput.vue'
+import ColorSelect from '@/components/ui/ColorSelect.vue'
 
 const ui = useUiStore()
 const calendars = useCalendarsStore()
@@ -95,10 +96,22 @@ function combine(date: string, time: string): Date | null {
 
 const eventCalendars = computed(() => calendars.calendars)
 const taskLists = computed(() => calendars.taskLists)
-const collection = computed(() => calendars.get(form.collectionUrl))
-const color = computed(() =>
-  form.collectionUrl ? calendars.colorFor(form.collectionUrl) : '#566c86',
+/** Options for the calendar / task list pickers (color square + name). */
+const calendarOptions = computed(() =>
+  eventCalendars.value.map((c) => ({
+    value: c.url,
+    label: c.displayName,
+    color: calendars.colorFor(c.url),
+  })),
 )
+const listOptions = computed(() =>
+  taskLists.value.map((c) => ({
+    value: c.url,
+    label: c.displayName,
+    color: calendars.colorFor(c.url),
+  })),
+)
+const collection = computed(() => calendars.get(form.collectionUrl))
 
 const start = computed(() => combine(form.date, form.allDay ? '00:00' : form.startTime))
 const end = computed(() => {
@@ -209,6 +222,53 @@ const alarmOptions = [
 const customAlarm = computed(() =>
   form.alarm != null && !alarmOptions.some((o) => o.value === form.alarm) ? form.alarm : null,
 )
+/**
+ * Travel time picker: the iPhone's presets, or "Custom…" with a minutes field (also shown for
+ * an odd value an event came with, e.g. 25 minutes).
+ */
+const travelCustom = ref(false)
+function removeTravel() {
+  form.travel = null
+  travelCustom.value = false
+}
+const travelInput = ref<HTMLInputElement | null>(null)
+const travelModel = computed<string | number>({
+  get: () => (travelCustom.value || customTravel.value != null ? 'custom' : (form.travel ?? '')),
+  set: (v) => {
+    if (v === 'custom') {
+      travelCustom.value = true
+      void nextTick(() => travelInput.value?.select())
+    } else {
+      travelCustom.value = false
+      form.travel = Number(v)
+    }
+  },
+})
+const travelPicker = computed(() => [
+  ...travelOptions.map((o) => ({ value: o.value, label: `${o.label} travel time` })),
+  { value: 'custom', label: travelModel.value === 'custom' ? 'Custom travel time' : 'Custom…' },
+])
+
+/** Priority picker: colored like the flags on task rows. */
+const priorityOptions = [
+  { value: 'none', label: 'No priority' },
+  { value: 'high', label: 'High priority', color: '#ef4444' },
+  { value: 'medium', label: 'Medium priority', color: '#f59e0b' },
+  { value: 'low', label: 'Low priority', color: '#0ea5e9' },
+]
+const priorityModel = computed<string | number>({
+  get: () => form.priority ?? 'none',
+  set: (v) => {
+    form.priority = v === 'none' ? null : (v as NonNullable<Task['priority']>)
+  },
+})
+
+const alarmPicker = computed(() => [
+  ...alarmOptions,
+  ...(customAlarm.value != null
+    ? [{ value: customAlarm.value, label: `${customAlarm.value} minutes before` }]
+    : []),
+])
 
 function repeatFromSelect(): RepeatRule | null {
   const base = {
@@ -468,7 +528,7 @@ function onDocClick(e: MouseEvent) {
 // ---- positioning -----------------------------------------------------------------------------
 const style = computed(() => {
   const a = draft.value?.anchor
-  const width = 416
+  const width = 384 // w-[24rem]
   if (!a) return { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }
   const vw = typeof window === 'undefined' ? 1280 : window.innerWidth
   const vh = typeof window === 'undefined' ? 800 : window.innerHeight
@@ -502,7 +562,11 @@ function eventForm(): EventForm {
     tzid: editingInstance.value?.tzid ?? browserTimeZone(),
     repeat: repeatFromSelect(),
     alarm: form.alarm,
-    travel: form.allDay ? null : form.travel,
+    // An emptied or invalid custom minutes field means no travel time.
+    travel:
+      form.allDay || !(Number(form.travel) > 0)
+        ? null
+        : Math.min(Math.round(Number(form.travel)), 1440),
   }
 }
 
@@ -617,39 +681,39 @@ async function remove(deleteScope: EditScope) {
             ? 'New task'
             : 'New event'
       "
-      class="modal-panel fixed z-40 w-[26rem] max-w-[calc(100vw-1rem)] rounded-2xl bg-white text-left shadow-[0_8px_32px_rgba(0,0,0,0.16)] ring-1 ring-gray-200"
+      class="modal-panel fixed z-40 w-[24rem] max-w-[calc(100vw-1rem)] rounded-2xl bg-white text-left shadow-[0_8px_32px_rgba(0,0,0,0.16)] ring-1 ring-gray-200"
       :style="style"
       data-testid="create-popup"
     >
-      <div class="flex items-center justify-between px-4 pt-3">
-        <fieldset v-if="!isEdit" class="flex h-9 rounded-sm bg-gray-100 p-0.5">
+      <div class="flex items-center justify-between px-3.5 pt-2.5">
+        <fieldset v-if="!isEdit" class="flex h-8 rounded-sm bg-gray-100 p-0.5">
           <legend class="sr-only">Type</legend>
           <label
             v-for="t in ['event', 'task'] as const"
             :key="t"
-            class="flex cursor-pointer items-center gap-x-1.5 rounded-sm px-3 text-sm font-medium text-gray-600 hover:text-gray-900 has-checked:bg-white has-checked:text-gray-900 has-focus-visible:outline-2 has-focus-visible:outline-accent"
+            class="flex cursor-pointer items-center gap-x-1.5 rounded-sm px-2.5 text-[13px] font-medium text-gray-600 hover:text-gray-900 has-checked:bg-white has-checked:text-gray-900 has-focus-visible:outline-2 has-focus-visible:outline-accent"
           >
             <input v-model="kind" type="radio" name="create-type" :value="t" class="sr-only" />
             <AppIcon :name="t === 'event' ? 'calendar' : 'tasks'" class="size-4" />
             {{ t === 'event' ? 'Event' : 'Task' }}
           </label>
         </fieldset>
-        <h2 v-else class="text-sm font-semibold text-gray-500">
+        <h2 v-else class="text-[13px] font-semibold text-gray-500">
           {{ kind === 'task' ? 'Edit task' : 'Edit event' }}
         </h2>
         <button
           type="button"
           title="Close"
-          class="flex size-9 items-center justify-center rounded-sm text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+          class="flex size-8 items-center justify-center rounded-sm text-gray-500 hover:bg-gray-100 hover:text-gray-900"
           @click="ui.closeCreate()"
         >
           <span class="sr-only">Close</span>
-          <AppIcon name="close" class="size-5" />
+          <AppIcon name="close" class="size-4" />
         </button>
       </div>
 
-      <form class="px-4 pb-4" novalidate @submit.prevent="save">
-        <div class="mt-3 pl-9">
+      <form class="px-3.5 pb-3.5" novalidate @submit.prevent="save">
+        <div class="mt-2 pl-7">
           <label for="create-name" class="sr-only">Title</label>
           <input
             id="create-name"
@@ -658,14 +722,14 @@ async function remove(deleteScope: EditScope) {
             type="text"
             placeholder="Add title"
             autocomplete="off"
-            class="w-full border-b-2 border-gray-200 bg-transparent py-1.5 text-xl font-semibold text-gray-900 placeholder:font-medium placeholder:text-gray-400 focus:border-gray-900 focus:outline-none"
+            class="w-full border-b-2 border-gray-200 bg-transparent py-1 text-lg font-semibold text-gray-900 placeholder:font-medium placeholder:text-gray-400 focus:border-gray-900 focus:outline-none"
           />
         </div>
 
         <!-- ===== Event fields ===== -->
-        <div v-if="kind === 'event'" class="mt-4 space-y-4">
-          <div class="flex items-start gap-x-4">
-            <AppIcon name="clock" class="mt-1.5 size-5 shrink-0 text-gray-400" />
+        <div v-if="kind === 'event'" class="mt-3 space-y-3">
+          <div class="flex items-start gap-x-3">
+            <AppIcon name="clock" class="mt-0.5 size-4 shrink-0 text-gray-400" />
             <div class="min-w-0 flex-1">
               <button
                 v-if="!whenOpen"
@@ -674,11 +738,11 @@ async function remove(deleteScope: EditScope) {
                 data-testid="when-summary"
                 @click="whenOpen = true"
               >
-                <span class="block text-sm text-gray-900">{{ whenText }}</span>
+                <span class="block text-[13px] text-gray-900">{{ whenText }}</span>
                 <span class="block text-xs text-gray-500">{{ repeatLabel }}</span>
               </button>
               <template v-else>
-                <div class="flex flex-wrap items-center gap-1.5 text-sm">
+                <div class="flex flex-wrap items-center gap-1.5 text-[13px]">
                   <!-- Two dates in one row use the short form ("Wed, Nov 11") so the row fits. -->
                   <DatePicker
                     v-model="form.date"
@@ -716,7 +780,7 @@ async function remove(deleteScope: EditScope) {
                   </template>
                 </div>
                 <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
-                  <label class="flex cursor-pointer items-center gap-x-2 text-sm text-gray-700">
+                  <label class="flex cursor-pointer items-center gap-x-2 text-[13px] text-gray-700">
                     <span class="grid size-4 shrink-0 place-items-center">
                       <input
                         v-model="form.allDay"
@@ -740,27 +804,19 @@ async function remove(deleteScope: EditScope) {
                     </span>
                     All day
                   </label>
-                  <div class="relative">
-                    <label for="event-repeat" class="sr-only">Repeat</label>
-                    <select
-                      id="event-repeat"
-                      v-model="form.repeat"
-                      class="cursor-pointer appearance-none rounded-sm py-1.5 pr-7 pl-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:outline-2 focus:outline-accent"
-                    >
-                      <option v-for="o in repeatOptions" :key="o.value" :value="o.value">
-                        {{ o.label }}
-                      </option>
-                    </select>
-                    <AppIcon
-                      name="chevron-down"
-                      class="pointer-events-none absolute top-1/2 right-2 size-4 -translate-y-1/2 text-gray-400"
-                    />
-                  </div>
+                  <ColorSelect
+                    id="event-repeat"
+                    v-model="form.repeat"
+                    :options="repeatOptions"
+                    label="Repeat"
+                    inline
+                    ghost
+                  />
                 </div>
               </template>
               <div
                 v-if="isEdit && editingInstance?.isRecurring"
-                class="mt-2 flex flex-wrap items-center gap-x-4 text-sm text-gray-700"
+                class="mt-2 flex flex-wrap items-center gap-x-4 text-[13px] text-gray-700"
                 data-testid="scope"
               >
                 <span class="text-gray-500">Apply to</span>
@@ -777,32 +833,35 @@ async function remove(deleteScope: EditScope) {
           </div>
 
           <!-- Travel time, as on the iPhone (not for all-day events). -->
-          <div v-if="!form.allDay" class="flex items-center gap-x-4">
-            <AppIcon name="car" class="size-5 shrink-0 text-gray-400" />
+          <div v-if="!form.allDay" class="flex items-center gap-x-3">
+            <AppIcon name="car" class="size-4 shrink-0 text-gray-400" />
             <div v-if="form.travel != null" class="flex items-center gap-x-1.5">
-              <div class="relative">
-                <label for="event-travel" class="sr-only">Travel time</label>
-                <select
-                  id="event-travel"
+              <ColorSelect
+                id="event-travel"
+                v-model="travelModel"
+                :options="travelPicker"
+                label="Travel time"
+                inline
+              />
+              <!-- Custom: any number of minutes. -->
+              <label v-if="travelModel === 'custom'" class="flex items-center gap-x-1.5">
+                <span class="sr-only">Travel time in minutes</span>
+                <input
+                  ref="travelInput"
                   v-model.number="form.travel"
-                  class="cursor-pointer appearance-none rounded-sm bg-gray-100 py-2 pr-8 pl-3 text-sm font-medium text-gray-900 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
-                >
-                  <option v-for="o in travelOptions" :key="o.value" :value="o.value">
-                    {{ o.label }} travel time
-                  </option>
-                  <option v-if="customTravel != null" :value="customTravel">
-                    {{ customTravel }} minutes travel time
-                  </option>
-                </select>
-                <AppIcon
-                  name="chevron-down"
-                  class="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-gray-500"
+                  type="number"
+                  min="1"
+                  max="1440"
+                  step="5"
+                  class="w-16 rounded-sm bg-gray-100 px-2 py-1.5 text-[13px] text-gray-900 tabular-nums hover:bg-gray-200 focus:outline-2 focus:outline-accent"
+                  data-testid="travel-minutes"
                 />
-              </div>
+                <span class="text-[13px] text-gray-500">min</span>
+              </label>
               <button
                 type="button"
                 class="flex size-8 items-center justify-center rounded-sm text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-                @click="form.travel = null"
+                @click="removeTravel"
               >
                 <span class="sr-only">Remove travel time</span>
                 <AppIcon name="close" class="size-4" />
@@ -811,7 +870,7 @@ async function remove(deleteScope: EditScope) {
             <button
               v-else
               type="button"
-              class="inline-flex items-center gap-x-1 rounded-sm px-2 py-1 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+              class="inline-flex items-center gap-x-1 rounded-sm px-2 py-1 text-[13px] font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
               @click="form.travel = 30"
             >
               <AppIcon name="plus" class="size-4" />
@@ -819,32 +878,18 @@ async function remove(deleteScope: EditScope) {
             </button>
           </div>
 
-          <div class="flex items-center gap-x-4">
-            <AppIcon name="calendar" class="size-5 shrink-0 text-gray-400" />
-            <div class="relative flex min-w-0 flex-1 items-center">
-              <span
-                class="pointer-events-none absolute left-2.5 size-2.5 rounded-sm"
-                :style="{ backgroundColor: color }"
-              ></span>
-              <label for="event-calendar" class="sr-only">Calendar</label>
-              <select
-                id="event-calendar"
-                v-model="form.collectionUrl"
-                class="w-full cursor-pointer appearance-none rounded-sm bg-gray-100 py-2 pr-8 pl-7 text-sm font-medium text-gray-900 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
-              >
-                <option v-for="c in eventCalendars" :key="c.url" :value="c.url">
-                  {{ c.displayName }}
-                </option>
-              </select>
-              <AppIcon
-                name="chevron-down"
-                class="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-gray-500"
-              />
-            </div>
+          <div class="flex items-center gap-x-3">
+            <AppIcon name="calendar" class="size-4 shrink-0 text-gray-400" />
+            <ColorSelect
+              id="event-calendar"
+              v-model="form.collectionUrl"
+              :options="calendarOptions"
+              label="Calendar"
+            />
           </div>
 
-          <div class="flex items-center gap-x-4">
-            <AppIcon name="pin" class="size-5 shrink-0 text-gray-400" />
+          <div class="flex items-center gap-x-3">
+            <AppIcon name="pin" class="size-4 shrink-0 text-gray-400" />
             <label for="event-location" class="sr-only">Location</label>
             <input
               id="event-location"
@@ -852,33 +897,21 @@ async function remove(deleteScope: EditScope) {
               type="text"
               placeholder="Add location"
               autocomplete="off"
-              class="w-full rounded-sm bg-gray-100 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
+              class="w-full rounded-sm bg-gray-100 px-3 py-1.5 text-[13px] text-gray-900 placeholder:text-gray-500 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
             />
           </div>
 
-          <div class="flex items-start gap-x-4">
-            <AppIcon name="bell" class="mt-2 size-5 shrink-0 text-gray-400" />
+          <div class="flex items-start gap-x-3">
+            <AppIcon name="bell" class="mt-1.5 size-4 shrink-0 text-gray-400" />
             <div class="min-w-0 flex-1">
               <div v-if="form.alarm != null" class="flex items-center gap-x-1.5">
-                <div class="relative">
-                  <label for="event-reminder" class="sr-only">Notification</label>
-                  <select
-                    id="event-reminder"
-                    v-model.number="form.alarm"
-                    class="cursor-pointer appearance-none rounded-sm bg-gray-100 py-2 pr-8 pl-3 text-sm font-medium text-gray-900 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
-                  >
-                    <option v-for="o in alarmOptions" :key="o.value" :value="o.value">
-                      {{ o.label }}
-                    </option>
-                    <option v-if="customAlarm != null" :value="customAlarm">
-                      {{ customAlarm }} minutes before
-                    </option>
-                  </select>
-                  <AppIcon
-                    name="chevron-down"
-                    class="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-gray-500"
-                  />
-                </div>
+                <ColorSelect
+                  id="event-reminder"
+                  v-model="form.alarm"
+                  :options="alarmPicker"
+                  label="Notification"
+                  inline
+                />
                 <button
                   type="button"
                   class="flex size-8 items-center justify-center rounded-sm text-gray-400 hover:bg-gray-100 hover:text-gray-700"
@@ -891,7 +924,7 @@ async function remove(deleteScope: EditScope) {
               <button
                 v-else
                 type="button"
-                class="inline-flex items-center gap-x-1 rounded-sm px-2 py-1 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                class="inline-flex items-center gap-x-1 rounded-sm px-2 py-1 text-[13px] font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                 @click="form.alarm = 30"
               >
                 <AppIcon name="plus" class="size-4" />
@@ -900,23 +933,23 @@ async function remove(deleteScope: EditScope) {
             </div>
           </div>
 
-          <div class="flex items-start gap-x-4">
-            <AppIcon name="lines" class="mt-2 size-5 shrink-0 text-gray-400" />
+          <div class="flex items-start gap-x-3">
+            <AppIcon name="lines" class="mt-1.5 size-4 shrink-0 text-gray-400" />
             <label for="event-description" class="sr-only">Description</label>
             <textarea
               id="event-description"
               v-model="form.description"
               rows="2"
               placeholder="Add description"
-              class="w-full resize-none rounded-sm bg-gray-100 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
+              class="w-full resize-none rounded-sm bg-gray-100 px-3 py-1.5 text-[13px] text-gray-900 placeholder:text-gray-500 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
             ></textarea>
           </div>
         </div>
 
         <!-- ===== Task fields ===== -->
-        <div v-else class="mt-4 space-y-4">
-          <div class="flex items-start gap-x-4">
-            <AppIcon name="clock" class="mt-1.5 size-5 shrink-0 text-gray-400" />
+        <div v-else class="mt-3 space-y-3">
+          <div class="flex items-start gap-x-3">
+            <AppIcon name="clock" class="mt-0.5 size-4 shrink-0 text-gray-400" />
             <div class="min-w-0 flex-1">
               <button
                 v-if="!whenOpen"
@@ -925,10 +958,10 @@ async function remove(deleteScope: EditScope) {
                 data-testid="when-summary"
                 @click="whenOpen = true"
               >
-                <span class="block text-sm text-gray-900">{{ whenText }}</span>
+                <span class="block text-[13px] text-gray-900">{{ whenText }}</span>
               </button>
               <template v-else>
-                <div class="flex flex-wrap items-center gap-1.5 text-sm">
+                <div class="flex flex-wrap items-center gap-1.5 text-[13px]">
                   <DatePicker
                     v-model="form.dueDate"
                     label="Due date"
@@ -960,60 +993,36 @@ async function remove(deleteScope: EditScope) {
             </div>
           </div>
 
-          <div class="flex items-center gap-x-4">
-            <AppIcon name="tasks" class="size-5 shrink-0 text-gray-400" />
-            <div class="relative flex min-w-0 flex-1 items-center">
-              <span
-                class="pointer-events-none absolute left-2.5 size-2.5 rounded-sm"
-                :style="{ backgroundColor: color }"
-              ></span>
-              <label for="task-list" class="sr-only">Task list</label>
-              <select
-                id="task-list"
-                v-model="form.collectionUrl"
-                class="w-full cursor-pointer appearance-none rounded-sm bg-gray-100 py-2 pr-8 pl-7 text-sm font-medium text-gray-900 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
-              >
-                <option v-for="c in taskLists" :key="c.url" :value="c.url">
-                  {{ c.displayName }}
-                </option>
-              </select>
-              <AppIcon
-                name="chevron-down"
-                class="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-gray-500"
-              />
-            </div>
+          <div class="flex items-center gap-x-3">
+            <AppIcon name="tasks" class="size-4 shrink-0 text-gray-400" />
+            <ColorSelect
+              id="task-list"
+              v-model="form.collectionUrl"
+              :options="listOptions"
+              label="Task list"
+            />
           </div>
 
-          <div class="flex items-center gap-x-4">
-            <AppIcon name="flag" class="size-5 shrink-0 text-gray-400" />
-            <div class="relative">
-              <label for="task-priority" class="sr-only">Priority</label>
-              <select
-                id="task-priority"
-                v-model="form.priority"
-                class="cursor-pointer appearance-none rounded-sm bg-gray-100 py-2 pr-8 pl-3 text-sm font-medium text-gray-900 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
-              >
-                <option :value="null">No priority</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </select>
-              <AppIcon
-                name="chevron-down"
-                class="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-gray-500"
-              />
-            </div>
+          <div class="flex items-center gap-x-3">
+            <AppIcon name="flag" class="size-4 shrink-0 text-gray-400" />
+            <ColorSelect
+              id="task-priority"
+              v-model="priorityModel"
+              :options="priorityOptions"
+              label="Priority"
+              inline
+            />
           </div>
 
-          <div class="flex items-start gap-x-4">
-            <AppIcon name="lines" class="mt-2 size-5 shrink-0 text-gray-400" />
+          <div class="flex items-start gap-x-3">
+            <AppIcon name="lines" class="mt-1.5 size-4 shrink-0 text-gray-400" />
             <label for="task-description" class="sr-only">Description</label>
             <textarea
               id="task-description"
               v-model="form.description"
               rows="2"
               placeholder="Add description"
-              class="w-full resize-none rounded-sm bg-gray-100 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
+              class="w-full resize-none rounded-sm bg-gray-100 px-3 py-1.5 text-[13px] text-gray-900 placeholder:text-gray-500 hover:bg-gray-200 focus:outline-2 focus:outline-accent"
             ></textarea>
           </div>
         </div>
@@ -1021,14 +1030,14 @@ async function remove(deleteScope: EditScope) {
         <p
           v-if="error"
           role="alert"
-          class="mt-4 rounded-sm bg-red-50 px-3 py-2 text-sm text-red-700"
+          class="mt-4 rounded-sm bg-red-50 px-3 py-2 text-[13px] text-red-700"
         >
           {{ error }}
         </p>
         <div
           v-if="conflict"
           role="alert"
-          class="mt-4 rounded-sm bg-amber-50 px-3 py-2 text-sm text-amber-800"
+          class="mt-4 rounded-sm bg-amber-50 px-3 py-2 text-[13px] text-amber-800"
           data-testid="conflict"
         >
           <p class="font-medium">Changed on another device.</p>
@@ -1040,7 +1049,7 @@ async function remove(deleteScope: EditScope) {
 
         <div
           v-if="confirmingDelete"
-          class="mt-4 rounded-sm bg-gray-50 p-3 text-sm"
+          class="mt-4 rounded-sm bg-gray-50 p-3 text-[13px]"
           data-testid="confirm-delete"
         >
           <p class="font-medium text-gray-900">
@@ -1080,18 +1089,18 @@ async function remove(deleteScope: EditScope) {
           </div>
         </div>
 
-        <div class="mt-5 flex items-center gap-x-2">
+        <div class="mt-4 flex items-center gap-x-2">
           <button
             v-if="isEdit && !confirmingDelete"
             type="button"
-            class="rounded-sm px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+            class="rounded-sm px-3 py-1.5 text-[13px] font-medium text-red-600 hover:bg-red-50"
             @click="confirmingDelete = true"
           >
             Delete
           </button>
           <button
             type="button"
-            class="ml-auto cursor-pointer rounded-sm px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+            class="ml-auto cursor-pointer rounded-sm px-3 py-1.5 text-[13px] font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
             @click="ui.closeCreate()"
           >
             Cancel
@@ -1099,7 +1108,7 @@ async function remove(deleteScope: EditScope) {
           <button
             type="submit"
             :disabled="busy"
-            class="inline-flex h-9 items-center rounded-sm bg-gray-900 px-4 text-sm font-semibold text-white hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900 disabled:opacity-60"
+            class="inline-flex h-8 items-center rounded-sm bg-gray-900 px-3.5 text-[13px] font-semibold text-white hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900 disabled:opacity-60"
           >
             {{ busy ? 'Saving…' : conflict ? 'Save again' : 'Save' }}
           </button>

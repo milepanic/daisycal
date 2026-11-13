@@ -171,3 +171,31 @@ describe('subtasks (RELATED-TO;RELTYPE=PARENT)', () => {
     expect(top).toContain('RELATED-TO;RELTYPE=SIBLING:other-uid')
   })
 })
+
+describe('task duration (X-DAISYCAL-DURATION)', () => {
+  const base = {
+    summary: 'Write report',
+    description: '',
+    due: new Date(2026, 10, 13, 13, 15),
+    dueAllDay: false,
+    priority: null,
+    alarm: null,
+  } as const
+
+  it('writes, reads back, keeps on edits and removes the length a task takes', () => {
+    const { ics } = buildTaskIcs({ ...base, duration: 45 })
+    expect(ics).toContain('X-DAISYCAL-DURATION:PT45M')
+    const task = parseTask(obj(ics))
+    expect(task.duration).toBe(45)
+    // DUE stays the deadline other apps see.
+    expect(task.due).toEqual(base.due)
+
+    const doc = parseTaskObject(obj(ics))
+    const kept = updateTaskIcs(doc, { ...taskToForm(task), summary: 'Write the report' })
+    expect(parseTask(obj(kept)).duration).toBe(45)
+    const longer = updateTaskIcs(doc, { ...taskToForm(task), duration: 90 })
+    expect(longer).toContain('X-DAISYCAL-DURATION:PT1H30M')
+    const removed = updateTaskIcs(doc, { ...taskToForm(task), duration: null })
+    expect(removed).not.toContain('X-DAISYCAL-DURATION')
+  })
+})

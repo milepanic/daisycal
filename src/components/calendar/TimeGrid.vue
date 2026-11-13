@@ -3,7 +3,8 @@
  * Day/work-week/week grid: sticky day headers with the all-day row, hour labels, one column
  * per day with positioned events, due tasks, the current-time line and pointer interactions:
  *  - click or drag on empty space selects a time slot and opens the create popup
- *  - drag a chip to move it (also across days), drag its bottom edge to resize
+ *  - drag a chip to move it (also across days), drag its bottom edge to resize, drag the top
+ *    edge of its travel time box to lengthen / shorten the travel time
  *  - "N pending tasks" under today's all-day events opens the overdue tasks, which can be
  *    dragged onto the grid to reschedule them
  */
@@ -60,6 +61,10 @@ const emit = defineEmits<{
   moveEvent: [instance: EventInstance, start: Date, end: Date]
   /** A task chip was dragged to a new due date/time. */
   moveTask: [task: Task, due: Date]
+  /** The bottom edge of a task chip was dragged: how many minutes the task takes. */
+  setTaskDuration: [task: Task, minutes: number]
+  /** The top edge of an event's travel time box was dragged: the new travel minutes. */
+  setTravel: [instance: EventInstance, minutes: number]
   /** Alt + drag: a copy of the event at the new time (the original stays). */
   copyEvent: [instance: EventInstance, start: Date, end: Date]
   /** Alt + drag: a copy of the task with the new due time. */
@@ -167,9 +172,25 @@ interface GridPlacement extends Omit<TimedPlacement, 'instance'> {
 }
 
 function placementsFor(day: Date, dayStart: Date, dayEnd: Date): GridPlacement[] {
-  const events = layoutDay(props.instances, day)
+  // While the travel time is being dragged, that event is laid out with the new length.
+  const d = drag.value
+  const instances =
+    d?.kind === 'travel'
+      ? props.instances.map((i) =>
+          eventKey(i) === eventKey(d.instance) ? { ...i, travel: d.travelMin } : i,
+        )
+      : props.instances
+  const events = layoutDay(instances, day)
+  // Likewise a task whose bottom edge is being dragged.
+  const dayTasks = props.tasks.filter(
+    (t) => t.due && !t.dueAllDay && t.due >= dayStart && t.due < dayEnd,
+  )
   const tasks = layoutTasks(
-    props.tasks.filter((t) => t.due && !t.dueAllDay && t.due >= dayStart && t.due < dayEnd),
+    d?.kind === 'taskResize'
+      ? dayTasks.map((t) =>
+          t.objectUrl === d.task.objectUrl ? { ...t, duration: d.endMin - d.startMin } : t,
+        )
+      : dayTasks,
     events,
     day,
   )
@@ -251,6 +272,28 @@ type Drag =
       day: Date
       startMin: number
       endMin: number
+      moved: boolean
+      startY: number
+    }
+  | {
+      /** Bottom edge of a task chip: how long the task takes from its due time. */
+      kind: 'taskResize'
+      task: Task
+      column: HTMLElement
+      day: Date
+      startMin: number
+      endMin: number
+      moved: boolean
+      startY: number
+    }
+  | {
+      /** Top edge of the travel time box: the travel minutes before the event start. */
+      kind: 'travel'
+      instance: EventInstance
+      column: HTMLElement
+      day: Date
+      startMin: number
+      travelMin: number
       moved: boolean
       startY: number
     }
@@ -416,6 +459,49 @@ function timeColumnAt(clientX: number, clientY: number): { el: HTMLElement; day:
   return columnAt(clientX)
 }
 
+/** Bottom edge of a task chip: start changing how long the task takes. */
+function onTaskResizePointerDown(task: Task, day: Date, e: PointerEvent) {
+  if (!isPrimaryPointer(e) || !task.due) return
+  e.stopPropagation()
+  const column = (e.currentTarget as HTMLElement).closest<HTMLElement>('[data-day]')
+  if (!column) return
+  const startMin = (task.due.getTime() - startOfDay(day).getTime()) / 60_000
+  drag.value = {
+    kind: 'taskResize',
+    task,
+    column,
+    day,
+    startMin,
+    endMin: Math.min(24 * 60, startMin + (task.duration ?? TASK_SLOT_MIN)),
+    moved: false,
+    startY: e.clientY,
+  }
+  trackPointer()
+}
+
+/** Travel time steps of 5 minutes, at least 5 (removing it is in the event popup). */
+const TRAVEL_SNAP = 5
+
+/** Top edge of the travel time box: start changing the travel time. */
+function onTravelPointerDown(instance: EventInstance, day: Date, e: PointerEvent) {
+  if (!isPrimaryPointer(e) || !instance.travel) return
+  e.stopPropagation()
+  const column = (e.currentTarget as HTMLElement).closest<HTMLElement>('[data-day]')
+  if (!column) return
+  const startMin = (instance.start.getTime() - startOfDay(day).getTime()) / 60_000
+  drag.value = {
+    kind: 'travel',
+    instance,
+    column,
+    day,
+    startMin,
+    travelMin: instance.travel,
+    moved: false,
+    startY: e.clientY,
+  }
+  trackPointer()
+}
+
 /** Bottom edge of a chip: start resizing. */
 function onResizePointerDown(instance: EventInstance, day: Date, e: PointerEvent) {
   if (!isPrimaryPointer(e)) return
@@ -497,6 +583,22 @@ function onPointerMove(e: PointerEvent) {
         d.moved ||
         Math.abs(e.clientX - d.startX) + Math.abs(e.clientY - d.startY) >= DRAG_THRESHOLD_PX,
     }
+  } else if (d.kind === 'taskResize') {
+    drag.value = {
+      ...d,
+      endMin: Math.min(24 * 60, Math.max(d.startMin + SNAP, snap(minutesAt(d.column, e.clientY)))),
+      moved: d.moved || Math.abs(e.clientY - d.startY) >= DRAG_THRESHOLD_PX,
+    }
+  } else if (d.kind === 'travel') {
+    const raw = d.startMin - minutesAt(d.column, e.clientY)
+    drag.value = {
+      ...d,
+      travelMin: Math.min(
+        Math.max(TRAVEL_SNAP, Math.round(raw / TRAVEL_SNAP) * TRAVEL_SNAP),
+        Math.max(TRAVEL_SNAP, Math.floor(d.startMin / TRAVEL_SNAP) * TRAVEL_SNAP),
+      ),
+      moved: d.moved || Math.abs(e.clientY - d.startY) >= DRAG_THRESHOLD_PX,
+    }
   } else {
     drag.value = {
       ...d,
@@ -532,6 +634,15 @@ function onPointerUp(e: PointerEvent) {
   markDragged()
   if (d.kind === 'pending') {
     if (d.day) emit('moveTask', d.task, dateAt(d.day, d.startMin))
+    return
+  }
+  if (d.kind === 'travel') {
+    if (d.travelMin !== d.instance.travel) emit('setTravel', d.instance, d.travelMin)
+    return
+  }
+  if (d.kind === 'taskResize') {
+    const minutes = d.endMin - d.startMin
+    if (minutes !== (d.task.duration ?? TASK_SLOT_MIN)) emit('setTaskDuration', d.task, minutes)
     return
   }
   const copy = (d.kind === 'move' || d.kind === 'task') && e.altKey
@@ -592,30 +703,33 @@ const dragPreview = computed(() => {
       color: props.draftColor,
     }
   }
-  if (!d.moved) return null
+  if (!d.moved || d.kind === 'travel' || d.kind === 'taskResize') return null
   if (d.kind === 'pending') {
     if (!d.day) return null
     return {
       dayKey: toDateKey(d.day),
       top: d.startMin * PX_PER_MIN,
-      height: TASK_CHIP_PX,
+      height: (d.task.duration ?? TASK_SLOT_MIN) * PX_PER_MIN - CHIP_GAP_PX,
       title: d.task.summary,
       from: dateAt(d.day, d.startMin),
       to: dateAt(d.day, d.startMin),
       color: props.colorFor(d.task.collectionUrl),
       task: true,
+      tall: (d.task.duration ?? TASK_SLOT_MIN) > TASK_SLOT_MIN,
     }
   }
   if (d.kind === 'task') {
     return {
       dayKey: toDateKey(d.day),
       top: d.startMin * PX_PER_MIN,
-      height: TASK_CHIP_PX,
+      height: (d.task.duration ?? TASK_SLOT_MIN) * PX_PER_MIN - CHIP_GAP_PX,
       title: d.task.summary,
       from: dateAt(d.day, d.startMin),
       to: dateAt(d.day, d.startMin),
       color: props.colorFor(d.task.collectionUrl),
       task: true,
+      // A longer task keeps its title at the top, as on the chip.
+      tall: (d.task.duration ?? TASK_SLOT_MIN) > TASK_SLOT_MIN,
     }
   }
   const startMin = d.startMin
@@ -634,7 +748,15 @@ const dragPreview = computed(() => {
 const draggingKey = computed(() => {
   const d = drag.value
   // A copy leaves the original where it is, so it is not faded.
-  if (!d || !d.moved || d.kind === 'create' || copying.value) return null
+  if (
+    !d ||
+    !d.moved ||
+    d.kind === 'create' ||
+    d.kind === 'travel' ||
+    d.kind === 'taskResize' ||
+    copying.value
+  )
+    return null
   return d.kind === 'task' || d.kind === 'pending' ? d.task.objectUrl : eventKey(d.instance)
 })
 
@@ -710,7 +832,7 @@ function onGridKeydown(e: KeyboardEvent) {
     class="scroll-subtle min-h-0 flex-1 overflow-auto px-2 pb-2"
     :class="
       drag
-        ? drag.kind === 'resize'
+        ? drag.kind === 'resize' || drag.kind === 'travel' || drag.kind === 'taskResize'
           ? 'cursor-ns-resize select-none'
           : copying
             ? 'cursor-copy select-none'
@@ -782,7 +904,7 @@ function onGridKeydown(e: KeyboardEvent) {
               >{{ WEEKDAYS_LONG[c.day.getDay()] }}</span
             >
             <span
-              class="mx-auto mt-1 flex size-8 items-center justify-center font-numeric text-lg font-normal"
+              class="mx-auto mt-1 flex size-8 items-center justify-center font-numeric text-lg font-medium"
               :class="
                 c.isToday ? 'rounded-full bg-accent text-on-color' : 'rounded-sm text-gray-900'
               "
@@ -883,7 +1005,11 @@ function onGridKeydown(e: KeyboardEvent) {
             :key="itemKey(p.item)"
             class="absolute transition-opacity duration-150"
             :class="[
-              p.overEvent ? 'z-20 rounded-sm ring-1 ring-white' : 'z-10',
+              selectedKey === itemKey(p.item)
+                ? 'z-30'
+                : p.overEvent
+                  ? 'z-20 rounded-sm ring-1 ring-white'
+                  : 'z-10',
               p.left > 0 && !p.overEvent ? 'ring-1 ring-white' : '',
               draggingKey === (p.item.kind === 'event' ? itemKey(p.item) : p.item.task.objectUrl)
                 ? 'opacity-40'
@@ -915,6 +1041,13 @@ function onGridKeydown(e: KeyboardEvent) {
                   <span class="mt-px truncate">{{ formatTravel(p.item.instance.travel!) }}</span>
                 </template>
               </div>
+              <div
+                v-if="p.travelPx > 0"
+                class="absolute inset-x-0 top-0 z-10 h-1.5 cursor-ns-resize"
+                title="Drag to change the travel time"
+                data-testid="travel-handle"
+                @pointerdown="onTravelPointerDown(p.item.instance, c.day, $event)"
+              ></div>
               <EventChip
                 :instance="p.item.instance"
                 :color="colorFor(p.item.instance.collectionUrl)"
@@ -935,23 +1068,34 @@ function onGridKeydown(e: KeyboardEvent) {
                 @pointerdown="onResizePointerDown(p.item.instance, c.day, $event)"
               ></div>
             </template>
-            <TaskChip
-              v-else
-              :task="p.item.task"
-              :color="colorFor(p.item.task.collectionUrl)"
-              :selected="selectedKey === itemKey(p.item)"
-              show-time
-              class="h-full cursor-grab active:cursor-grabbing"
-              :data-task-chip="p.item.task.objectUrl"
-              @select="onSelectTask"
-            />
+            <template v-else>
+              <TaskChip
+                :task="p.item.task"
+                :color="colorFor(p.item.task.collectionUrl)"
+                :selected="selectedKey === itemKey(p.item)"
+                :tall="(p.item.task.duration ?? TASK_SLOT_MIN) > TASK_SLOT_MIN"
+                show-time
+                class="h-full cursor-grab active:cursor-grabbing"
+                :data-task-chip="p.item.task.objectUrl"
+                @select="onSelectTask"
+              />
+              <!-- Bottom edge: how long the task takes (like an event's resize). -->
+              <div
+                class="absolute inset-x-0 bottom-0 h-1.5 cursor-ns-resize"
+                data-testid="task-resize-handle"
+                @pointerdown="onTaskResizePointerDown(p.item.task, c.day, $event)"
+              ></div>
+            </template>
           </div>
           <div
             v-if="dragPreview && dragPreview.dayKey === c.key"
             class="pointer-events-none absolute inset-x-0.5 z-40 overflow-hidden rounded-sm text-xs ring-2 ring-white"
             :class="
               dragPreview.task
-                ? 'flex items-center gap-x-1 pr-1.5 pl-1 text-(--chip-fg)'
+                ? [
+                    'flex gap-x-1 pr-1.5 pl-1 text-(--chip-fg)',
+                    'tall' in dragPreview && dragPreview.tall ? 'items-start pt-1' : 'items-center',
+                  ]
                 : 'px-2 py-1 text-(--chip-fg)'
             "
             :style="{
@@ -963,7 +1107,12 @@ function onGridKeydown(e: KeyboardEvent) {
             data-testid="drag-preview"
           >
             <template v-if="dragPreview.task">
-              <TaskDot :color="dragPreview.color ?? '#7c3aed'" size="sm" on-color />
+              <TaskDot
+                :color="dragPreview.color ?? '#7c3aed'"
+                size="sm"
+                on-color
+                :class="'tall' in dragPreview && dragPreview.tall ? 'mt-[3px]' : ''"
+              />
               <span class="truncate font-medium">{{ dragPreview.title }}</span>
               <span class="ml-auto shrink-0 text-[11px] text-(--chip-fg)/80">{{
                 formatTime(dragPreview.from)

@@ -45,6 +45,8 @@ export interface Task {
   sortOrder: number | null
   /** UID of the parent task (RELATED-TO;RELTYPE=PARENT), when present. */
   parentUid: string | null
+  /** How long the task takes from its due time, in minutes (DaisyCal only, see DURATION_PROP). */
+  duration: number | null
 }
 
 export interface TaskForm {
@@ -57,6 +59,8 @@ export interface TaskForm {
   alarm: AlarmMinutes
   /** Parent task UID for a subtask, null for none; left out = keep what the task has. */
   parentUid?: string | null
+  /** Minutes the task takes in the calendar grid, null for the default; left out = keep. */
+  duration?: number | null
 }
 
 /** Apple Reminders writes 1 / 5 / 9 for high / medium / low. */
@@ -82,6 +86,32 @@ export function parseTaskObject(object: CalendarObject): TaskDocument {
 function timeValue(comp: ICAL.Component, name: string): ICAL.Time | null {
   const v = comp.getFirstPropertyValue(name)
   return v instanceof ICAL.Time ? v : null
+}
+
+/**
+ * The time a task takes in the grid (dragged from the chip's bottom edge). VTODO has no
+ * duration that keeps DUE meaning "due" (DTSTART + DURATION would move the deadline for other
+ * clients), so it is a private property other apps ignore: `X-DAISYCAL-DURATION:PT45M`.
+ */
+const DURATION_PROP = 'x-daisycal-duration'
+
+function taskDuration(comp: ICAL.Component): number | null {
+  const v = comp.getFirstPropertyValue(DURATION_PROP)
+  if (typeof v !== 'string' || !v) return null
+  try {
+    const minutes = Math.round(ICAL.Duration.fromString(v).toSeconds() / 60)
+    return minutes > 0 ? minutes : null
+  } catch {
+    return null
+  }
+}
+
+function applyDuration(vtodo: ICAL.Component, minutes: number | null) {
+  vtodo.removeAllProperties(DURATION_PROP)
+  if (!minutes || minutes <= 0) return
+  const prop = new ICAL.Property(DURATION_PROP, vtodo)
+  prop.setValue(ICAL.Duration.fromSeconds(minutes * 60).toString())
+  vtodo.addProperty(prop)
 }
 
 function parentUid(comp: ICAL.Component): string | null {
@@ -125,6 +155,7 @@ export function taskFromDocument(doc: TaskDocument): Task {
     created: created ? toJsDate(created) : null,
     sortOrder: Number.isFinite(sortOrder) ? sortOrder : null,
     parentUid: parentUid(vtodo),
+    duration: taskDuration(vtodo),
   }
 }
 
@@ -141,6 +172,7 @@ export function taskToForm(task: Task): TaskForm {
     tzid: browserTimeZone(),
     priority: task.priority,
     alarm: task.alarm,
+    duration: task.duration,
   }
 }
 
@@ -163,6 +195,7 @@ export function applyTaskForm(vtodo: ICAL.Component, form: TaskForm): void {
   }
   applyAlarm(vtodo, form.alarm)
   if (form.parentUid !== undefined) applyParent(vtodo, form.parentUid)
+  if (form.duration !== undefined) applyDuration(vtodo, form.duration)
   const seq = vtodo.getFirstPropertyValue('sequence')
   vtodo.updatePropertyWithValue('sequence', (typeof seq === 'number' ? seq : 0) + 1)
 }

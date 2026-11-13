@@ -215,11 +215,14 @@ export function layoutDay(instances: EventInstance[], day: Date): TimedPlacement
   })
 }
 
-/** A timed task as a layout entry: from its due time, TASK_SLOT_MIN long, kept within its day. */
+/**
+ * A timed task as a layout entry: from its due time, its duration (TASK_SLOT_MIN by default)
+ * long, kept within its day.
+ */
 export function taskEntry<T extends Task>(task: T): TimedItem<T> {
   const due = task.due!
   const end = Math.min(
-    due.getTime() + TASK_SLOT_MIN * 60_000,
+    due.getTime() + (task.duration ?? TASK_SLOT_MIN) * 60_000,
     addDays(startOfDay(due), 1).getTime(),
   )
   return { item: task, start: due, end: new Date(end) }

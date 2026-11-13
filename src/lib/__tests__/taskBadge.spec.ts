@@ -21,6 +21,7 @@ const base: Task = {
   created: null,
   sortOrder: null,
   parentUid: null,
+  duration: null,
 }
 const now = new Date(2026, 9, 9, 12, 0)
 

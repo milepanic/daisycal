@@ -30,9 +30,9 @@ function onClick(e: MouseEvent) {
   <button
     type="button"
     :title="instance.summary"
-    :style="{ backgroundColor: color, '--chip-fg': textOn(color) }"
+    :style="{ backgroundColor: color, '--chip-fg': textOn(color), '--chip-color': color }"
     :data-selected="selected || undefined"
-    class="block w-full min-w-0 cursor-pointer overflow-hidden text-left text-(--chip-fg) transition-[filter,box-shadow] duration-150 hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gray-900 data-selected:ring-2 data-selected:ring-gray-900 data-selected:ring-offset-1"
+    class="block w-full min-w-0 cursor-pointer overflow-hidden text-left text-(--chip-fg) chip-selectable transition-[filter,box-shadow,transform] duration-150 hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gray-900"
     :class="[
       variant === 'allday' ? 'truncate rounded-sm px-2 py-0.5 text-xs font-medium' : '',
       variant === 'month'

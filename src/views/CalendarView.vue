@@ -138,6 +138,37 @@ async function moveEvent(instance: EventInstance, start: Date, end: Date) {
   }
 }
 
+/** A task chip's bottom edge dragged in the grid: how many minutes the task takes. */
+async function setTaskDuration(task: Task, minutes: number) {
+  const run = () =>
+    tasks.updateTask(
+      task,
+      { ...taskToForm(task), duration: minutes },
+      { undoLabel: `Changed the length of "${task.summary || '(No title)'}"` },
+    )
+  try {
+    await run()
+  } catch (err) {
+    notifications.reportError(err, `Could not change "${task.summary}"`, run)
+  }
+}
+
+/** The travel time box's top edge dragged in the grid: the new travel minutes. */
+async function setTravel(instance: EventInstance, minutes: number) {
+  const run = () =>
+    events.updateEvent(
+      instance,
+      { ...eventToForm(instance), travel: minutes },
+      instance.isRecurring ? 'this' : 'all',
+      { undoLabel: `Changed travel time of "${instance.summary || '(No title)'}"` },
+    )
+  try {
+    await run()
+  } catch (err) {
+    notifications.reportError(err, `Could not change "${instance.summary}"`, run)
+  }
+}
+
 /** A task chip dragged in the grid gets the new due date and time. */
 async function moveTask(task: Task, due: Date) {
   const run = () =>
@@ -239,6 +270,8 @@ const draftColor = computed(() =>
           @create-at="createAt"
           @move-event="moveEvent"
           @move-task="moveTask"
+          @set-travel="setTravel"
+          @set-task-duration="setTaskDuration"
           @copy-event="copyEvent"
           @copy-task="copyTask"
         />

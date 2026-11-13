@@ -70,7 +70,7 @@ describe('CreatePopup', () => {
       end: new Date(2026, 9, 13, 11),
     })
     expect(wrapper.find('[role="dialog"]').attributes('aria-label')).toBe('New event')
-    expect((wrapper.find('#event-calendar').element as HTMLSelectElement).value).toBe(WORK.url)
+    expect(wrapper.find('#event-calendar').attributes('data-value')).toBe(WORK.url)
 
     await wrapper.find('form').trigger('submit')
     expect(wrapper.find('[role="alert"]').text()).toBe('Add a title')
@@ -96,7 +96,8 @@ describe('CreatePopup', () => {
 
     await typeTime(wrapper, 'End time', '11:30')
     await wrapper.find('#event-location').setValue('Cafe')
-    await wrapper.find('#event-repeat').setValue('weekdays')
+    await wrapper.find('#event-repeat').trigger('click')
+    await wrapper.find('[role="option"][data-value="weekdays"]').trigger('mousedown')
     await wrapper
       .findAll('button')
       .find((b) => b.text() === 'Add notification')!
@@ -269,8 +270,9 @@ describe('CreatePopup', () => {
       .findAll('button')
       .find((b) => b.text() === 'Add travel time')!
       .trigger('click')
-    expect((wrapper.find('#event-travel').element as HTMLSelectElement).value).toBe('30')
-    await wrapper.find('#event-travel').setValue('60')
+    expect(wrapper.find('#event-travel').attributes('data-value')).toBe('30')
+    await wrapper.find('#event-travel').trigger('click')
+    await wrapper.find('[role="option"][data-value="60"]').trigger('mousedown')
     await wrapper.find('form').trigger('submit')
     await flushPromises()
     const saved = () => client.objects.get(review.objectUrl)!.data
@@ -282,7 +284,7 @@ describe('CreatePopup', () => {
       kind: 'event',
       edit: { objectUrl: review.objectUrl, recurrenceId: null },
     })
-    expect((again.find('#event-travel').element as HTMLSelectElement).value).toBe('60')
+    expect(again.find('#event-travel').attributes('data-value')).toBe('60')
     await again
       .findAll('button')
       .find((b) => b.text() === 'Remove travel time')!
@@ -292,6 +294,40 @@ describe('CreatePopup', () => {
     await again.find('form').trigger('submit')
     await flushPromises()
     expect(saved()).not.toContain('X-APPLE-TRAVEL')
+    again.unmount()
+  })
+
+  it('takes a custom travel time in minutes', async () => {
+    const events = useEventsStore()
+    const review = events.instancesFor(WEEK).find((i) => i.summary === 'Review')!
+    const wrapper = await open({
+      kind: 'event',
+      edit: { objectUrl: review.objectUrl, recurrenceId: null },
+    })
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Add travel time')!
+      .trigger('click')
+    expect(wrapper.find('[data-testid="travel-minutes"]').exists()).toBe(false)
+    await wrapper.find('#event-travel').trigger('click')
+    await wrapper.find('[role="option"][data-value="custom"]').trigger('mousedown')
+    await wrapper.find('[data-testid="travel-minutes"]').setValue('45')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(client.objects.get(review.objectUrl)!.data).toContain(
+      'X-APPLE-TRAVEL-DURATION;VALUE=DURATION:PT45M',
+    )
+    wrapper.unmount()
+
+    // Read back: an odd value shows as custom with its minutes.
+    const again = await open({
+      kind: 'event',
+      edit: { objectUrl: review.objectUrl, recurrenceId: null },
+    })
+    expect(again.find('#event-travel').attributes('data-value')).toBe('custom')
+    expect((again.find('[data-testid="travel-minutes"]').element as HTMLInputElement).value).toBe(
+      '45',
+    )
     again.unmount()
   })
 
@@ -366,10 +402,11 @@ describe('CreatePopup', () => {
     })
     await wrapper.find('input[type="radio"][value="task"]').setValue()
     expect(wrapper.find('#task-list').exists()).toBe(true)
-    expect((wrapper.find('#task-list').element as HTMLSelectElement).value).toBe(MY_TASKS.url)
+    expect(wrapper.find('#task-list').attributes('data-value')).toBe(MY_TASKS.url)
     await wrapper.find('#create-name').setValue('Call plumber')
     await wrapper.find('button[class*="text-gray-400"][class*="size-8"]').trigger('click') // Remove time
-    await wrapper.find('#task-priority').setValue('high')
+    await wrapper.find('#task-priority').trigger('click')
+    await wrapper.find('[role="option"][data-value="high"]').trigger('mousedown')
     await wrapper.find('form').trigger('submit')
     await flushPromises()
     const created = [...client.objects.values()].find((o) =>
@@ -410,7 +447,10 @@ describe('CreatePopup', () => {
       kind: 'event',
       edit: { objectUrl: review.objectUrl, recurrenceId: null },
     })
-    await w2.find('#event-calendar').setValue(PERSONAL.url)
+    // The calendar picker: open it and pick Personal.
+    await w2.find('#event-calendar').trigger('click')
+    await w2.find(`[role="option"][data-value="${PERSONAL.url}"]`).trigger('mousedown')
+    expect(w2.find('#event-calendar').attributes('data-value')).toBe(PERSONAL.url)
     await w2.find('#create-name').setValue('Review (personal)')
     await w2.find('form').trigger('submit')
     await flushPromises()

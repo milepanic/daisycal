@@ -48,7 +48,7 @@ function eventKey(i: EventInstance) {
         >
           <div class="flex w-28 shrink-0 items-start gap-x-2 pl-2">
             <span
-              class="flex size-8 shrink-0 items-center justify-center font-numeric text-base font-normal"
+              class="flex size-8 shrink-0 items-center justify-center font-numeric text-base font-medium"
               :class="
                 day.isToday ? 'rounded-full bg-accent text-on-color' : 'rounded-sm text-gray-900'
               "

@@ -77,7 +77,7 @@ function pickDate(d: Date) {
         </button>
         <button
           type="button"
-          class="h-full flex-1 rounded-full text-[13px] font-semibold text-gray-900 transition-colors duration-150 hover:bg-white/60"
+          class="h-full flex-1 rounded-full text-[13px] font-medium text-gray-900 transition-colors duration-150 hover:bg-white/60"
           title="Today (T)"
           @click="nav.today()"
         >

@@ -3,11 +3,11 @@
 /* Accent color and fallback calendar colors.
    Real calendar colors come from Radicale (ICAL:calendar-color) at runtime. */
 @theme {
-  --font-sans: 'Mulish', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Figtree', ui-sans-serif, system-ui, sans-serif;
   /* Titles (toolbar, list names, popover headings). */
-  --font-display: 'Philosopher', ui-sans-serif, system-ui, sans-serif;
-  /* Day numbers (grid headers, month cells, mini calendar, agenda). */
-  --font-numeric: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Lora', ui-serif, Georgia, serif;
+  /* Day numbers (grid headers, month cells, mini calendar, agenda): the title font. */
+  --font-numeric: var(--font-display);
   /* Handwritten signature in the sidebar footer. */
   --font-signature: 'Great Vibes', cursive;
 
@@ -84,6 +84,16 @@ html.dark {
 .scroll-subtle:hover,
 .scroll-subtle:focus-within {
   scrollbar-color: var(--color-gray-300) transparent;
+}
+
+/* Selected chip (events and tasks in the grids): a gap in the surface color, a thin ring in
+   the chip's own color (--chip-color) and a soft colored lift. */
+.chip-selectable[data-selected] {
+  box-shadow:
+    0 0 0 2px var(--color-white),
+    0 0 0 3.5px var(--chip-color),
+    0 10px 22px -8px color-mix(in srgb, var(--chip-color) 65%, transparent);
+  transform: translateY(-1px);
 }
 
 /* Tailwind v4 resets buttons to the default cursor; restore the pointer for clickable buttons. */

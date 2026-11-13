@@ -21,6 +21,8 @@ const props = defineProps<{
   selected?: boolean
   /** Append the due time to the title (time grid). */
   showTime?: boolean
+  /** Longer than the default slot (has a duration): content at the top, not centered. */
+  tall?: boolean
 }>()
 const emit = defineEmits<{ select: [task: Task, el: HTMLElement] }>()
 
@@ -51,24 +53,31 @@ function onClick(e: MouseEvent) {
     type="button"
     :title="task.summary"
     :data-selected="selected || undefined"
-    class="flex w-full min-w-0 cursor-pointer items-center overflow-hidden text-left text-xs focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gray-900 data-selected:ring-2 data-selected:ring-gray-900 data-selected:ring-offset-1"
+    class="flex w-full min-w-0 cursor-pointer overflow-hidden text-left text-xs focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gray-900 chip-selectable"
     :class="
       size === 'month'
-        ? 'gap-x-1.5 rounded-sm bg-gray-100 px-1.5 py-0.5 transition-[background-color,opacity] duration-150 hover:bg-gray-200'
+        ? 'items-center gap-x-1.5 rounded-sm bg-gray-100 px-1.5 py-0.5 transition-[background-color,opacity,box-shadow,transform] duration-150 hover:bg-gray-200'
         : [
-            'h-full gap-x-1 rounded-sm pr-1.5 pl-1 transition-[filter,box-shadow,opacity] duration-300 hover:brightness-110',
+            'h-full gap-x-1 rounded-sm pr-1.5 pl-1 transition-[filter,box-shadow,opacity,transform] duration-300 hover:brightness-110',
+            tall ? 'items-start pt-1' : 'items-center',
             task.completed ? 'opacity-60' : '',
           ]
     "
-    :style="size === 'month' ? undefined : { backgroundColor: color, '--chip-fg': textOn(color) }"
+    :style="
+      size === 'month'
+        ? { '--chip-color': color }
+        : { backgroundColor: color, '--chip-fg': textOn(color), '--chip-color': color }
+    "
     @click="onClick"
   >
-    <!-- The checkbox: a bigger invisible hit area around the dot; no drag, no details. -->
+    <!-- The checkbox: a bigger invisible hit area around the dot; no drag, no details. On a
+         long task (content at the top) it drops 3px to sit on the title's line. -->
     <span
       role="checkbox"
       :aria-checked="task.completed"
       :aria-label="`${task.completed ? 'Mark as not completed' : 'Mark as completed'}: ${task.summary}`"
-      class="-m-1 shrink-0 cursor-pointer rounded-full p-1 transition-transform duration-150 hover:scale-125"
+      class="shrink-0 cursor-pointer rounded-full p-1 transition-transform duration-150 hover:scale-125"
+      :class="tall ? '-mx-1 -mt-px -mb-1' : '-m-1'"
       data-testid="chip-checkbox"
       @pointerdown.stop
       @click.stop="toggleDone"

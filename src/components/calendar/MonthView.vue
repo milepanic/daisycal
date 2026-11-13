@@ -108,7 +108,7 @@ function onCellClick(date: Date, e: MouseEvent) {
               MONTHS_SHORT[cell.date.getMonth()]
             }}</span>
             <span
-              class="flex size-7 items-center justify-center font-numeric text-sm font-normal"
+              class="flex size-7 items-center justify-center font-numeric text-sm font-medium"
               :class="
                 cell.isToday
                   ? 'rounded-full bg-accent text-on-color'
