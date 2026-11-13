@@ -129,7 +129,9 @@ async function retrySync() {
       <p v-else class="mt-2 text-sm text-gray-500">Connecting to the calendar server…</p>
     </div>
   </main>
-  <div v-else class="flex h-screen flex-col px-2 pb-2">
+  <div v-else class="flex h-screen flex-col overflow-hidden px-2 pb-2">
+    <!-- overflow-hidden: the tasks panel slides in from beyond the right edge; without it a
+         scrollbar flashes during the animation. -->
     <div
       v-if="offline"
       role="status"

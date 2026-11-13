@@ -2,8 +2,8 @@
 import { computed } from 'vue'
 
 import { useCalendarRoute } from '@/composables/useCalendarRoute'
-import type { CalendarView } from '@/lib/dates'
-import { stepLabel, viewTitle } from '@/lib/format'
+import { type CalendarView, customLabel } from '@/lib/dates'
+import { viewTitle } from '@/lib/format'
 import { useSyncStore } from '@/stores/sync'
 import { useUiStore } from '@/stores/ui'
 import AppIcon from '@/components/ui/AppIcon.vue'
@@ -17,40 +17,15 @@ const ui = useUiStore()
 const sync = useSyncStore()
 const nav = useCalendarRoute()
 
-const title = computed(() => viewTitle(ui.view, ui.currentDate, ui.visibleRange))
-const unit = computed(() => stepLabel(ui.view))
+const title = computed(() => viewTitle(ui.view, ui.currentDate, ui.selectedRange))
 </script>
 
 <template>
   <header class="flex h-14 shrink-0 items-center gap-x-3">
     <div class="flex min-w-0 items-center gap-x-2">
-      <!-- Same outlined track as the view switcher. -->
-      <div class="flex h-9 items-center rounded-full ring-1 ring-gray-300">
-        <button
-          type="button"
-          class="flex h-full w-9 items-center justify-center rounded-full text-gray-600 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-900"
-          @click="nav.prev()"
-        >
-          <span class="sr-only">Previous {{ unit }}</span>
-          <AppIcon name="chevron-left" class="size-4" stroke-width="2" />
-        </button>
-        <button
-          type="button"
-          class="h-full rounded-full px-3 text-sm font-semibold text-gray-900 transition-colors duration-150 hover:bg-gray-100"
-          @click="nav.today()"
-        >
-          Today
-        </button>
-        <button
-          type="button"
-          class="flex h-full w-9 items-center justify-center rounded-full text-gray-600 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-900"
-          @click="nav.next()"
-        >
-          <span class="sr-only">Next {{ unit }}</span>
-          <AppIcon name="chevron-right" class="size-4" stroke-width="2" />
-        </button>
-      </div>
-      <h1 class="ml-1 truncate font-display text-base font-bold text-gray-900 sm:text-lg">{{ title }}</h1>
+      <h1 class="ml-2 truncate font-display text-base font-bold text-gray-900 sm:text-lg">
+        {{ title }}
+      </h1>
     </div>
 
     <div class="ml-auto flex shrink-0 items-center gap-x-2">
@@ -70,7 +45,12 @@ const unit = computed(() => stepLabel(ui.view))
         :pressed="ui.tasksPanelOpen"
         @click="ui.toggleTasksPanel()"
       />
-      <ViewSwitcher :view="ui.view" class="hidden md:flex" @change="nav.setView" />
+      <ViewSwitcher
+        :view="ui.view"
+        :custom-days="ui.customDays"
+        class="hidden md:flex"
+        @change="nav.setView"
+      />
       <div class="relative md:hidden">
         <label for="view-select" class="sr-only">Calendar view</label>
         <select
@@ -84,6 +64,9 @@ const unit = computed(() => stepLabel(ui.view))
           <option value="work-week">Work week</option>
           <option value="week">Week</option>
           <option value="month">Month</option>
+          <option v-if="ui.view === 'custom'" value="custom">
+            {{ customLabel(ui.customDays) }}
+          </option>
         </select>
         <AppIcon
           name="chevron-down"

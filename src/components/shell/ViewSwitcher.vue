@@ -3,20 +3,26 @@
  * Segmented Agenda / Day / Work week / Week / Month control in an outlined track. A dark gray
  * pill (white text) behind the active option slides to the newly picked one.
  */
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
-import type { CalendarView } from '@/lib/dates'
+import { type CalendarView, customLabel } from '@/lib/dates'
 
-const props = defineProps<{ view: CalendarView }>()
+const props = defineProps<{ view: CalendarView; customDays?: number }>()
 const emit = defineEmits<{ change: [view: CalendarView] }>()
 
-const OPTIONS: { view: CalendarView; label: string }[] = [
+const BASE: { view: CalendarView; label: string }[] = [
   { view: 'agenda', label: 'Agenda' },
   { view: 'day', label: 'Day' },
   { view: 'work-week', label: 'Work week' },
   { view: 'week', label: 'Week' },
   { view: 'month', label: 'Month' },
 ]
+/** A custom range (mini calendar drag) shows as an extra "15 days" option while it is active. */
+const OPTIONS = computed(() =>
+  props.view === 'custom'
+    ? [...BASE, { view: 'custom' as const, label: customLabel(props.customDays ?? 7) }]
+    : BASE,
+)
 
 const root = ref<HTMLElement | null>(null)
 /** Position of the pill; null until measured (the active button is then white itself). */
@@ -44,7 +50,7 @@ function measure() {
 }
 
 watch(
-  () => props.view,
+  () => [props.view, props.customDays],
   async () => {
     animate.value = true
     await nextTick()

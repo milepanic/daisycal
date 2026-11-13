@@ -6,6 +6,8 @@
   --font-sans: 'Mulish', ui-sans-serif, system-ui, sans-serif;
   /* Titles (toolbar, list names, popover headings). */
   --font-display: 'Philosopher', ui-sans-serif, system-ui, sans-serif;
+  /* Day numbers (grid headers, month cells, mini calendar, agenda). */
+  --font-numeric: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
   /* Handwritten signature in the sidebar footer. */
   --font-signature: 'Great Vibes', cursive;
 
@@ -15,6 +17,8 @@
   --color-on-color: #ffffff;
   /* Active segment of the view switcher: dark gray under white text, in both themes. */
   --color-pill: #4b5260;
+  /* Soft lift for the white surfaces on the page background (grid, task columns, panel). */
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.025), 0 3px 12px rgb(0 0 0 / 0.03);
 
   --color-cal-personal: #566c86;
   --color-cal-apartment: #7c94b8;
@@ -36,6 +40,7 @@ html.dark {
   --color-white: #1a1c20;
   --color-zinc-100: #0f1013;
   --color-pill: #565d6a;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.2), 0 3px 12px rgb(0 0 0 / 0.16);
 
   --color-gray-50: #212328;
   --color-gray-100: #272a30;

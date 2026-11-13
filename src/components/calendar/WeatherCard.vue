@@ -24,7 +24,8 @@ const rows = computed(() => {
       value: `${w.wind} km/h${w.gusts != null ? `, gusts ${w.gusts}` : ''}`,
     })
   if (w.uv != null) out.push({ label: 'UV index', value: `${Math.round(w.uv)} · ${uvLevel(w.uv)}` })
-  if (w.sunrise && w.sunset) out.push({ label: 'Sunrise / sunset', value: `${w.sunrise} / ${w.sunset}` })
+  if (w.sunrise && w.sunset)
+    out.push({ label: 'Sunrise / sunset', value: `${w.sunrise} / ${w.sunset}` })
   return out
 })
 </script>
@@ -42,9 +43,12 @@ const rows = computed(() => {
         :stroke-width="1.5"
       />
       <div class="min-w-0">
-        <p class="truncate text-sm font-semibold text-gray-900">{{ weatherDetail(weather.code) }}</p>
+        <p class="truncate text-sm font-semibold text-gray-900">
+          {{ weatherDetail(weather.code) }}
+        </p>
         <p class="text-gray-500 tabular-nums">
-          Low {{ weather.min }}° · High <span class="font-medium text-gray-800">{{ weather.max }}°</span>
+          Low {{ weather.min }}° · High
+          <span class="font-medium text-gray-800">{{ weather.max }}°</span>
         </p>
       </div>
     </div>

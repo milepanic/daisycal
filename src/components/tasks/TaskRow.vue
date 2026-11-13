@@ -140,7 +140,7 @@ const priorityClass = computed(() =>
       @click="emit('open', task)"
     >
       <p
-        class="flex items-center gap-x-1.5 text-sm"
+        class="flex items-center gap-x-1.5 text-[13px]"
         :class="
           task.completed
             ? 'text-gray-400 line-through'
@@ -168,13 +168,13 @@ const priorityClass = computed(() =>
       <p v-if="task.completed && task.completedAt" class="mt-0.5 text-xs text-gray-400">
         Completed {{ formatShortDateTime(task.completedAt, false) }}
       </p>
-      <p v-else-if="badge" class="mt-1.5">
+      <p v-else-if="badge" class="mt-1 leading-none">
         <span
-          class="inline-flex items-center gap-x-1 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1"
+          class="inline-flex items-center gap-x-1 rounded-full px-1.5 py-0.5 text-[10.5px] font-medium ring-1"
           :class="badge.cls"
           data-testid="due-badge"
         >
-          <AppIcon name="calendar" class="size-3" />
+          <AppIcon name="calendar" class="size-[11px]" />
           {{ badge.label }}
         </span>
       </p>

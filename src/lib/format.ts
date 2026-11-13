@@ -1,4 +1,4 @@
-import { type CalendarView, type DateRange, addDays, isSameDay } from './dates'
+import { type CalendarView, type DateRange, addDays, customLabel, isSameDay } from './dates'
 
 const LOCALE = 'en-US'
 
@@ -41,6 +41,7 @@ export function dayTitle(d: Date): string {
 /** Toolbar heading for a view. */
 export function viewTitle(view: CalendarView, date: Date, range: DateRange): string {
   switch (view) {
+    // (custom: `range` is the picked days, see ui.selectedRange)
     case 'day':
       return dayTitle(date)
     case 'month':
@@ -52,7 +53,8 @@ export function viewTitle(view: CalendarView, date: Date, range: DateRange): str
 }
 
 /** What prev/next step over, for screen readers: "Previous week". */
-export function stepLabel(view: CalendarView): string {
+export function stepLabel(view: CalendarView, customDays = 7): string {
+  if (view === 'custom') return customDays === 1 ? 'day' : customLabel(customDays)
   return view === 'day' ? 'day' : view === 'month' || view === 'agenda' ? 'month' : 'week'
 }
 

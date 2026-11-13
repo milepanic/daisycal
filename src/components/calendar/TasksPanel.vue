@@ -83,12 +83,19 @@ async function toggle(t: Task, done: boolean) {
 </script>
 
 <template>
-  <aside id="tasks-panel" class="flex w-72 shrink-0 flex-col overflow-hidden rounded-2xl bg-white">
+  <aside
+    id="tasks-panel"
+    class="flex w-72 shrink-0 flex-col overflow-hidden rounded-2xl bg-white shadow-card"
+  >
     <!-- Header: the list name is the picker (like the list headings in the Tasks view). -->
-    <div ref="picker" class="relative shrink-0 px-2 pt-2.5" @keydown.escape="pickerOpen = false">
+    <div
+      ref="picker"
+      class="relative flex shrink-0 items-center gap-x-1 px-2 pt-2.5"
+      @keydown.escape="pickerOpen = false"
+    >
       <button
         type="button"
-        class="group flex max-w-full items-center gap-x-2 rounded-sm px-2 py-1 text-left hover:bg-gray-50"
+        class="group flex min-w-0 items-center gap-x-2 rounded-sm px-2 py-1 text-left hover:bg-gray-50"
         aria-haspopup="listbox"
         :aria-expanded="pickerOpen"
         @click="pickerOpen = !pickerOpen"
@@ -137,6 +144,15 @@ async function toggle(t: Task, done: boolean) {
           </li>
         </ul>
       </Transition>
+      <button
+        type="button"
+        class="ml-auto flex size-8 shrink-0 items-center justify-center rounded-full text-gray-400 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-700"
+        title="Close tasks panel"
+        @click="ui.tasksPanelOpen = false"
+      >
+        <span class="sr-only">Close tasks panel</span>
+        <AppIcon name="close" class="size-4" />
+      </button>
     </div>
 
     <div class="flex-1 overflow-y-auto px-2 pt-1 pb-4">
@@ -177,29 +193,38 @@ async function toggle(t: Task, done: boolean) {
           </li>
         </template>
       </TransitionGroup>
-
-      <details v-if="completed.length && ui.showCompletedTasks" class="group mt-2">
-        <summary
-          class="flex cursor-pointer list-none items-center gap-x-2 rounded-sm px-2 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 [&::-webkit-details-marker]:hidden"
-        >
-          <AppIcon
-            name="chevron-down"
-            class="size-4 -rotate-90 text-gray-400 transition-transform group-open:rotate-0"
-          />
-          Completed ({{ completed.length }})
-        </summary>
-        <TransitionGroup tag="ul" name="task-list" class="details-body relative mt-1 space-y-0.5">
-          <TaskRow
-            v-for="t in completed"
-            :key="t.objectUrl"
-            :task="t"
-            :color="color"
-            @toggle="toggle"
-            @open="openTask"
-            @grab="(t, e) => emit('grab', t, e)"
-          />
-        </TransitionGroup>
-      </details>
     </div>
+
+    <!-- Pinned to the bottom of the panel (Google Calendar); opens upward with its own scroll. -->
+    <details
+      v-if="completed.length && ui.showCompletedTasks"
+      class="group shrink-0 border-t border-gray-100 px-2 py-1.5"
+      data-testid="panel-completed"
+    >
+      <summary
+        class="flex cursor-pointer list-none items-center gap-x-2 rounded-sm px-2 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 [&::-webkit-details-marker]:hidden"
+      >
+        <AppIcon
+          name="chevron-down"
+          class="size-4 -rotate-90 text-gray-400 transition-transform group-open:rotate-0"
+        />
+        Completed ({{ completed.length }})
+      </summary>
+      <TransitionGroup
+        tag="ul"
+        name="task-list"
+        class="details-body relative mt-1 max-h-[40vh] space-y-0.5 overflow-y-auto"
+      >
+        <TaskRow
+          v-for="t in completed"
+          :key="t.objectUrl"
+          :task="t"
+          :color="color"
+          @toggle="toggle"
+          @open="openTask"
+          @grab="(t, e) => emit('grab', t, e)"
+        />
+      </TransitionGroup>
+    </details>
   </aside>
 </template>

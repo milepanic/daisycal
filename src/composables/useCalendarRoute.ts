@@ -21,9 +21,14 @@ export function useCalendarRoute() {
     route.name === 'calendar' ? parseDateKey(route.params.date as string | undefined) : null,
   )
 
+  const routeDays = computed(() =>
+    route.name === 'calendar' && route.params.days ? Number(route.params.days) : null,
+  )
+
   watch(
-    [routeView, routeDate],
-    ([view, date]) => {
+    [routeView, routeDate, routeDays],
+    ([view, date, days]) => {
+      if (view === 'custom' && days) ui.setCustomDays(days)
       if (view) ui.setView(view)
       if (date) ui.setDate(date)
     },
@@ -31,7 +36,13 @@ export function useCalendarRoute() {
   )
 
   function go(view: CalendarView, date: Date) {
-    return router.push(calendarPath(view, date))
+    return router.push(calendarPath(view, date, ui.customDays))
+  }
+  /** Shows `days` days from `start` (mini calendar drag); one day is the day view. */
+  function goCustom(start: Date, days: number) {
+    return days === 1
+      ? router.push(calendarPath('day', start))
+      : router.push(calendarPath('custom', start, days))
   }
   function setView(view: CalendarView) {
     return go(view, ui.currentDate)
@@ -43,11 +54,11 @@ export function useCalendarRoute() {
     return go(ui.view, new Date())
   }
   function next() {
-    return go(ui.view, stepDate(ui.view, ui.currentDate, 1))
+    return go(ui.view, stepDate(ui.view, ui.currentDate, 1, ui.customDays))
   }
   function prev() {
-    return go(ui.view, stepDate(ui.view, ui.currentDate, -1))
+    return go(ui.view, stepDate(ui.view, ui.currentDate, -1, ui.customDays))
   }
 
-  return { routeView, routeDate, go, setView, setDate, today, next, prev }
+  return { routeView, routeDate, go, goCustom, setView, setDate, today, next, prev }
 }

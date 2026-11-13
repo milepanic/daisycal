@@ -6,6 +6,7 @@ import {
   type CalendarView,
   type DateRange,
   type WeekStart,
+  customRange,
   rangeForView,
   startOfDay,
   stepDate,
@@ -75,7 +76,10 @@ export const useUiStore = defineStore('ui', () => {
   const saved = { ...DEFAULT_LAYOUT, ...readJson<Partial<Layout>>('local', LAYOUT_KEY, {}) }
 
   const currentDate = ref<Date>(startOfDay(new Date()))
-  const view = ref<CalendarView>(saved.view)
+  // A custom range lives only in the URL; a saved 'custom' falls back to the week.
+  const view = ref<CalendarView>(saved.view === 'custom' ? 'week' : saved.view)
+  /** Length of the custom view (days picked in the mini calendar). */
+  const customDays = ref(7)
   const weekStart = ref<WeekStart>(saved.weekStart)
   const sidebarOpen = ref(saved.sidebarOpen)
   const tasksPanelOpen = ref(saved.tasksPanelOpen)
@@ -91,7 +95,7 @@ export const useUiStore = defineStore('ui', () => {
     [view, weekStart, sidebarOpen, tasksPanelOpen, showCompletedTasks, tasksPanelList, theme],
     () =>
       writeJson('local', LAYOUT_KEY, {
-        view: view.value,
+        view: view.value === 'custom' ? 'week' : view.value,
         weekStart: weekStart.value,
         sidebarOpen: sidebarOpen.value,
         tasksPanelOpen: tasksPanelOpen.value,
@@ -103,7 +107,11 @@ export const useUiStore = defineStore('ui', () => {
 
   /** Dates the active view shows. */
   const visibleRange = computed<DateRange>(() =>
-    rangeForView(view.value, currentDate.value, weekStart.value),
+    rangeForView(view.value, currentDate.value, weekStart.value, customDays.value),
+  )
+  /** What the user is looking at: the picked days of a custom view, else the visible range. */
+  const selectedRange = computed<DateRange>(() =>
+    view.value === 'custom' ? customRange(currentDate.value, customDays.value) : visibleRange.value,
   )
   const isCreateOpen = computed(() => createDraft.value !== null)
 
@@ -116,11 +124,14 @@ export const useUiStore = defineStore('ui', () => {
   function today() {
     currentDate.value = startOfDay(new Date())
   }
+  function setCustomDays(days: number) {
+    customDays.value = days
+  }
   function next() {
-    currentDate.value = stepDate(view.value, currentDate.value, 1)
+    currentDate.value = stepDate(view.value, currentDate.value, 1, customDays.value)
   }
   function prev() {
-    currentDate.value = stepDate(view.value, currentDate.value, -1)
+    currentDate.value = stepDate(view.value, currentDate.value, -1, customDays.value)
   }
   function toggleSidebar() {
     sidebarOpen.value = !sidebarOpen.value
@@ -157,6 +168,9 @@ export const useUiStore = defineStore('ui', () => {
     selection,
     searchOpen,
     visibleRange,
+    selectedRange,
+    customDays,
+    setCustomDays,
     isCreateOpen,
     setDate,
     setView,

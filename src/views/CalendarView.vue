@@ -75,7 +75,17 @@ watch(
 const loading = computed(() => calendars.status === 'loading' || events.isLoading(ui.visibleRange))
 const loadError = computed(() => events.loadError(ui.visibleRange))
 const days = computed(() => eachDay(ui.visibleRange))
-const isGrid = computed(() => ui.view === 'day' || ui.view === 'week' || ui.view === 'work-week')
+const isGrid = computed(
+  () =>
+    ui.view === 'day' ||
+    ui.view === 'week' ||
+    ui.view === 'work-week' ||
+    (ui.view === 'custom' && ui.customDays <= 7),
+)
+/** Month-style grid: the month, or a custom pick longer than a week (whole weeks shown). */
+const isMonthGrid = computed(
+  () => ui.view === 'month' || (ui.view === 'custom' && ui.customDays > 7),
+)
 const selectedKey = computed(() =>
   ui.selection ? `${ui.selection.objectUrl}|${ui.selection.recurrenceId ?? ''}` : null,
 )
@@ -193,7 +203,7 @@ const draftColor = computed(() =>
   <div class="flex min-h-0 flex-1 gap-x-2">
     <div
       ref="viewport"
-      class="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl bg-white"
+      class="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl bg-white shadow-card"
     >
       <p
         v-if="loadError"
@@ -233,9 +243,10 @@ const draftColor = computed(() =>
           @copy-task="copyTask"
         />
         <MonthView
-          v-else-if="ui.view === 'month'"
+          v-else-if="isMonthGrid"
           :range="ui.visibleRange"
           :month="ui.currentDate.getMonth()"
+          :focus="ui.view === 'custom' ? ui.selectedRange : null"
           :instances="instances"
           :tasks="dueTasks"
           :pending-tasks="pendingTasks"

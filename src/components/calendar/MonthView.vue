@@ -20,6 +20,8 @@ const props = defineProps<{
   selectedKey?: string | null
   /** Overdue open tasks, shown as "N pending tasks" in today's cell. */
   pendingTasks?: Task[]
+  /** Custom pick: these days are the "current" ones (instead of `month`), the rest shaded. */
+  focus?: DateRange | null
 }>()
 const emit = defineEmits<{
   selectEvent: [instance: EventInstance, el: HTMLElement]
@@ -31,7 +33,9 @@ const emit = defineEmits<{
 const MAX_ROWS = 3
 const pendingCount = computed(() => props.pendingTasks?.length ?? 0)
 const cells = computed(() =>
-  buildMonthCells(props.range, props.month, props.instances, props.tasks, MAX_ROWS).map((c) => {
+  buildMonthCells(props.range, props.month, props.instances, props.tasks, MAX_ROWS).map((cell) => {
+    const f = props.focus
+    const c = f ? { ...cell, inMonth: cell.date >= f.start && cell.date < f.end } : cell
     // "N pending tasks" takes one of today's rows.
     if (!c.isToday || pendingCount.value === 0) return c
     const rows = MAX_ROWS - 1
@@ -70,22 +74,26 @@ function onCellClick(date: Date, e: MouseEvent) {
 </script>
 
 <template>
-  <div class="scroll-subtle flex min-h-0 flex-1 flex-col overflow-auto px-2 pb-2" data-testid="month-view">
+  <div
+    class="scroll-subtle flex min-h-0 flex-1 flex-col overflow-auto px-2 pb-2"
+    data-testid="month-view"
+  >
     <div class="flex min-h-[600px] min-w-[640px] flex-1 flex-col">
       <div class="sticky top-0 z-20 grid grid-cols-7 border-b border-gray-200 bg-white">
         <div
           v-for="d in headers"
           :key="d"
-          class="py-2 text-center font-display text-sm font-bold"
+          class="py-2 text-center font-display text-[15px] font-normal"
           :class="
-            d === today.getDay() && cells.some((c) => c.isToday) ? 'text-accent' : 'text-gray-500'
+            d === today.getDay() && cells.some((c) => c.isToday) ? 'text-accent' : 'text-gray-800'
           "
         >
           {{ WEEKDAYS_LONG[d] }}
         </div>
       </div>
       <div
-        class="grid flex-1 grid-cols-7 grid-rows-6 [&>*:nth-child(-n+7)]:border-t-0 [&>*:nth-child(7n+1)]:border-l-0"
+        class="grid flex-1 grid-cols-7 [&>*:nth-child(-n+7)]:border-t-0 [&>*:nth-child(7n+1)]:border-l-0"
+        :style="{ gridTemplateRows: `repeat(${cells.length / 7}, minmax(0, 1fr))` }"
       >
         <div
           v-for="cell in cells"
@@ -100,7 +108,7 @@ function onCellClick(date: Date, e: MouseEvent) {
               MONTHS_SHORT[cell.date.getMonth()]
             }}</span>
             <span
-              class="flex size-7 items-center justify-center text-sm font-semibold"
+              class="flex size-7 items-center justify-center font-numeric text-sm font-normal"
               :class="
                 cell.isToday
                   ? 'rounded-full bg-accent text-on-color'

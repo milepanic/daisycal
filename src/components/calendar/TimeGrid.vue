@@ -715,7 +715,7 @@ function onGridKeydown(e: KeyboardEvent) {
           <div></div>
           <div v-for="c in columns" :key="c.key" class="flex flex-col items-center py-2">
             <!-- Same height on every day so the names stay aligned past the forecast's end. -->
-            <span v-if="weatherOn" class="mb-1 flex h-5 items-center">
+            <span v-if="weatherOn" class="flex h-4 items-center">
               <!-- Hover / focus shows the full forecast for the day. -->
               <span
                 v-if="weatherFor?.(c.key)"
@@ -724,18 +724,15 @@ function onGridKeydown(e: KeyboardEvent) {
                 :aria-label="`${describeWeather(weatherFor(c.key)!.code).label}, ${weatherFor(c.key)!.min}° to ${weatherFor(c.key)!.max}°`"
               >
                 <span
-                  class="appear flex cursor-default items-center gap-x-1 rounded-sm px-1 text-xs text-gray-600 tabular-nums group-hover/weather:bg-gray-100"
+                  class="appear flex cursor-default items-center gap-x-1 rounded-sm px-1 text-[11px] text-gray-400 tabular-nums group-hover/weather:bg-gray-100"
                   data-testid="day-weather"
                 >
                   <AppIcon
                     :name="describeWeather(weatherFor(c.key)!.code).icon"
-                    class="size-3.5 shrink-0 text-gray-500"
+                    class="size-3 shrink-0 text-gray-400"
                     :stroke-width="1.75"
                   />
-                  <span
-                    ><span class="text-gray-400">{{ weatherFor(c.key)!.min }}°/</span
-                    >{{ weatherFor(c.key)!.max }}°</span
-                  >
+                  <span>{{ weatherFor(c.key)!.min }}/{{ weatherFor(c.key)!.max }}</span>
                 </span>
                 <WeatherCard
                   :weather="weatherFor(c.key)!"
@@ -753,12 +750,12 @@ function onGridKeydown(e: KeyboardEvent) {
               </span>
             </span>
             <span
-              class="font-display text-sm font-bold"
-              :class="c.isToday ? 'text-accent' : 'text-gray-500'"
+              class="font-display text-[15px] font-normal"
+              :class="c.isToday ? 'text-accent' : 'text-gray-800'"
               >{{ WEEKDAYS_LONG[c.day.getDay()] }}</span
             >
             <span
-              class="mx-auto mt-1 flex size-8 items-center justify-center text-base font-semibold"
+              class="mx-auto mt-1 flex size-8 items-center justify-center font-numeric text-sm font-normal"
               :class="
                 c.isToday ? 'rounded-full bg-accent text-on-color' : 'rounded-sm text-gray-900'
               "

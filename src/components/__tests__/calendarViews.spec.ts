@@ -96,7 +96,7 @@ describe('TimeGrid', () => {
       attachTo: document.body,
     })
     expect(
-      wrapper.findAll('[data-testid="time-grid"] .sticky span.text-sm').map((s) => s.text()),
+      wrapper.findAll('[data-testid="time-grid"] .sticky span.font-display').map((s) => s.text()),
     ).toEqual(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])
     // All-day bar spans Thu+Fri.
     const bar = wrapper.find('[data-testid="allday-row"] [style*="grid-column: 4 / span 2"]')

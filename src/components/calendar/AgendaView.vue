@@ -48,7 +48,7 @@ function eventKey(i: EventInstance) {
         >
           <div class="flex w-28 shrink-0 items-start gap-x-2 pl-2">
             <span
-              class="flex size-8 shrink-0 items-center justify-center text-base font-semibold"
+              class="flex size-8 shrink-0 items-center justify-center font-numeric text-base font-normal"
               :class="
                 day.isToday ? 'rounded-full bg-accent text-on-color' : 'rounded-sm text-gray-900'
               "
@@ -58,8 +58,8 @@ function eventKey(i: EventInstance) {
             </span>
             <div class="pt-1.5 leading-tight">
               <p
-                class="font-display text-sm font-bold"
-                :class="day.isToday ? 'text-accent' : 'text-gray-500'"
+                class="font-display text-[15px] font-normal"
+                :class="day.isToday ? 'text-accent' : 'text-gray-800'"
               >
                 {{ WEEKDAYS_LONG[day.date.getDay()] }}
               </p>

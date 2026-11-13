@@ -68,7 +68,7 @@ function openDetailed() {
 
 <template>
   <section
-    class="flex max-h-full w-80 shrink-0 flex-col rounded-2xl bg-white p-2 transition-shadow duration-150"
+    class="flex max-h-full w-80 shrink-0 flex-col rounded-2xl bg-white p-2 shadow-card transition-shadow duration-150"
     :class="dropTarget ? 'ring-2 ring-gray-900' : ''"
     :data-list="list.url"
   >

@@ -131,7 +131,7 @@ describe('weather', () => {
       },
     })
     const shown = wrapper.findAll('[data-testid="day-weather"]')
-    expect(shown.map((w) => w.text().replace(/\s+/g, ''))).toEqual(['8°/18°', '6°/13°'])
+    expect(shown.map((w) => w.text().replace(/\s+/g, ''))).toEqual(['8/18', '6/13'])
     // Hover card with the details, rain chance included.
     const card = wrapper.findAll('[data-testid="weather-card"]')[1]!
     expect(card.text()).toContain('Light rain')

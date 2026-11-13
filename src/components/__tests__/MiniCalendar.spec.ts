@@ -32,3 +32,26 @@ describe('MiniCalendar', () => {
     expect(wrapper.find('h2').text()).toBe('January 2027')
   })
 })
+
+describe('MiniCalendar drag', () => {
+  it('picks the days dragged across and shades them while dragging', async () => {
+    const wrapper = mount(MiniCalendar, {
+      props: { selected: new Date(2026, 10, 13) },
+      attachTo: document.body,
+    })
+    const day = (key: string) => wrapper.find(`time[datetime="${key}"]`).element.parentElement!
+    day('2026-11-03').dispatchEvent(
+      new PointerEvent('pointerdown', { button: 0, pointerType: 'mouse' }),
+    )
+    for (const key of ['2026-11-04', '2026-11-10', '2026-11-17'])
+      day(key).parentElement!.dispatchEvent(new PointerEvent('pointerenter'))
+    await wrapper.vm.$nextTick()
+    expect(day('2026-11-10').parentElement!.className).toContain('bg-gray-200')
+    expect(day('2026-11-22').parentElement!.className).toContain('bg-gray-200')
+    expect(day('2026-11-23').parentElement!.className).not.toContain('bg-gray-200')
+    document.dispatchEvent(new PointerEvent('pointerup'))
+    // 15 days (Tue Nov 3 – Tue Nov 17) snap to the three whole weeks Mon Nov 2 – Sun Nov 22.
+    expect(wrapper.emitted('selectRange')![0]).toEqual([new Date(2026, 10, 2), 21])
+    wrapper.unmount()
+  })
+})

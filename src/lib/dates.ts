@@ -5,7 +5,41 @@ export interface DateRange {
   end: Date
 }
 
-export type CalendarView = 'day' | 'work-week' | 'week' | 'month' | 'agenda'
+/** 'custom': days picked by dragging in the mini calendar (start = the anchor date). */
+export type CalendarView = 'day' | 'work-week' | 'week' | 'month' | 'agenda' | 'custom'
+
+/** Longest custom range (the mini calendar shows six weeks). */
+export const MAX_CUSTOM_DAYS = 42
+
+/**
+ * A mini calendar pick snapped to what the views show well: up to a week stays exact (time
+ * grid with that many columns); longer picks grow to whole weeks (10 days → the 2 weeks around
+ * them), since the month-style grid shows whole weeks anyway.
+ */
+export function snapCustomRange(start: Date, days: number, weekStart: WeekStart = 1): DateRange {
+  const first = startOfDay(start)
+  if (days <= 7) return { start: first, end: addDays(first, days) }
+  const from = startOfWeek(first, weekStart)
+  const to = addDays(startOfWeek(addDays(first, days - 1), weekStart), 7)
+  const weeks = Math.min(Math.round((+to - +from) / (7 * DAY_MS)), MAX_CUSTOM_DAYS / 7)
+  return { start: from, end: addDays(from, weeks * 7) }
+}
+
+/** Number of days in a range of whole days. */
+export function daysIn(range: DateRange): number {
+  return Math.round((+range.end - +range.start) / DAY_MS)
+}
+
+/** "4 days", "2 weeks" (custom view labels). */
+export function customLabel(days: number): string {
+  return days > 7 && days % 7 === 0 ? `${days / 7} weeks` : `${days} days`
+}
+
+/** The days picked for a custom view: `days` days from `date`. */
+export function customRange(date: Date, days: number): DateRange {
+  const start = startOfDay(date)
+  return { start, end: addDays(start, days) }
+}
 
 /** 0 = Sunday ... 6 = Saturday; the app defaults to Monday. */
 export type WeekStart = 0 | 1 | 6
@@ -93,8 +127,21 @@ export function monthRange(monthKey: string): DateRange {
 }
 
 /** The dates a view shows for the given anchor date. */
-export function rangeForView(view: CalendarView, date: Date, weekStart: WeekStart = 1): DateRange {
+export function rangeForView(
+  view: CalendarView,
+  date: Date,
+  weekStart: WeekStart = 1,
+  customDays = 7,
+): DateRange {
   switch (view) {
+    case 'custom': {
+      // Up to a week: exactly those days (time grid). Longer: whole weeks (month-style grid,
+      // the days outside the pick shaded).
+      const picked = customRange(date, customDays)
+      if (customDays <= 7) return picked
+      const start = startOfWeek(picked.start, weekStart)
+      return { start, end: addDays(startOfWeek(addDays(picked.end, -1), weekStart), 7) }
+    }
     case 'day': {
       const start = startOfDay(date)
       return { start, end: addDays(start, 1) }
@@ -121,8 +168,10 @@ export function rangeForView(view: CalendarView, date: Date, weekStart: WeekStar
 }
 
 /** Anchor date after moving one "page" of the view forward/backward. */
-export function stepDate(view: CalendarView, date: Date, direction: 1 | -1): Date {
+export function stepDate(view: CalendarView, date: Date, direction: 1 | -1, customDays = 7): Date {
   switch (view) {
+    case 'custom':
+      return addDays(date, customDays * direction)
     case 'day':
       return addDays(date, direction)
     case 'work-week':

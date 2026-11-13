@@ -15,7 +15,7 @@ const emit = defineEmits<{ toggle: [url: string, visible: boolean] }>()
 </script>
 
 <template>
-  <details open class="group mt-6">
+  <details open class="group mt-6 first:mt-0">
     <summary
       class="flex cursor-pointer list-none items-center justify-between rounded-sm px-2 py-1.5 text-sm font-semibold text-gray-500 hover:bg-white/60 [&::-webkit-details-marker]:hidden"
     >

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { rangeForView, stepDate } from '../dates'
+import { customLabel, rangeForView, snapCustomRange, stepDate } from '../dates'
 import {
   dayTitle,
   formatShortDateTime,
@@ -41,5 +41,37 @@ describe('format', () => {
       end: new Date(2026, 10, 1),
     })
     expect(stepDate('agenda', new Date(2026, 9, 31), 1)).toEqual(new Date(2026, 10, 30))
+  })
+})
+
+describe('custom range (mini calendar drag)', () => {
+  it('shows exactly the picked days up to a week, whole weeks beyond', () => {
+    // Tue Nov 10 + 4 days → Tue–Fri.
+    const short = rangeForView('custom', new Date(2026, 10, 10), 1, 4)
+    expect(short).toEqual({ start: new Date(2026, 10, 10), end: new Date(2026, 10, 14) })
+    // Tue Nov 3 + 15 days (to Tue Nov 17) → Mon Nov 2 … Sun Nov 22, three weeks.
+    const long = rangeForView('custom', new Date(2026, 10, 3), 1, 15)
+    expect(long).toEqual({ start: new Date(2026, 10, 2), end: new Date(2026, 10, 23) })
+  })
+
+  it('steps by its own length', () => {
+    expect(stepDate('custom', new Date(2026, 10, 3), 1, 15)).toEqual(new Date(2026, 10, 18))
+    expect(stepDate('custom', new Date(2026, 10, 3), -1, 4)).toEqual(new Date(2026, 9, 30))
+  })
+})
+
+describe('snapCustomRange', () => {
+  it('keeps up to a week exact and grows longer picks to whole weeks', () => {
+    expect(snapCustomRange(new Date(2026, 10, 10), 4)).toEqual({
+      start: new Date(2026, 10, 10),
+      end: new Date(2026, 10, 14),
+    })
+    // 10 days, Tue Nov 3 – Thu Nov 12 → Mon Nov 2 – Sun Nov 15 (14 days).
+    expect(snapCustomRange(new Date(2026, 10, 3), 10)).toEqual({
+      start: new Date(2026, 10, 2),
+      end: new Date(2026, 10, 16),
+    })
+    expect(customLabel(14)).toBe('2 weeks')
+    expect(customLabel(5)).toBe('5 days')
   })
 })
