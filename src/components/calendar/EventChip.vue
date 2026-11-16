@@ -7,6 +7,8 @@
  *  - `month`: one-line chip with the start time on the right
  * Tentative events are striped (Google Calendar).
  */
+import { computed } from 'vue'
+
 import type { EventInstance } from '@/api/ical'
 import { textOn } from '@/lib/color'
 import { formatTime } from '@/lib/format'
@@ -25,6 +27,17 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ select: [instance: EventInstance, el: HTMLElement] }>()
 
+/** Hover text: the title and when (the chip may be too small to show the time). */
+const tooltip = computed(() => {
+  const i = props.instance
+  const name = i.summary || '(No title)'
+  const when =
+    props.variant === 'allday' || i.allDay
+      ? 'All day'
+      : `${formatTime(i.start)}–${formatTime(i.end)}`
+  return `${name}\n${when}${i.status === 'TENTATIVE' ? ' · tentative' : ''}${i.location ? `\n${i.location}` : ''}`
+})
+
 function onClick(e: MouseEvent) {
   e.stopPropagation()
   emit('select', props.instance, e.currentTarget as HTMLElement)
@@ -34,7 +47,7 @@ function onClick(e: MouseEvent) {
 <template>
   <button
     type="button"
-    :title="instance.status === 'TENTATIVE' ? `${instance.summary} (tentative)` : instance.summary"
+    :title="tooltip"
     :style="{ backgroundColor: color, '--chip-fg': textOn(color), '--chip-color': color }"
     :data-selected="selected || undefined"
     :data-status="instance.status ?? undefined"

@@ -129,7 +129,9 @@ export function layoutTimed<T>(entries: TimedItem<T>[], day: Date): TimedLayout<
       const end = Math.min(e.end.getTime(), dayEnd.getTime())
       const top = toPx(start)
       const height = Math.max(toPx(end) - top, MIN_EVENT_PX)
-      const bottom = top + height
+      // Overlaps go by the real end: a short chip drawn taller (MIN_EVENT_PX) does not push
+      // the next one, starting right when it ends, into a column of its own.
+      const bottom = Math.max(toPx(end), top + 1)
       const contentTop = Math.min(bottom, Math.max(top, toPx((e.contentStart ?? e.start).getTime())))
       const body = bottom - contentTop
       // A short chip is a single line: its title runs over its whole height.
@@ -157,6 +159,8 @@ export function layoutTimed<T>(entries: TimedItem<T>[], day: Date): TimedLayout<
   }
 
   const out: TimedLayout<T>[] = []
+  /** Real end (px) of each placed chip, by index in `out`. */
+  const realBottoms: number[] = []
   const placed: { top: number; bottom: number; left: number; inset: number; depth: number }[] = []
   for (const group of groups) {
     // Earlier chips this group is drawn over (below their titles).
@@ -226,8 +230,20 @@ export function layoutTimed<T>(entries: TimedItem<T>[], day: Date): TimedLayout<
         compact: item.height < COMPACT_PX,
       })
       placed.push({ top: item.top, bottom: item.bottom, left, inset, depth })
+      realBottoms.push(item.bottom)
     }
   }
+  // A short chip drawn taller than it lasts (MIN_EVENT_PX) stops where the next one starts, so
+  // back-to-back chips keep their gap. Only that extra part is trimmed: a chip drawn over a
+  // longer one (cascade) starts before the longer one ends and leaves it alone.
+  out.forEach((a, i) => {
+    for (const b of out) {
+      if (b === a || b.top < realBottoms[i]! || b.top >= a.top + a.height) continue
+      if (b.left >= a.left + a.width || a.left >= b.left + b.width) continue
+      a.height = Math.max(b.top - a.top, 1)
+      a.compact = a.height < COMPACT_PX
+    }
+  })
   return out
 }
 

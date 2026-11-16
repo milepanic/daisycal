@@ -17,6 +17,7 @@ import { useNotificationsStore } from '@/stores/notifications'
 import { useSyncStore } from '@/stores/sync'
 import { useUiStore } from '@/stores/ui'
 import CreatePopup from '@/components/create/CreatePopup.vue'
+import ColorsDialog from '@/components/shell/ColorsDialog.vue'
 import SearchDialog from '@/components/shell/SearchDialog.vue'
 import AppSidebar from '@/components/sidebar/AppSidebar.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
@@ -171,6 +172,9 @@ async function retrySync() {
     </Transition>
     <Transition name="modal">
       <SearchDialog v-if="ui.searchOpen" />
+    </Transition>
+    <Transition name="modal">
+      <ColorsDialog v-if="ui.colorsOpen" />
     </Transition>
     <ToastStack />
   </div>

@@ -117,7 +117,7 @@ describe('TimeGrid', () => {
 
     await review.find('button').trigger('click')
     expect(wrapper.emitted('selectEvent')![0]![0]).toMatchObject({ summary: 'Design review' })
-    await wed.find('button[title="Prepare slides"]').trigger('click')
+    await wed.find('button[title^="Prepare slides"]').trigger('click')
     expect(wrapper.emitted('selectTask')![0]![0]).toMatchObject({ summary: 'Prepare slides' })
 
     // Clicking empty space creates an event at the snapped slot.

@@ -143,8 +143,9 @@ describe('names and birthdays', () => {
   it('derives display name, sort key and initials', () => {
     const c = { ...emptyFields(), givenName: 'Đorđe', familyName: 'Šimić' }
     expect(displayName(c)).toBe('Đorđe Šimić')
-    // Accents are ignored for sorting (Đ has no decomposition and stays).
-    expect(sortKey(c)).toBe('simic đorđe')
+    // By the name as shown; accents are ignored (Đ has no decomposition and stays).
+    expect(sortKey(c)).toBe('đorđe simic')
+    expect(sortKey({ ...emptyFields(), prefix: 'Dr.', givenName: 'Mirela' })).toBe('mirela')
     expect(initials(c)).toBe('ĐŠ')
     expect(displayName({ ...emptyFields(), org: 'Acme' })).toBe('Acme')
     expect(initials({ ...emptyFields(), org: 'Acme Corp' })).toBe('AC')

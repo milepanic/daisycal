@@ -1,5 +1,6 @@
 import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 import ContactList from '@/components/contacts/ContactList.vue'
 import { parseVCard } from '@/lib/vcard'
@@ -12,12 +13,17 @@ const entry = (uid: string, lines: string): ContactEntry => ({
   bookUrl: 'https://x/',
 })
 
-// Sorted as the store hands them over (family name first).
+// Sorted as the store hands them over (by name as shown).
 const CONTACTS = [
+  entry('a', 'FN:Amra Hadžić\r\nN:Hadžić;Amra;;;\r\nCATEGORIES:Work\r\n'),
   entry('c', 'FN:Auto servis\r\nORG:Auto servis\r\n'),
   entry('b', 'FN:Jelena Babić\r\nN:Babić;Jelena;;;\r\nTEL:+387 66 401 223\r\n'),
-  entry('a', 'FN:Amra Hadžić\r\nN:Hadžić;Amra;;;\r\nCATEGORIES:Work\r\n'),
 ]
+
+beforeEach(() => {
+  setActivePinia(createPinia())
+  localStorage.clear()
+})
 
 describe('ContactList', () => {
   it('groups by letter, searches ignoring accents and by phone digits, filters by label', async () => {
@@ -29,10 +35,10 @@ describe('ContactList', () => {
       },
     })
     const names = () => wrapper.findAll('[data-testid="contact-row"]').map((r) => r.text())
-    expect(wrapper.findAll('h3').map((h) => h.text())).toEqual(['A', 'B', 'H'])
+    expect(wrapper.findAll('h3').map((h) => h.text())).toEqual(['A', 'J'])
     // A business shown by its name does not repeat it underneath.
     // (initials, then the name; no subtitle)
-    expect(names()[0]).toBe('ASAuto servis')
+    expect(names()[1]).toBe('ASAuto servis')
 
     await wrapper.find('[data-testid="contact-search"]').setValue('hadzic')
     expect(names()).toHaveLength(1)

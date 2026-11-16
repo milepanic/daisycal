@@ -17,10 +17,14 @@ import {
 import type { DateRange } from '@/lib/dates'
 import { useAuthStore } from './auth'
 import { useCalendarsStore } from './calendars'
+import { useUiStore } from './ui'
 
 export const useBirthdaysStore = defineStore('birthdays', () => {
   const auth = useAuthStore()
   const calendars = useCalendarsStore()
+  const ui = useUiStore()
+  /** Picked in Settings → Colors (kept in this browser: there is no server calendar). */
+  const color = computed(() => ui.birthdaysColor ?? BIRTHDAYS_COLOR)
   const birthdays = shallowRef<Birthday[]>([])
   const error = shallowRef<string | null>(null)
 
@@ -45,14 +49,14 @@ export const useBirthdaysStore = defineStore('birthdays', () => {
     }
   }
 
-  /** The sidebar entry, only when there is something to show. */
+  /** The sidebar entry, only when there is something to show (and it is on in Settings). */
   const collection = computed<Collection | null>(() =>
-    birthdays.value.length
+    ui.contactBirthdays && birthdays.value.length
       ? {
           url: BIRTHDAYS_URL,
           kind: 'calendar',
           displayName: BIRTHDAYS_NAME,
-          color: BIRTHDAYS_COLOR,
+          color: color.value,
           ctag: null,
           syncToken: null,
         }
@@ -60,7 +64,7 @@ export const useBirthdaysStore = defineStore('birthdays', () => {
   )
 
   function instancesFor(range: DateRange) {
-    if (!calendars.isVisible(BIRTHDAYS_URL)) return []
+    if (!ui.contactBirthdays || !calendars.isVisible(BIRTHDAYS_URL)) return []
     return birthdayInstances(birthdays.value, range)
   }
 
@@ -70,5 +74,5 @@ export const useBirthdaysStore = defineStore('birthdays', () => {
   }
   auth.onDisconnect(reset)
 
-  return { birthdays, error, collection, load, instancesFor }
+  return { birthdays, error, color, collection, load, instancesFor }
 })

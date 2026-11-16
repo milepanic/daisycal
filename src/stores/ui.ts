@@ -32,7 +32,15 @@ interface Layout {
   /** Calendar / task list picked first in the create popup (null = the first one). */
   defaultCalendar: string | null
   defaultTaskList: string | null
+  /** Contacts page order: by first name (as shown) or by last name. */
+  contactSort: ContactSort
+  /** The "Contact birthdays" calendar made from contacts' birthdays. */
+  contactBirthdays: boolean
+  /** Its color (it has none on the server); null = the default. */
+  birthdaysColor: string | null
 }
+
+export type ContactSort = 'first' | 'last'
 
 export type ChipStyle = 'solid' | 'tinted'
 
@@ -50,6 +58,9 @@ const DEFAULT_LAYOUT: Layout = {
   miniDots: true,
   defaultCalendar: null,
   defaultTaskList: null,
+  contactSort: 'first',
+  contactBirthdays: true,
+  birthdaysColor: null,
 }
 
 export interface CreateDraft {
@@ -103,12 +114,21 @@ export const useUiStore = defineStore('ui', () => {
   const miniDots = ref(saved.miniDots !== false)
   const defaultCalendar = ref<string | null>(saved.defaultCalendar ?? null)
   const defaultTaskList = ref<string | null>(saved.defaultTaskList ?? null)
+  const contactSort = ref<ContactSort>(saved.contactSort === 'last' ? 'last' : 'first')
+  const contactBirthdays = ref(saved.contactBirthdays !== false)
+  const birthdaysColor = ref<string | null>(
+    typeof saved.birthdaysColor === 'string' && /^#[0-9a-f]{6}$/i.test(saved.birthdaysColor)
+      ? saved.birthdaysColor
+      : null,
+  )
   const createDraft = ref<CreateDraft | null>(null)
   const selection = ref<Selection | null>(null)
   /** The search dialog (Ctrl/Cmd+K). */
   const searchOpen = ref(false)
   /** Bumped by the "c" shortcut on the Contacts page: opens the new contact form. */
   const newContactRequest = ref(0)
+  /** Settings → Colors dialog. */
+  const colorsOpen = ref(false)
 
   watch(
     [
@@ -123,6 +143,9 @@ export const useUiStore = defineStore('ui', () => {
       miniDots,
       defaultCalendar,
       defaultTaskList,
+      contactSort,
+      contactBirthdays,
+      birthdaysColor,
     ],
     () =>
       writeJson('local', LAYOUT_KEY, {
@@ -137,6 +160,9 @@ export const useUiStore = defineStore('ui', () => {
         miniDots: miniDots.value,
         defaultCalendar: defaultCalendar.value,
         defaultTaskList: defaultTaskList.value,
+        contactSort: contactSort.value,
+        contactBirthdays: contactBirthdays.value,
+        birthdaysColor: birthdaysColor.value,
       } satisfies Layout),
   )
 
@@ -192,6 +218,7 @@ export const useUiStore = defineStore('ui', () => {
 
   return {
     newContactRequest,
+    colorsOpen,
     currentDate,
     view,
     weekStart,
@@ -201,6 +228,9 @@ export const useUiStore = defineStore('ui', () => {
     tasksPanelList,
     theme,
     chipStyle,
+    contactSort,
+    contactBirthdays,
+    birthdaysColor,
     miniDots,
     defaultCalendar,
     defaultTaskList,

@@ -86,6 +86,8 @@ export interface CalDavClient {
   updateVCard(card: VCardObject, vcf: string): Promise<VCardObject>
   /** DELETE with `If-Match: <etag>`. */
   deleteVCard(card: VCardObject): Promise<void>
+  /** Sets a collection's color (Apple `calendar-color`, read by most clients) with PROPPATCH. */
+  setCollectionColor(collection: Collection, color: string): Promise<void>
   /** Current `getctag` of every supported collection, keyed by collection URL. */
   fetchCtags(): Promise<Map<string, string>>
   /** VEVENTs overlapping the range. Recurrences are NOT expanded; the client does that. */
@@ -311,6 +313,30 @@ export function createCalDavClient(options: CalDavClientOptions): CalDavClient {
         .map((r) => toCollection(r, serverUrl))
         .filter((c): c is Collection => c !== null)
         .sort((a, b) => a.displayName.localeCompare(b.displayName))
+    },
+
+    async setCollectionColor(collection, color) {
+      const responses = await davRequest({
+        url: collection.url,
+        init: {
+          method: 'PROPPATCH',
+          namespace: 'd',
+          body: {
+            propertyupdate: {
+              _attributes: { 'xmlns:d': 'DAV:', 'xmlns:ical': 'http://apple.com/ns/ical/' },
+              set: { prop: { 'ical:calendar-color': color } },
+            },
+          },
+        },
+        fetch: davFetch,
+      })
+      const failed = responses.find((r) => !r.ok || (r.status ?? 200) >= 400)
+      if (failed)
+        throw new DavError(
+          `Could not set the color: ${failed.status} ${failed.statusText}`,
+          failed.status ?? 500,
+          collection.url,
+        )
     },
 
     async fetchCtags() {

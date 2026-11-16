@@ -158,6 +158,11 @@ export class FakeClient implements CalDavClient {
     return this.collections.map((c) => ({ ...c, ctag: `"${c.url}:${this.ctags.get(c.url) ?? 0}"` }))
   })
 
+  setCollectionColor = vi.fn<CalDavClient['setCollectionColor']>(async (collection, color) => {
+    this.calls.push(`setCollectionColor:${collection.url}`)
+    this.collections = this.collections.map((c) => (c.url === collection.url ? { ...c, color } : c))
+  })
+
   fetchCtags = vi.fn<CalDavClient['fetchCtags']>(async () => {
     this.calls.push('fetchCtags')
     return new Map(this.collections.map((c) => [c.url, `"${c.url}:${this.ctags.get(c.url) ?? 0}"`]))

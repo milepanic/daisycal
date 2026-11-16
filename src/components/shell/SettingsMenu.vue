@@ -10,17 +10,24 @@ import { switchTheme } from '@/lib/themeSwitch'
 import { formatTime } from '@/lib/format'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useSyncStore } from '@/stores/sync'
-import { type ChipStyle, type Theme, useUiStore } from '@/stores/ui'
+import { type ChipStyle, type ContactSort, type Theme, useUiStore } from '@/stores/ui'
 import { useWeatherStore } from '@/stores/weather'
 import ColorSelect from '@/components/ui/ColorSelect.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import IconButton from '@/components/ui/IconButton.vue'
-import { useCalendarsStore } from '@/stores/calendars'
+import { FALLBACK_COLOR, useCalendarsStore } from '@/stores/calendars'
 
 const ui = useUiStore()
 const weather = useWeatherStore()
 const notifications = useNotificationsStore()
 const calendars = useCalendarsStore()
+
+/** The first few collection colors, next to the Colors button. */
+const colorStrip = computed(() => [...calendars.calendars, ...calendars.taskLists].slice(0, 8))
+function openColors() {
+  open.value = false
+  ui.colorsOpen = true
+}
 const sync = useSyncStore()
 
 /** Refresh (moved here from the header): checks the server for changes right away. */
@@ -79,6 +86,10 @@ const THEMES: { value: Theme; label: string }[] = [
 const STYLES: { value: ChipStyle; label: string }[] = [
   { value: 'solid', label: 'Solid' },
   { value: 'tinted', label: 'Tinted' },
+]
+const CONTACT_SORTS: { value: ContactSort; label: string }[] = [
+  { value: 'first', label: 'First name' },
+  { value: 'last', label: 'Last name' },
 ]
 const WEEK_STARTS: { value: WeekStart; label: string }[] = [
   { value: 1, label: 'Monday' },
@@ -215,6 +226,28 @@ const segment = (active: boolean) =>
           </div>
 
           <div>
+            <dt class="mb-1.5 text-xs font-semibold text-gray-500">Colors</dt>
+            <dd class="flex items-center justify-between gap-x-3">
+              <span class="flex -space-x-1" aria-hidden="true">
+                <span
+                  v-for="c in colorStrip"
+                  :key="c.url"
+                  class="size-4 rounded-full ring-2 ring-white"
+                  :style="{ backgroundColor: c.color ?? FALLBACK_COLOR }"
+                ></span>
+              </span>
+              <button
+                type="button"
+                class="btn btn-sm btn-secondary"
+                data-testid="setting-colors"
+                @click="openColors"
+              >
+                Themes & colors
+              </button>
+            </dd>
+          </div>
+
+          <div>
             <dt class="mb-1.5 text-xs font-semibold text-gray-500">Week starts on</dt>
             <dd class="inline-flex rounded-full ring-1 ring-gray-300" data-testid="setting-week">
               <button
@@ -226,6 +259,25 @@ const segment = (active: boolean) =>
                 @click="ui.weekStart = w.value"
               >
                 {{ w.label }}
+              </button>
+            </dd>
+          </div>
+
+          <div>
+            <dt class="mb-1.5 text-xs font-semibold text-gray-500">Sort contacts by</dt>
+            <dd
+              class="inline-flex rounded-full ring-1 ring-gray-300"
+              data-testid="setting-contact-sort"
+            >
+              <button
+                v-for="o in CONTACT_SORTS"
+                :key="o.value"
+                type="button"
+                :class="segment(ui.contactSort === o.value)"
+                :aria-pressed="ui.contactSort === o.value"
+                @click="ui.contactSort = o.value"
+              >
+                {{ o.label }}
               </button>
             </dd>
           </div>
@@ -256,6 +308,27 @@ const segment = (active: boolean) =>
           </div>
 
           <div class="space-y-3 border-t border-gray-100 pt-4">
+            <label class="flex cursor-pointer items-center justify-between gap-x-4">
+              <span>
+                <span class="block font-medium text-gray-900">Contact birthdays</span>
+                <span class="block text-xs text-gray-500">Birthdays from your contacts as a calendar</span>
+              </span>
+              <button
+                type="button"
+                role="switch"
+                :aria-checked="ui.contactBirthdays"
+                class="relative h-5 w-9 shrink-0 rounded-full transition-colors duration-150"
+                :class="ui.contactBirthdays ? 'bg-pill' : 'bg-gray-300'"
+                data-testid="setting-contact-birthdays"
+                @click="ui.contactBirthdays = !ui.contactBirthdays"
+              >
+                <span class="sr-only">Contact birthdays</span>
+                <span
+                  class="absolute top-0.5 left-0.5 size-4 rounded-full bg-on-color shadow-sm transition-transform duration-150"
+                  :class="ui.contactBirthdays ? 'translate-x-4' : ''"
+                ></span>
+              </button>
+            </label>
             <label class="flex cursor-pointer items-center justify-between gap-x-4">
               <span>
                 <span class="block font-medium text-gray-900">Weather</span>

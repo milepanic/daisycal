@@ -138,10 +138,6 @@ html.chips-tinted .chip-fill [data-testid='task-dot'] svg {
   color: var(--color-white);
 }
 
-/* Solid chips: a 1px edge in a deeper shade, so same-colored chips that touch stay apart. */
-html:not(.chips-tinted) .chip-fill {
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chip-color) 78%, black);
-}
 /* Tentative events: diagonal stripes over the fill (Google Calendar). */
 .chip-fill.chip-tentative {
   background-image: repeating-linear-gradient(
@@ -268,7 +264,7 @@ html.dark.chips-tinted .collection-dot[data-on] .dot-check {
 
 /* Selected chip (events and tasks in the grids): a gap in the surface color, a thin ring in
    the chip's own color (--chip-color) and a soft colored lift. */
-html .chip-selectable[data-selected] {
+.chip-selectable[data-selected] {
   box-shadow:
     0 0 0 2px var(--color-white),
     0 0 0 3.5px var(--chip-color),
@@ -283,7 +279,7 @@ html .chip-selectable[data-selected] {
  */
 @layer components {
   .btn {
-    @apply inline-flex h-8 shrink-0 cursor-pointer items-center justify-center gap-x-1.5 rounded-lg px-3 text-[13px] font-semibold whitespace-nowrap transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-default disabled:opacity-60;
+    @apply inline-flex h-8 shrink-0 cursor-pointer items-center justify-center gap-x-1.5 rounded-lg px-3 text-[13px] font-semibold whitespace-nowrap transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-60;
   }
   .btn-sm {
     @apply h-7 px-2.5 text-xs;

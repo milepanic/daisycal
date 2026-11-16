@@ -858,7 +858,8 @@ function onGridKeydown(e: KeyboardEvent) {
   >
     <div :class="days.length > 1 ? 'min-w-[640px]' : 'min-w-[320px]'">
       <!-- Day headers + all-day events (sticky) -->
-      <div ref="header" class="sticky top-0 z-20 border-b border-gray-200 bg-white pb-0.5">
+      <!-- Above the chips, the now line and drag previews (z-40) as the grid scrolls under it. -->
+      <div ref="header" class="sticky top-0 z-[45] border-b border-gray-200 bg-white pb-0.5">
         <div class="grid" :style="{ gridTemplateColumns: gridCols }">
           <div></div>
           <div v-for="c in columns" :key="c.key" class="flex flex-col items-center py-2">

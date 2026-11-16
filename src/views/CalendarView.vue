@@ -13,7 +13,7 @@ import { useNotificationsStore } from '@/stores/notifications'
 import { useEventsStore } from '@/stores/events'
 import { useTasksStore } from '@/stores/tasks'
 import { useBirthdaysStore } from '@/stores/birthdays'
-import { BIRTHDAYS_COLOR, BIRTHDAYS_NAME, BIRTHDAYS_URL } from '@/lib/birthdays'
+import { BIRTHDAYS_NAME, BIRTHDAYS_URL } from '@/lib/birthdays'
 import { useWeatherStore } from '@/stores/weather'
 import { type Anchor, useUiStore } from '@/stores/ui'
 import AgendaView from '@/components/calendar/AgendaView.vue'
@@ -107,7 +107,7 @@ const selectedInstance = computed(() =>
 )
 
 const colorFor = (url: string) =>
-  url === BIRTHDAYS_URL ? BIRTHDAYS_COLOR : calendars.colorFor(url)
+  url === BIRTHDAYS_URL ? birthdays.color : calendars.colorFor(url)
 const nameFor = (url: string) =>
   url === BIRTHDAYS_URL ? BIRTHDAYS_NAME : (calendars.get(url)?.displayName ?? '')
 

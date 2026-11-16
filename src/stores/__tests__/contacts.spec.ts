@@ -6,6 +6,7 @@ import { useAuthStore } from '../auth'
 import { useCalendarsStore } from '../calendars'
 import { useContactsStore } from '../contacts'
 import { useHistoryStore } from '../history'
+import { useUiStore } from '../ui'
 import { FakeClient, SERVER } from './fakeClient'
 
 const BOOK = `${SERVER}daisy/contacts/`
@@ -34,10 +35,13 @@ beforeEach(async () => {
 })
 
 describe('contacts store', () => {
-  it('loads books and sorts by family name', async () => {
+  it('loads books and sorts by name as shown', async () => {
     const contacts = useContactsStore()
     await contacts.ensureLoaded()
     expect(contacts.books.map((b) => b.url)).toEqual([BOOK])
+    expect(contacts.sorted.map((c) => c.fullName)).toEqual(['Ana Kovač', 'Zoran Babić'])
+    // Settings: by last name.
+    useUiStore().contactSort = 'last'
     expect(contacts.sorted.map((c) => c.fullName)).toEqual(['Zoran Babić', 'Ana Kovač'])
     expect(contacts.categories).toEqual(['Family'])
     // A hidden book hides its contacts.

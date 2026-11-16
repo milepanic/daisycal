@@ -6,6 +6,8 @@
  * The marker is the checkbox: a click on it (only there) completes / reopens the task, with the
  * sound and an Undo toast; the rest of the chip opens the details and starts drags.
  */
+import { computed } from 'vue'
+
 import type { Task } from '@/api/ical'
 import { textOn } from '@/lib/color'
 import { formatTime } from '@/lib/format'
@@ -27,6 +29,15 @@ const props = defineProps<{
   small?: boolean
 }>()
 const emit = defineEmits<{ select: [task: Task, el: HTMLElement] }>()
+
+/** Hover text: the title and the due time (and how long, when set). */
+const tooltip = computed(() => {
+  const t = props.task
+  const name = t.summary || '(No title)'
+  if (!t.due || t.dueAllDay) return name
+  const end = t.duration ? `–${formatTime(new Date(t.due.getTime() + t.duration * 60_000))}` : ''
+  return `${name}\n${formatTime(t.due)}${end}`
+})
 
 async function toggleDone() {
   // Stores fetched on click: the chip is also rendered where no store is needed (tests, previews).
@@ -53,7 +64,7 @@ function onClick(e: MouseEvent) {
   <!-- Month view: gray row. Time grid: a block in the list color, like an event. -->
   <button
     type="button"
-    :title="task.summary"
+    :title="tooltip"
     :data-selected="selected || undefined"
     class="flex w-full min-w-0 cursor-pointer overflow-hidden text-left focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gray-900 chip-selectable"
     :class="[

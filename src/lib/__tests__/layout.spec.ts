@@ -67,6 +67,7 @@ function task(due: Date | null, extra: Partial<Task> = {}): Task {
 const d = (day: number, h = 0, m = 0) => new Date(2026, 9, day, h, m)
 /** Grid pixels for a number of minutes. */
 const px = (minutes: number) => (minutes * HOUR_PX) / 60
+const MIN_EVENT_PX_TEST = 16
 
 describe('layoutDay', () => {
   it('positions by time with a minimum height and compact flag', () => {
@@ -96,6 +97,18 @@ describe('layoutDay', () => {
     // Separate clusters get full width again.
     const later = layoutDay([a, ev(d(5, 14), d(5, 15))], d(5))
     expect(later[1]).toMatchObject({ left: 0, width: 1 })
+  })
+
+  it('puts back-to-back events one under the other, even a short one drawn taller', () => {
+    // 15 minutes is 12px, drawn 16px tall; the next one starts right at its end.
+    const [standup, next] = layoutDay([ev(d(5, 9, 30), d(5, 9, 45)), ev(d(5, 9, 45), d(5, 10, 30))], d(5))
+    // Drawn only as tall as it lasts, so the 2px gap under it stays.
+    expect(standup).toMatchObject({ left: 0, width: 1, height: px(15) })
+    // Alone it keeps the minimum height.
+    expect(layoutDay([ev(d(5, 9, 30), d(5, 9, 45))], d(5))[0]).toMatchObject({
+      height: MIN_EVENT_PX_TEST,
+    })
+    expect(next).toMatchObject({ left: 0, width: 1, depth: 0 })
   })
 
   it('clips events crossing midnight and excludes all-day rows', () => {

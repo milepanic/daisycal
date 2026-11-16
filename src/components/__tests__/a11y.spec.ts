@@ -37,12 +37,15 @@ describe('keyboard navigation in the time grid', () => {
       props: { days: eachDay(WEEK), instances, tasks: [], colorFor: () => '#225688' },
       attachTo: document.body,
     })
-    const chip = (title: string) => wrapper.find(`button[title="${title}"]`)
+    // A chip's hover text is its title, then the time on the next line.
+    const titleOf = (el: Element | null) => el?.getAttribute('title')?.split('\n')[0]
+    const chip = (title: string) =>
+      wrapper.findAll('button[title]').find((b) => titleOf(b.element) === title)!
     ;(chip('Monday 9').element as HTMLElement).focus()
     await chip('Monday 9').trigger('keydown', { key: 'ArrowDown' })
-    expect(document.activeElement?.getAttribute('title')).toBe('Monday 14')
+    expect(titleOf(document.activeElement)).toBe('Monday 14')
     await chip('Monday 14').trigger('keydown', { key: 'ArrowRight' })
-    expect(document.activeElement?.getAttribute('title')).toBe('Tuesday 13')
+    expect(titleOf(document.activeElement)).toBe('Tuesday 13')
     await chip('Tuesday 13').trigger('keydown', { key: 'ArrowRight' })
     // Wednesday has no chips: the column itself takes focus and Enter creates at 09:00.
     const wed = wrapper.find('[data-day="2026-10-14"]')

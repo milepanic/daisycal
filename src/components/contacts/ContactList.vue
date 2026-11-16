@@ -6,6 +6,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 
 import type { ContactEntry } from '@/stores/contacts'
+import { useUiStore } from '@/stores/ui'
 import { displayName, sortKey } from '@/lib/vcard'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
@@ -20,6 +21,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ select: [url: string]; create: []; import: [] }>()
 
+const ui = useUiStore()
 const query = ref('')
 const label = ref<string | null>(null)
 
@@ -62,7 +64,7 @@ const filtered = computed(() => {
 const groups = computed(() => {
   const out: { letter: string; contacts: ContactEntry[] }[] = []
   for (const c of filtered.value) {
-    const first = sortKey(c).charAt(0).toLocaleUpperCase()
+    const first = sortKey(c, ui.contactSort).charAt(0).toLocaleUpperCase()
     const letter = /\p{L}/u.test(first) ? first : '#'
     const last = out[out.length - 1]
     if (last?.letter === letter) last.contacts.push(c)

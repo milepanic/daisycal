@@ -22,6 +22,7 @@ import { useAuthStore } from './auth'
 import { useBirthdaysStore } from './birthdays'
 import { useCalendarsStore } from './calendars'
 import { useHistoryStore } from './history'
+import { useUiStore } from './ui'
 
 /** A contact and where it lives. */
 export interface ContactEntry extends Contact {
@@ -55,11 +56,11 @@ export const useContactsStore = defineStore('contacts', () => {
   const status = ref<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const error = ref<string | null>(null)
 
-  /** Visible books' contacts, sorted by name (family name first). */
+  /** Visible books' contacts, sorted by first or last name (Settings). */
   const sorted = computed(() =>
     contacts.value
       .filter((c) => calendars.isVisible(c.bookUrl))
-      .map((c) => ({ c, key: sortKey(c) }))
+      .map((c) => ({ c, key: sortKey(c, useUiStore().contactSort) }))
       .sort((a, b) => a.key.localeCompare(b.key))
       .map(({ c }) => c),
   )

@@ -61,3 +61,27 @@ describe('calendars store', () => {
     expect(store.error).toBe('boom')
   })
 })
+
+describe('collection colors', () => {
+  it('writes only the changed colors and undoes them in one step', async () => {
+    const { useHistoryStore } = await import('../history')
+    const store = useCalendarsStore()
+    await store.load()
+    const before = store.colorFor(PERSONAL.url)
+    const n = await store.setColors(
+      new Map([
+        [WORK.url, '#225688'], // unchanged: skipped
+        [PERSONAL.url, '#0f9488'],
+        [MY_TASKS.url, '#c2620e'],
+      ]),
+    )
+    expect(n).toBe(2)
+    expect(client.setCollectionColor).toHaveBeenCalledTimes(2)
+    expect(store.colorFor(PERSONAL.url)).toBe('#0f9488')
+    expect(client.collections.find((c) => c.url === MY_TASKS.url)!.color).toBe('#c2620e')
+
+    await useHistoryStore().undo()
+    expect(store.colorFor(PERSONAL.url)).toBe(before)
+    expect(client.collections.find((c) => c.url === PERSONAL.url)!.color).toBe(before)
+  })
+})

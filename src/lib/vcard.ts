@@ -296,14 +296,20 @@ export function displayName(c: ContactFields): string {
   )
 }
 
-/** Sort key: family name first when there is one (like most address books). */
-export function sortKey(c: ContactFields): string {
-  const key = c.familyName.trim()
-    ? `${c.familyName} ${c.givenName}`
-    : c.givenName.trim()
-      ? c.givenName
+/**
+ * Sort key, accents ignored: the name as shown (first name first), or by last name ("Babić
+ * Jelena"; contacts without one, like a business, go by the name as shown).
+ */
+export function sortKey(c: ContactFields, by: 'first' | 'last' = 'first'): string {
+  const name =
+    by === 'last' && c.familyName.trim()
+      ? `${c.familyName.trim()} ${c.givenName.trim()}`
       : displayName(c)
-  return key.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase()
+  return name
+    .replace(/^(dr|mr|mrs|ms|prof)\.?\s+/i, '')
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLocaleLowerCase()
 }
 
 /** Up to two initials for the avatar. */

@@ -4,7 +4,8 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 import { ConflictError } from '@/api/errors'
 import { type EditScope, type EventInstance, describeRepeat } from '@/api/ical'
-import { BIRTHDAYS_COLOR, BIRTHDAYS_NAME, BIRTHDAYS_URL } from '@/lib/birthdays'
+import { BIRTHDAYS_NAME, BIRTHDAYS_URL } from '@/lib/birthdays'
+import { useBirthdaysStore } from '@/stores/birthdays'
 import { isSameDay } from '@/lib/dates'
 import { dayTitle, formatShortDateTime, formatTime } from '@/lib/format'
 import { useFocusTrap } from '@/composables/useFocusTrap'
@@ -28,7 +29,7 @@ const error = ref<string | null>(null)
 
 const isBirthday = computed(() => props.instance.collectionUrl === BIRTHDAYS_URL)
 const color = computed(() =>
-  isBirthday.value ? BIRTHDAYS_COLOR : calendars.colorFor(props.instance.collectionUrl),
+  isBirthday.value ? useBirthdaysStore().color : calendars.colorFor(props.instance.collectionUrl),
 )
 const calendarName = computed(() =>
   isBirthday.value
