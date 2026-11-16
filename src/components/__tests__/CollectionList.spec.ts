@@ -20,9 +20,9 @@ describe('CollectionList', () => {
     expect(rows[0]!.attributes('aria-checked')).toBe('true')
     expect(rows[1]!.attributes('aria-checked')).toBe('false')
     expect(wrapper.find('li').attributes('style')).toContain('--dot: #225688')
-    expect(wrapper.findAll('[data-testid="collection-dot"]')[1]!.classes()).toContain(
-      'bg-transparent',
-    )
+    const circles = wrapper.findAll('[data-testid="collection-dot"] circle')
+    expect(circles[0]!.attributes('fill')).toBe('var(--dot)')
+    expect(circles[1]!.attributes('fill')).toBe('none')
     await rows[1]!.trigger('click')
     expect(wrapper.emitted('toggle')![0]).toEqual([PERSONAL.url, true])
   })

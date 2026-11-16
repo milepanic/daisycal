@@ -64,24 +64,35 @@ function showOnly(url: string) {
           data-testid="collection-toggle"
           @click="emit('toggle', c.url, !isVisible(c.url))"
         >
-          <span
-            class="collection-dot grid size-3 shrink-0 place-items-center rounded-full border-[1.5px] border-(--dot) transition-[background-color,border-color,opacity] duration-150"
-            :class="isVisible(c.url) ? 'bg-(--dot)' : 'bg-transparent opacity-60'"
+          <!-- An SVG circle: a CSS border of 1.5px rounds unevenly at some display scales. -->
+          <svg
+            class="collection-dot size-3 shrink-0 overflow-visible transition-opacity duration-150"
+            :class="isVisible(c.url) ? '' : 'opacity-60'"
+            viewBox="0 0 12 12"
             :data-on="isVisible(c.url) || undefined"
             aria-hidden="true"
             data-testid="collection-dot"
           >
-            <svg
+            <circle
+              class="dot-circle"
+              cx="6"
+              cy="6"
+              r="5.25"
+              stroke-width="1.5"
+              :fill="isVisible(c.url) ? 'var(--dot)' : 'none'"
+              stroke="var(--dot)"
+            />
+            <path
               v-if="tasks && isVisible(c.url)"
-              class="size-2 text-on-color"
+              class="dot-check"
+              d="M3.6 6.3 5.2 7.9 8.4 4.4"
               fill="none"
-              stroke="currentColor"
-              stroke-width="2.25"
-              viewBox="0 0 14 14"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5 5.75 10.25 11 4" />
-            </svg>
-          </span>
+              stroke="var(--color-on-color)"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
           <span class="truncate">{{ c.displayName }}</span>
         </button>
         <button

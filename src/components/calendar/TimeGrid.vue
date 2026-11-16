@@ -1035,7 +1035,7 @@ function onGridKeydown(e: KeyboardEvent) {
             class="absolute transition-opacity duration-150"
             :class="[
               // A chip next to or over another one gets a white edge to set it apart.
-              p.left > 0 || p.depth > 0 ? 'rounded-sm ring-1 ring-white' : '',
+              p.left > 0 || p.depth > 0 ? 'rounded-md ring-1 ring-white' : '',
               draggingKey === (p.item.kind === 'event' ? itemKey(p.item) : p.item.task.objectUrl)
                 ? 'opacity-40'
                 : '',
@@ -1060,7 +1060,7 @@ function onGridKeydown(e: KeyboardEvent) {
               <!-- Travel time (iPhone): a pale gray box with dashed sides running into the event. -->
               <div
                 v-if="p.travelPx > 0"
-                class="travel-box pointer-events-none absolute inset-x-0 top-0 flex items-start gap-x-1 overflow-hidden rounded-t-sm px-2 pt-0.5 text-[10px] leading-tight font-medium text-gray-500"
+                class="travel-box pointer-events-none absolute inset-x-0 top-0 flex items-start gap-x-1 overflow-hidden rounded-t-md px-2 pt-0.5 text-[10px] leading-tight font-medium text-gray-500"
                 :style="{ height: `${p.travelPx}px` }"
                 data-testid="travel-time"
               >
@@ -1119,7 +1119,7 @@ function onGridKeydown(e: KeyboardEvent) {
           </div>
           <div
             v-if="dragPreview && dragPreview.dayKey === c.key"
-            class="chip-fill pointer-events-none absolute inset-x-0.5 z-40 overflow-hidden rounded-sm text-xs ring-2 ring-white"
+            class="chip-fill pointer-events-none absolute inset-x-0.5 z-40 overflow-hidden rounded-md text-xs ring-2 ring-white"
             :class="
               dragPreview.task
                 ? [
@@ -1166,7 +1166,7 @@ function onGridKeydown(e: KeyboardEvent) {
           </div>
           <div
             v-if="draftPlacement(c.day)"
-            class="chip-fill pointer-events-none absolute inset-x-0.5 z-40 overflow-hidden rounded-sm text-xs ring-2 ring-white"
+            class="chip-fill pointer-events-none absolute inset-x-0.5 z-40 overflow-hidden rounded-md text-xs ring-2 ring-white"
             :class="
               draft?.kind === 'task'
                 ? 'flex items-center gap-x-1 pr-1.5 pl-1 text-(--chip-fg)'
@@ -1205,7 +1205,7 @@ function onGridKeydown(e: KeyboardEvent) {
             <div
               v-for="(b, bi) in skeletonBlocks(columns.indexOf(c))"
               :key="bi"
-              class="skeleton pointer-events-none absolute inset-x-1 rounded-sm"
+              class="skeleton pointer-events-none absolute inset-x-1 rounded-md"
               :style="{ top: `${b.start * PX_PER_MIN}px`, height: `${b.length * PX_PER_MIN}px` }"
               data-testid="grid-skeleton"
             ></div>
