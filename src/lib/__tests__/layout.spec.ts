@@ -82,11 +82,17 @@ describe('layoutDay', () => {
     const placed = Object.fromEntries(
       layoutDay([a, long, b], d(5)).map((p) => [p.instance.summary, p]),
     )
-    // Side by side: "long" reaches under "a", which stops short of the right edge.
+    // A long event beside a shorter one reaches under it; the short one stops short of the edge.
     expect(placed.long).toMatchObject({ left: 0, width: 0.85, shrinkPx: 0, stack: 0 })
     expect(placed.a).toMatchObject({ left: 0.5, width: 0.5, shrinkPx: SIDE_END_GAP_PX, stack: 1 })
     // "b" starts below the title of "long": drawn over it, indented.
     expect(placed.b).toMatchObject({ left: 0, width: 1, offsetPx: CASCADE_INSET_PX, depth: 1 })
+    // Two short events (or two equally long ones) split the width evenly, up to the edge.
+    const [x, y] = layoutDay([ev(d(5, 9), d(5, 10)), ev(d(5, 9), d(5, 9, 30))], d(5))
+    expect(x).toMatchObject({ left: 0, width: 0.5, shrinkPx: 0 })
+    expect(y).toMatchObject({ left: 0.5, width: 0.5, shrinkPx: 0 })
+    const [l1, l2] = layoutDay([ev(d(5, 9), d(5, 12)), ev(d(5, 9), d(5, 12))], d(5))
+    expect([l1!.width, l2!.width]).toEqual([0.5, 0.5])
     // Separate clusters get full width again.
     const later = layoutDay([a, ev(d(5, 14), d(5, 15))], d(5))
     expect(later[1]).toMatchObject({ left: 0, width: 1 })
@@ -125,7 +131,7 @@ describe('layoutDay with travel time', () => {
       left: 0.5,
       width: 0.5,
     })
-    expect(placed.before).toMatchObject({ travelPx: 0, left: 0, width: 0.85 })
+    expect(placed.before).toMatchObject({ travelPx: 0, left: 0, width: 0.5 })
   })
 
   it('clips travel time at midnight without marking the event as continued', () => {

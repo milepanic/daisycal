@@ -107,6 +107,7 @@ describe('TimeGrid', () => {
     const review = chips.find((c) => c.text().includes('Design review'))!
     expect(review.attributes('style')).toContain(`top: ${px(600)}px`)
     expect(review.attributes('style')).toContain(`height: ${px(90) - 2}px`)
+    // 90 minutes beside the 10-minute standup: the review reaches under it.
     expect(review.attributes('style')).toContain('width: calc(85% - 4px)')
     const standup = chips.find((c) => c.text().includes('Daily Standup'))!
     expect(standup.attributes('style')).toContain('height: 14px')
@@ -165,7 +166,7 @@ describe('TimeGrid', () => {
     expect(call.attributes('style')).toContain(`top: ${px(630)}px`)
     expect(call.attributes('style')).toContain(`height: ${px(30) - 2}px`)
     expect(call.attributes('style')).toContain('left: calc(50% + 2px)')
-    // Over the review's right part (which reaches under it), stopping a little short of the edge.
+    // Over the review's right part (the long review reaches under it), a little short of the edge.
     expect(call.attributes('style')).toContain('width: calc(50% - 8px)')
     expect(review.attributes('style')).toContain('width: calc(85% - 4px)')
     // Starting below the review's title instead (11:00), it is drawn over the review, indented.

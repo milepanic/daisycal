@@ -98,11 +98,10 @@ describe('app shell', () => {
 
     // Hide Personal in the sidebar → Gym disappears without a refetch.
     const fetches = client.fetchEvents.mock.calls.length
-    const personalBox = wrapper
-      .findAll('aside#sidebar input[type="checkbox"]')
-      .find((b) => b.element.parentElement?.parentElement?.textContent?.includes('Personal'))!
-    ;(personalBox.element as HTMLInputElement).checked = false
-    await personalBox.trigger('change')
+    const personal = wrapper
+      .findAll('aside#sidebar [data-testid="collection-toggle"]')
+      .find((b) => b.text() === 'Personal')!
+    await personal.trigger('click')
     expect(wrapper.find('[data-testid="time-grid"]').text()).not.toContain('Gym')
     expect(client.fetchEvents).toHaveBeenCalledTimes(fetches)
 

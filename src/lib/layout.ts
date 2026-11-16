@@ -70,9 +70,11 @@ export const EVENT_HEADER_PX = 36
 export const TASK_HEADER_PX = 20
 /** How far a chip laid over an earlier one is indented, so the one below stays visible. */
 export const CASCADE_INSET_PX = 8
-/** Side by side, a chip reaches this far into the next column, under the chip there. */
+/** Beside a task or a shorter item, a chip reaches this far into its column, under it. */
 const SIDE_OVERLAP = 0.7
-/** Side by side, the last chip stops this short of the right edge (Google Calendar). */
+/** Longer than this (an hour), a chip reaches under shorter ones beside it. */
+const SIDE_LONG_PX = HOUR_PX
+/** An item a chip reaches under, last in its row, stops this short of the right edge. */
 export const SIDE_END_GAP_PX = 4
 
 /** Anything laid out in a day column: an event, or a task from its due time on. */
@@ -84,6 +86,8 @@ export interface TimedItem<T> {
   contentStart?: Date
   /** Height of the title area at the top of a tall chip (default EVENT_HEADER_PX). */
   headerPx?: number
+  /** Tasks beside events overlap them a little instead of splitting the width evenly. */
+  isTask?: boolean
 }
 
 export interface TimedLayout<T> {
@@ -108,9 +112,9 @@ export interface TimedLayout<T> {
 /**
  * Places the timed items of one day the way Google Calendar does. Nothing may cover the title
  * and time at the top of a chip:
- *  - items starting within each other's title area are put side by side: each starts at its
- *    column, reaches a bit under the next one (drawn over it, so its title stays visible),
- *    and the last stops short of the right edge, leaving room to click the day;
+ *  - items starting within each other's title area are put side by side, splitting the width;
+ *    next to a task, or a long chip next to shorter ones, the chip reaches a bit under them
+ *    (drawn over it, so its title stays visible), and those stop short of the right edge;
  *  - an item starting below the title of an earlier one is drawn over its lower part instead,
  *    indented by CASCADE_INSET_PX, across the width from that item to the right edge.
  */
@@ -136,6 +140,7 @@ export function layoutTimed<T>(entries: TimedItem<T>[], day: Date): TimedLayout<
         height,
         bottom,
         headerEnd: contentTop + header,
+        isTask: e.isTask ?? false,
         continuesBefore: e.start < dayStart,
         continuesAfter: e.end > dayEnd,
       }
@@ -172,7 +177,7 @@ export function layoutTimed<T>(entries: TimedItem<T>[], day: Date): TimedLayout<
       colOf.set(item, col)
     }
     const n = columns.length
-    for (const item of group) {
+    const stretch = (item: (typeof group)[number]) => {
       const col = colOf.get(item)!
       let span = 1
       while (col + span < n) {
@@ -183,10 +188,29 @@ export function layoutTimed<T>(entries: TimedItem<T>[], day: Date): TimedLayout<
         if (blocked) break
         span++
       }
+      // What sits right next to the chip, in the column where its stretch stopped. A chip
+      // reaches under it when that is all tasks, or shorter items beside a long chip; chips of
+      // a kind (two short events, two long ones) split the width evenly.
+      const next = group.filter(
+        (o) => colOf.get(o) === col + span && o.top < item.bottom && o.bottom > item.top,
+      )
+      const long = item.height > SIDE_LONG_PX
+      const reaches =
+        next.length > 0 && next.every((o) => o.isTask || (long && o.bottom < item.bottom))
+      return { col, span, reaches, next }
+    }
+    const layouts = new Map(group.map((item) => [item, stretch(item)]))
+    // Chips something reaches under stop short of the right edge, when last in the row.
+    const reachedOver = new Set(
+      [...layouts.values()].filter((l) => l.reaches).flatMap((l) => l.next),
+    )
+    for (const item of group) {
+      const { col, span, reaches } = layouts.get(item)!
       const from = col / n
       const last = col + span === n
-      const share = last ? span / n : Math.min((span + SIDE_OVERLAP) / n, 1 - from)
+      const share = reaches ? Math.min((span + SIDE_OVERLAP) / n, 1 - from) : span / n
       const left = regionLeft + from * (1 - regionLeft)
+      const endGap = last && reachedOver.has(item) ? SIDE_END_GAP_PX : 0
       out.push({
         item: item.item,
         top: item.top,
@@ -194,7 +218,7 @@ export function layoutTimed<T>(entries: TimedItem<T>[], day: Date): TimedLayout<
         left,
         width: share * (1 - regionLeft),
         offsetPx: inset * (1 - from),
-        shrinkPx: inset * share + (last && n > 1 ? SIDE_END_GAP_PX : 0),
+        shrinkPx: inset * share + endGap,
         depth,
         stack: depth * 4 + Math.min(col, 3),
         continuesBefore: item.continuesBefore,
@@ -260,7 +284,7 @@ export function layoutDayWithTasks<T extends Task>(
   const placed = layoutTimed<EventInstance | T>(
     [
       ...instances.filter((i) => !isAllDayRow(i)).map(eventEntry),
-      ...tasks.map((t) => ({ ...taskEntry(t), headerPx: TASK_HEADER_PX })),
+      ...tasks.map((t) => ({ ...taskEntry(t), headerPx: TASK_HEADER_PX, isTask: true })),
     ],
     day,
   )
