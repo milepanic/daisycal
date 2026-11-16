@@ -60,7 +60,8 @@ export function useKeyboardShortcuts() {
         if (onCalendar) void nav.next()
         break
       case 'c':
-        ui.openCreate({ kind: onCalendar ? 'event' : 'task' })
+        if (router.currentRoute.value.name === 'contacts') ui.newContactRequest++
+        else ui.openCreate({ kind: onCalendar ? 'event' : 'task' })
         break
       default: {
         const view = VIEW_KEYS[e.key]

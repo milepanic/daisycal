@@ -12,6 +12,7 @@ import { useCalendarsStore } from './calendars'
 import { useEventsStore } from './events'
 import { useTasksStore } from './tasks'
 import { useBirthdaysStore } from './birthdays'
+import { useContactsStore } from './contacts'
 
 export const DEFAULT_SYNC_INTERVAL_MS = 60_000
 
@@ -70,6 +71,8 @@ export const useSyncStore = defineStore('sync', () => {
     if (!watcher) return
     // Contacts have no ctag in the watch list; Refresh re-reads their birthdays too.
     void useBirthdaysStore().load()
+    const contacts = useContactsStore()
+    if (contacts.status !== 'idle') void contacts.load().catch(() => {})
     await watcher.check()
     lastSyncAt.value = new Date()
   }

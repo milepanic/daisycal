@@ -107,6 +107,8 @@ export const useUiStore = defineStore('ui', () => {
   const selection = ref<Selection | null>(null)
   /** The search dialog (Ctrl/Cmd+K). */
   const searchOpen = ref(false)
+  /** Bumped by the "c" shortcut on the Contacts page: opens the new contact form. */
+  const newContactRequest = ref(0)
 
   watch(
     [
@@ -189,6 +191,7 @@ export const useUiStore = defineStore('ui', () => {
   }
 
   return {
+    newContactRequest,
     currentDate,
     view,
     weekStart,

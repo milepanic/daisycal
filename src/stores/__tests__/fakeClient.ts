@@ -106,9 +106,47 @@ export class FakeClient implements CalDavClient {
     [...this.vcards.keys()].map((url) => ({ url, displayName: 'Contacts' })),
   )
 
-  fetchVCards = vi.fn<CalDavClient['fetchVCards']>(async (book) =>
-    (this.vcards.get(book.url) ?? []).map((data, i) => ({ url: `${book.url}${i}.vcf`, data })),
+  /** Address book contents as written: url → card (tests can also fill `vcards`). */
+  cards = new Map<string, { addressBookUrl: string; etag: string; data: string }>()
+
+  fetchVCards = vi.fn<CalDavClient['fetchVCards']>(async (book) => [
+    ...(this.vcards.get(book.url) ?? []).map((data, i) => ({
+      url: `${book.url}${i}.vcf`,
+      addressBookUrl: book.url,
+      etag: `"v${i}"`,
+      data,
+    })),
+    ...[...this.cards.entries()]
+      .filter(([, c]) => c.addressBookUrl === book.url)
+      .map(([url, c]) => ({ url, ...c })),
+  ])
+
+  restoreVCard = vi.fn<CalDavClient['restoreVCard']>(async (book, url, data) => {
+    if (this.cards.has(url)) throw new ConflictError(url)
+    const card = { addressBookUrl: book.url, etag: `"e${++this.etagCounter}"`, data }
+    this.cards.set(url, card)
+    return { url, ...card }
+  })
+
+  createVCard = vi.fn<CalDavClient['createVCard']>(async (book, data, uid) =>
+    this.restoreVCard(book, `${book.url}${encodeURIComponent(uid)}.vcf`, data),
   )
+
+  updateVCard = vi.fn<CalDavClient['updateVCard']>(async (card, data) => {
+    const current = this.cards.get(card.url)
+    if (!current) throw new NotFoundError(card.url)
+    if (current.etag !== card.etag) throw new ConflictError(card.url)
+    const next = { ...current, etag: `"e${++this.etagCounter}"`, data }
+    this.cards.set(card.url, next)
+    return { url: card.url, ...next }
+  })
+
+  deleteVCard = vi.fn<CalDavClient['deleteVCard']>(async (card) => {
+    const current = this.cards.get(card.url)
+    if (!current) throw new NotFoundError(card.url)
+    if (current.etag !== card.etag) throw new ConflictError(card.url)
+    this.cards.delete(card.url)
+  })
 
   login = vi.fn<CalDavClient['login']>(async () => ({
     principalUrl: `${SERVER}daisy/`,

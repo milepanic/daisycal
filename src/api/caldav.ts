@@ -40,7 +40,12 @@ export interface AddressBook {
 }
 
 export interface VCardObject {
+  /** Absolute URL of the `.vcf` resource. */
   url: string
+  /** Absolute URL of the address book it lives in. */
+  addressBookUrl: string
+  etag: string
+  /** Raw vCard text. */
   data: string
 }
 
@@ -69,10 +74,18 @@ export interface CalDavClient {
   login(): Promise<{ principalUrl: string; homeUrl: string }>
   /** All supported collections (Calendar and Tasks) under the calendar home. */
   listCollections(): Promise<Collection[]>
-  /** Address books (CardDAV) next to the calendars, read only for contact birthdays. */
+  /** Address books (CardDAV) next to the calendars: the Contacts page and contact birthdays. */
   listAddressBooks(): Promise<AddressBook[]>
   /** Every vCard of an address book. */
   fetchVCards(addressBook: AddressBook): Promise<VCardObject[]>
+  /** PUT with `If-None-Match: *` as `<uid>.vcf`. */
+  createVCard(addressBook: AddressBook, vcf: string, uid: string): Promise<VCardObject>
+  /** PUT with `If-None-Match: *` at a given URL (undoing a delete). */
+  restoreVCard(addressBook: AddressBook, url: string, vcf: string): Promise<VCardObject>
+  /** PUT with `If-Match: <etag>`; throws `ConflictError` when the server copy changed. */
+  updateVCard(card: VCardObject, vcf: string): Promise<VCardObject>
+  /** DELETE with `If-Match: <etag>`. */
+  deleteVCard(card: VCardObject): Promise<void>
   /** Current `getctag` of every supported collection, keyed by collection URL. */
   fetchCtags(): Promise<Map<string, string>>
   /** VEVENTs overlapping the range. Recurrences are NOT expanded; the client does that. */
@@ -238,9 +251,41 @@ export function createCalDavClient(options: CalDavClientOptions): CalDavClient {
       return responses
         .map((r) => ({
           url: r.href ? new URL(r.href, serverUrl).href : '',
+          addressBookUrl: addressBook.url,
+          etag: davText(r.props?.getetag) ?? '',
           data: davText(r.props?.addressData) ?? '',
         }))
         .filter((v) => v.url && v.data)
+    },
+
+    async createVCard(addressBook, vcf, uid) {
+      const url = new URL(`${encodeURIComponent(uid)}.vcf`, addressBook.url).href
+      return client.restoreVCard(addressBook, url, vcf)
+    },
+
+    async restoreVCard(addressBook, url, vcf) {
+      const res = await createObject({
+        url,
+        data: vcf,
+        headers: { 'content-type': 'text/vcard; charset=utf-8', 'If-None-Match': '*' },
+        fetch: davFetch,
+      })
+      return { url, addressBookUrl: addressBook.url, etag: res.headers.get('etag') ?? '', data: vcf }
+    },
+
+    async updateVCard(card, vcf) {
+      const res = await updateObject({
+        url: card.url,
+        data: vcf,
+        etag: card.etag,
+        headers: { 'content-type': 'text/vcard; charset=utf-8' },
+        fetch: davFetch,
+      })
+      return { ...card, etag: res.headers.get('etag') ?? '', data: vcf }
+    },
+
+    async deleteVCard(card) {
+      await deleteObject({ url: card.url, etag: card.etag, fetch: davFetch })
     },
 
     async login() {

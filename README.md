@@ -37,8 +37,10 @@ Local Radicale lives in `docker-compose.dev.yml`:
 
 `npm run seed` is idempotent: it deletes and recreates the seed collections. The seed includes
 recurring events with `EXDATE` and `RECURRENCE-ID`, all-day and multi-day events, a `VTIMEZONE`
-and `X-APPLE-*` properties as written by Apple Calendar/Reminders, plus one mixed collection and
-one address book that the app must ignore.
+and `X-APPLE-*` properties as written by Apple Calendar/Reminders, plus one mixed collection the
+app must ignore and a "Contacts" address book (`scripts/contacts.mjs`) for the Contacts page and
+the contact birthdays. `npm run seed:contacts` writes only those contacts, leaving every other
+collection and contact as it is.
 
 ### Scripts
 
@@ -52,6 +54,7 @@ one address book that the app must ignore.
 | `npm run format`     | Prettier over `src/`                        |
 | `npm run radicale:*` | `up`, `down`, `reset` the local Radicale    |
 | `npm run seed`       | Seed the local Radicale                     |
+| `npm run seed:contacts` | Add the test contacts only (no deletes)  |
 
 Note on `--legacy-peer-deps`: npm 10.9 fails with `Cannot read properties of null (reading 'edgesOut')`
 while resolving the ESLint 10 peer set. The flag works around it; nothing in the tree actually

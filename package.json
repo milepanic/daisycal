@@ -18,6 +18,7 @@
     "radicale:down": "docker compose -f docker-compose.dev.yml down",
     "radicale:reset": "docker compose -f docker-compose.dev.yml down -v && docker compose -f docker-compose.dev.yml up -d",
     "seed": "node scripts/seed.mjs",
+    "seed:contacts": "node scripts/seed-contacts.mjs",
     "test:watch": "vitest"
   },
   "dependencies": {

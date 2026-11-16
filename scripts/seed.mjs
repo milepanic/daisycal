@@ -6,6 +6,8 @@
 
 import { randomUUID } from 'node:crypto'
 
+import { buildContacts } from './contacts.mjs'
+
 const BASE = (process.env.RADICALE_URL ?? 'http://localhost:5232').replace(/\/$/, '')
 const USER = process.env.RADICALE_USER ?? 'daisy'
 const PASSWORD = process.env.RADICALE_PASSWORD ?? 'daisy'
@@ -218,31 +220,9 @@ function mkcolBody(c) {
 }
 
 // ---------------------------------------------------------------------------
-// Contacts with birthdays (vCard BDAY in the forms clients write), dated around this week.
+// Contacts (scripts/contacts.mjs): the Contacts page and the "Contact birthdays" calendar.
 // ---------------------------------------------------------------------------
-const ymd = (d) => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`
-const md = (d) => `${pad(d.getMonth() + 1)}${pad(d.getDate())}`
-const vcard = (uid, fn, bday) =>
-  [
-    'BEGIN:VCARD',
-    'VERSION:3.0',
-    `UID:${uid}`,
-    `FN:${fn}`,
-    `N:${fn.split(' ').reverse().join(';')};;;`,
-    bday,
-    'END:VCARD',
-    '',
-  ].join('\r\n')
-const CONTACTS = [
-  // With a year: shown with the age.
-  { uid: 'contact-ana', vcf: vcard('contact-ana', 'Ana Petrović', `BDAY:${ymd(new Date(1990, at(2).getMonth(), at(2).getDate()))}`) },
-  // Apple Contacts without a year.
-  { uid: 'contact-marko', vcf: vcard('contact-marko', 'Marko Jovanović', `BDAY;X-APPLE-OMIT-YEAR=1604:1604-${md(at(4)).slice(0, 2)}-${md(at(4)).slice(2)}`) },
-  // vCard 4 style without a year, next week.
-  { uid: 'contact-lena', vcf: vcard('contact-lena', 'Lena Kovač', `BDAY:--${md(at(9))}`) },
-  // No birthday: not shown.
-  { uid: 'contact-nobday', vcf: vcard('contact-nobday', 'Ivo Ivić', 'TEL:+38761000000') },
-]
+const CONTACTS = buildContacts(at)
 
 async function main() {
   const probe = await fetch(`${BASE}/${USER}/`, { method: 'PROPFIND', headers: { Authorization: AUTH, Depth: '0' } })

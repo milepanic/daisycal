@@ -9,6 +9,8 @@ import { useEventsStore } from '@/stores/events'
 import { useAuthStore } from '@/stores/auth'
 import { useBirthdaysStore } from '@/stores/birthdays'
 import { useCalendarsStore } from '@/stores/calendars'
+import { useContactsStore } from '@/stores/contacts'
+import type { Collection } from '@/api/collections'
 import { useUiStore } from '@/stores/ui'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import AppLogo from '@/components/brand/AppLogo.vue'
@@ -21,6 +23,19 @@ const auth = useAuthStore()
 const calendars = useCalendarsStore()
 const birthdays = useBirthdaysStore()
 const nav = useCalendarRoute()
+const contacts = useContactsStore()
+
+/** Address books in the sidebar list's shape (they have no server color: one is picked). */
+const addressBooks = computed<Collection[]>(() =>
+  contacts.books.map((b) => ({
+    url: b.url,
+    kind: 'calendar',
+    displayName: b.displayName,
+    color: contacts.bookColor(b.url),
+    ctag: null,
+    syncToken: null,
+  })),
+)
 
 /** "week", "day", "month"… for the prev / next labels. */
 const unit = computed(() => stepLabel(ui.view, ui.customDays))
@@ -169,6 +184,15 @@ function pickDate(d: Date) {
         @toggle="calendars.setVisible"
       />
       <CollectionList
+        v-if="route.name === 'contacts'"
+        title="Address books"
+        :collections="addressBooks"
+        :is-visible="calendars.isVisible"
+        :loading="contacts.status === 'loading' || contacts.status === 'idle'"
+        @toggle="calendars.setVisible"
+      />
+      <CollectionList
+        v-else
         title="Tasks"
         tasks
         :collections="calendars.taskLists"

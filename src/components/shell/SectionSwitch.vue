@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Calendar / Tasks switch in the page header, just before the title: two icons in an outlined
+ * Calendar / Tasks / Contacts switch in the page header, just before the title: two icons in an outlined
  * track like the view switcher, the current section on the dark pill (names on hover).
  */
 import { RouterLink, useRoute } from 'vue-router'
@@ -39,6 +39,15 @@ const linkClass = (active: boolean) =>
     >
       <AppIcon name="nav-tasks" class="size-5" />
       <span class="sr-only">Tasks</span>
+    </RouterLink>
+    <RouterLink
+      to="/contacts"
+      :aria-current="route.name === 'contacts' ? 'page' : undefined"
+      :class="linkClass(route.name === 'contacts')"
+      title="Contacts"
+    >
+      <AppIcon name="nav-contacts" class="size-5" />
+      <span class="sr-only">Contacts</span>
     </RouterLink>
   </nav>
 </template>

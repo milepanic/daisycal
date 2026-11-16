@@ -35,6 +35,11 @@ const router = createRouter({
           component: () => import('@/views/CalendarView.vue'),
         },
         { path: 'tasks', name: 'tasks', component: () => import('@/views/TasksView.vue') },
+        {
+          path: 'contacts',
+          name: 'contacts',
+          component: () => import('@/views/ContactsView.vue'),
+        },
       ],
     },
     { path: '/:pathMatch(.*)*', redirect: '/' },
