@@ -170,6 +170,7 @@ function pickDate(d: Date) {
       />
       <CollectionList
         title="Tasks"
+        tasks
         :collections="calendars.taskLists"
         :is-visible="calendars.isVisible"
         :loading="calendars.status === 'loading'"

@@ -138,6 +138,21 @@ html.chips-tinted .chip-fill [data-testid='task-dot'] svg {
   color: var(--color-white);
 }
 
+/* Sidebar calendar / task list dots in the tinted style: a mini tinted chip. */
+html.chips-tinted .collection-dot[data-on] {
+  background-color: color-mix(in srgb, var(--dot) 30%, var(--color-white));
+  border: 2px solid color-mix(in srgb, var(--dot) 85%, var(--color-white));
+}
+html.chips-tinted .collection-dot[data-on] svg {
+  color: color-mix(in srgb, var(--dot) 70%, black);
+}
+html.dark.chips-tinted .collection-dot[data-on] {
+  background-color: color-mix(in srgb, var(--dot) 35%, var(--color-white));
+}
+html.dark.chips-tinted .collection-dot[data-on] svg {
+  color: color-mix(in srgb, var(--dot) 45%, white);
+}
+
 /* Sidebar signature written in on page load: a soft-edged mask sweeps from left to right,
    like a pen going over the line. Shown at once with reduced motion. */
 .signature-write {
