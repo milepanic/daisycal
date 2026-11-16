@@ -2,13 +2,16 @@ import { describe, expect, it } from 'vitest'
 
 import type { EventInstance, Task } from '@/api/ical'
 import {
+  CASCADE_INSET_PX,
+  EVENT_HEADER_PX,
   HOUR_PX,
+  SIDE_END_GAP_PX,
   buildAgendaDays,
   buildMonthCells,
   isAllDayRow,
   layoutDay,
+  layoutDayWithTasks,
   layoutSpans,
-  layoutTasks,
   layoutTimed,
   slotFromOffset,
   taskEntry,
@@ -79,9 +82,11 @@ describe('layoutDay', () => {
     const placed = Object.fromEntries(
       layoutDay([a, long, b], d(5)).map((p) => [p.instance.summary, p]),
     )
-    expect(placed.long).toMatchObject({ left: 0, width: 0.5 })
-    expect(placed.a).toMatchObject({ left: 0.5, width: 0.5 })
-    expect(placed.b).toMatchObject({ left: 0.5, width: 0.5 })
+    // Side by side: "long" reaches under "a", which stops short of the right edge.
+    expect(placed.long).toMatchObject({ left: 0, width: 0.85, shrinkPx: 0, stack: 0 })
+    expect(placed.a).toMatchObject({ left: 0.5, width: 0.5, shrinkPx: SIDE_END_GAP_PX, stack: 1 })
+    // "b" starts below the title of "long": drawn over it, indented.
+    expect(placed.b).toMatchObject({ left: 0, width: 1, offsetPx: CASCADE_INSET_PX, depth: 1 })
     // Separate clusters get full width again.
     const later = layoutDay([a, ev(d(5, 14), d(5, 15))], d(5))
     expect(later[1]).toMatchObject({ left: 0, width: 1 })
@@ -117,9 +122,10 @@ describe('layoutDay with travel time', () => {
       top: px(570),
       height: px(90),
       travelPx: px(30),
+      left: 0.5,
       width: 0.5,
     })
-    expect(placed.before).toMatchObject({ travelPx: 0, width: 0.5 })
+    expect(placed.before).toMatchObject({ travelPx: 0, left: 0, width: 0.85 })
   })
 
   it('clips travel time at midnight without marking the event as continued', () => {
@@ -129,39 +135,7 @@ describe('layoutDay with travel time', () => {
   })
 })
 
-describe('layoutTasks (tasks over events, Google Calendar style)', () => {
-  it('keeps the event width and lays an overlapping task over it', () => {
-    const meeting = ev(d(5, 13), d(5, 14), { summary: 'meeting' })
-    const events = layoutDay([meeting], d(5))
-    const call = task(d(5, 13, 15), { summary: 'call' })
-    const mail = task(d(5, 13, 15), { summary: 'mail' })
-    const later = task(d(5, 15), { summary: 'later' })
-    const placed = Object.fromEntries(
-      layoutTasks([call, mail, later], events, d(5)).map((p) => [p.item.summary, p]),
-    )
-    expect(events[0]).toMatchObject({ top: px(780), height: px(60), left: 0, width: 1 })
-    // 30-minute blocks over the meeting; the two tasks share its width between them.
-    expect(placed.call).toMatchObject({
-      top: px(795),
-      height: px(30),
-      left: 0,
-      width: 0.5,
-      overEvent: true,
-    })
-    expect(placed.mail).toMatchObject({ top: px(795), left: 0.5, width: 0.5, overEvent: true })
-    // Nothing underneath: a plain full-width chip.
-    expect(placed.later).toMatchObject({ top: px(900), left: 0, width: 1, overEvent: false })
-  })
-
-  it('covers only the events it overlaps', () => {
-    const a = ev(d(5, 9), d(5, 11), { summary: 'a' })
-    const b = ev(d(5, 9), d(5, 10), { summary: 'b' })
-    const events = layoutDay([a, b], d(5))
-    const [t] = layoutTasks([task(d(5, 10, 15))], events, d(5))
-    // Only "a" (left half) is still running at 10:15.
-    expect(t).toMatchObject({ left: 0, width: 0.5, overEvent: true })
-  })
-
+describe('timed tasks', () => {
   it('keeps a late task inside its own day', () => {
     const late = taskEntry(task(d(5, 23, 45)))
     expect(late.end).toEqual(d(6))
@@ -255,5 +229,59 @@ describe('slotFromOffset', () => {
     expect(slotFromOffset(d(5), px(635))).toEqual(d(5, 10, 30))
     expect(slotFromOffset(d(5), -10)).toEqual(d(5, 0, 0))
     expect(slotFromOffset(d(5), 99999)).toEqual(d(5, 23, 30))
+  })
+})
+
+describe('layoutDayWithTasks (Google Calendar: never over a title)', () => {
+  const byName = (r: ReturnType<typeof layoutDayWithTasks>) => ({
+    ...Object.fromEntries(r.events.map((p) => [p.instance.summary, p])),
+    ...Object.fromEntries(r.tasks.map((p) => [p.item.summary, p])),
+  })
+
+  it('puts a task starting next to an event title beside it, whatever the length', () => {
+    const long = ev(d(5, 9), d(5, 12), { summary: 'long' })
+    const p = byName(layoutDayWithTasks([long], [task(d(5, 9), { summary: 't' })], d(5)))
+    expect(p.long).toMatchObject({ left: 0, width: 0.85, depth: 0 })
+    // Drawn over the event's right part, short of the edge.
+    expect(p.t).toMatchObject({
+      left: 0.5,
+      width: 0.5,
+      offsetPx: 0,
+      shrinkPx: SIDE_END_GAP_PX,
+      depth: 0,
+      stack: 1,
+    })
+  })
+
+  it('lays a task starting below the title over the event, indented', () => {
+    const long = ev(d(5, 9), d(5, 12), { summary: 'long' })
+    const p = byName(layoutDayWithTasks([long], [task(d(5, 10), { summary: 't' })], d(5)))
+    expect(p.long).toMatchObject({ left: 0, width: 1, depth: 0 })
+    expect(p.t).toMatchObject({
+      left: 0,
+      width: 1,
+      offsetPx: CASCADE_INSET_PX,
+      shrinkPx: CASCADE_INSET_PX,
+      depth: 1,
+    })
+  })
+
+  it('keeps a task beside a one-line (compact) event', () => {
+    // 09:00–09:45 is 36px, a single line: the title runs over the whole chip.
+    const short = ev(d(5, 9), d(5, 9, 45), { summary: 'short' })
+    const p = byName(layoutDayWithTasks([short], [task(d(5, 9, 30), { summary: 't' })], d(5)))
+    expect(p.short).toMatchObject({ width: 0.85 })
+    expect(p.t).toMatchObject({ left: 0.5, width: 0.5, depth: 0 })
+  })
+
+  it('does not cover the title of any chip it is drawn over', () => {
+    const a = ev(d(5, 9), d(5, 12), { summary: 'a' })
+    const b = ev(d(5, 10), d(5, 12), { summary: 'b' })
+    const p = byName(layoutDayWithTasks([a, b], [task(d(5, 10, 15), { summary: 't' })], d(5)))
+    // b cascades over a; the task starts within b's title, so it sits beside b.
+    expect(p.b).toMatchObject({ depth: 1, width: 0.85, offsetPx: CASCADE_INSET_PX })
+    expect(p.t).toMatchObject({ depth: 1, left: 0.5, width: 0.5 })
+    expect(p.t!.stack).toBeGreaterThan(p.b!.stack)
+    expect(p.t!.top).toBeGreaterThanOrEqual(p.a!.top + EVENT_HEADER_PX)
   })
 })

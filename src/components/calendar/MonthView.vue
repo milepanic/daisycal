@@ -281,7 +281,7 @@ function selectTask(t: Task, el: HTMLElement) {
               data-testid="pending-tasks"
               @click.stop="togglePending"
             >
-              <AppIcon name="tasks" class="size-3.5 shrink-0 text-red-500" />
+              <AppIcon name="tasks" class="-m-0.5 size-4 shrink-0 text-red-500" />
               <span class="truncate"
                 >{{ pendingCount }} pending {{ pendingCount === 1 ? 'task' : 'tasks' }}</span
               >
@@ -300,7 +300,7 @@ function selectTask(t: Task, el: HTMLElement) {
                 @click.stop="selectEvent(s.event, $event.currentTarget as HTMLElement)"
               >
                 <span
-                  class="size-2 shrink-0 rounded-full"
+                  class="size-3 shrink-0 rounded-full"
                   :style="{ backgroundColor: colorFor(s.event.collectionUrl) }"
                 ></span>
                 <span class="hidden shrink-0 text-gray-500 tabular-nums md:inline">{{
@@ -414,7 +414,7 @@ function selectTask(t: Task, el: HTMLElement) {
               @click="selectEvent(s.event, $event.currentTarget as HTMLElement)"
             >
               <span
-                class="size-2 shrink-0 rounded-full"
+                class="size-3 shrink-0 rounded-full"
                 :style="{ backgroundColor: colorFor(s.event.collectionUrl) }"
               ></span>
               <span class="shrink-0 text-gray-500 tabular-nums"

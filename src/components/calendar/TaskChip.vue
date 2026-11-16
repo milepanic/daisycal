@@ -23,6 +23,8 @@ const props = defineProps<{
   showTime?: boolean
   /** Longer than the default slot (has a duration): content at the top, not centered. */
   tall?: boolean
+  /** Squeezed beside other chips: a smaller font. */
+  small?: boolean
 }>()
 const emit = defineEmits<{ select: [task: Task, el: HTMLElement] }>()
 
@@ -53,8 +55,9 @@ function onClick(e: MouseEvent) {
     type="button"
     :title="task.summary"
     :data-selected="selected || undefined"
-    class="flex w-full min-w-0 cursor-pointer overflow-hidden text-left text-xs focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gray-900 chip-selectable"
-    :class="
+    class="flex w-full min-w-0 cursor-pointer overflow-hidden text-left focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gray-900 chip-selectable"
+    :class="[
+      small ? 'text-[11px]' : 'text-xs',
       size === 'month'
         ? 'items-center gap-x-1.5 rounded-sm bg-gray-100 px-1.5 py-0.5 transition-[background-color,opacity,box-shadow,transform] duration-150 hover:bg-gray-200'
         : [
@@ -62,7 +65,7 @@ function onClick(e: MouseEvent) {
             tall ? 'items-start pt-1' : 'items-center',
             task.completed ? 'opacity-60' : '',
           ]
-    "
+    ]"
     :style="
       size === 'month'
         ? { '--chip-color': color }
@@ -82,7 +85,12 @@ function onClick(e: MouseEvent) {
       @pointerdown.stop
       @click.stop="toggleDone"
     >
-      <TaskDot :color="color" :checked="task.completed" size="sm" :on-color="size !== 'month'" />
+      <TaskDot
+        :color="color"
+        :checked="task.completed"
+        :size="size === 'month' ? 'md' : 'sm'"
+        :on-color="size !== 'month'"
+      />
     </span>
     <span
       class="min-w-0 truncate"

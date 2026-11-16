@@ -17,6 +17,8 @@ const props = defineProps<{
   selected?: boolean
   continuesBefore?: boolean
   continuesAfter?: boolean
+  /** Squeezed beside other chips: a smaller font. */
+  small?: boolean
 }>()
 const emit = defineEmits<{ select: [instance: EventInstance, el: HTMLElement] }>()
 
@@ -42,7 +44,7 @@ function onClick(e: MouseEvent) {
         ? '@container flex h-full items-center gap-x-1 rounded-sm px-1.5 text-[10px] leading-none'
         : '',
       variant === 'timed' && !compact
-        ? 'flex h-full flex-col items-start justify-start rounded-sm px-2 py-1 text-xs'
+        ? `flex h-full flex-col items-start justify-start rounded-sm py-1 ${small ? 'px-1.5 text-[11px]' : 'px-2 text-xs'}`
         : '',
       continuesBefore ? 'rounded-t-none' : '',
       continuesAfter ? 'rounded-b-none' : '',
@@ -66,7 +68,7 @@ function onClick(e: MouseEvent) {
     </template>
     <template v-else>
       <p class="w-full truncate font-medium">{{ instance.summary || '(No title)' }}</p>
-      <p class="w-full truncate text-[11px] text-(--chip-fg)/80">
+      <p class="w-full truncate text-(--chip-fg)/80" :class="small ? 'text-[10px]' : 'text-[11px]'">
         <time :datetime="instance.start.toISOString()">{{ formatTime(instance.start) }}</time
         >–<time :datetime="instance.end.toISOString()">{{ formatTime(instance.end) }}</time>
       </p>

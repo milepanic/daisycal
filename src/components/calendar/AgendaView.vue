@@ -142,7 +142,7 @@ function eventKey(i: EventInstance) {
                   entry.timeLabel
                 }}</span>
                 <span
-                  class="size-2.5 shrink-0 rounded-full"
+                  class="size-3 shrink-0 rounded-full"
                   :style="{ backgroundColor: colorFor(entry.event.collectionUrl) }"
                 ></span>
                 <span class="truncate text-sm font-medium text-gray-900">{{

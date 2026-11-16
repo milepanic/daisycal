@@ -28,6 +28,11 @@ export interface TimedPlacement {
   /** Fractions of the column width. */
   left: number
   width: number
+  /** Cascade indent and level (see `TimedLayout`). */
+  offsetPx: number
+  shrinkPx: number
+  depth: number
+  stack: number
   /** True when the chip is clipped at the top/bottom of this day (spans midnight). */
   continuesBefore: boolean
   continuesAfter: boolean
@@ -59,64 +64,106 @@ export function minutesSinceMidnight(d: Date, day: Date): number {
 /** How long a timed task occupies in the grid (Google Calendar shows tasks as 30-minute blocks). */
 export const TASK_SLOT_MIN = 30
 
+/** Height of a chip's title and time at its top: nothing may be drawn over it. */
+export const EVENT_HEADER_PX = 36
+/** A task chip shows its title on a single line. */
+export const TASK_HEADER_PX = 20
+/** How far a chip laid over an earlier one is indented, so the one below stays visible. */
+export const CASCADE_INSET_PX = 8
+/** Side by side, a chip reaches this far into the next column, under the chip there. */
+const SIDE_OVERLAP = 0.7
+/** Side by side, the last chip stops this short of the right edge (Google Calendar). */
+export const SIDE_END_GAP_PX = 4
+
 /** Anything laid out in a day column: an event, or a task from its due time on. */
 export interface TimedItem<T> {
   item: T
   start: Date
   end: Date
+  /** Where the chip's own content starts, when something is drawn above it (travel time). */
+  contentStart?: Date
+  /** Height of the title area at the top of a tall chip (default EVENT_HEADER_PX). */
+  headerPx?: number
 }
 
 export interface TimedLayout<T> {
   item: T
   top: number
   height: number
+  /** Fractions of the column width... */
   left: number
   width: number
+  /** ...then moved right by `offsetPx` and narrowed by `shrinkPx` (cascade indent). */
+  offsetPx: number
+  shrinkPx: number
+  /** Cascade level: chips with a higher one are drawn over those below them. */
+  depth: number
+  /** Drawing order (higher on top): by cascade level, then by column within it. */
+  stack: number
   continuesBefore: boolean
   continuesAfter: boolean
   compact: boolean
 }
 
 /**
- * Places the timed items of one day. Overlapping items share the width Google-Calendar style:
- * they are clustered, assigned to the first free column, and each chip stretches right over
- * columns nothing else occupies.
+ * Places the timed items of one day the way Google Calendar does. Nothing may cover the title
+ * and time at the top of a chip:
+ *  - items starting within each other's title area are put side by side: each starts at its
+ *    column, reaches a bit under the next one (drawn over it, so its title stays visible),
+ *    and the last stops short of the right edge, leaving room to click the day;
+ *  - an item starting below the title of an earlier one is drawn over its lower part instead,
+ *    indented by CASCADE_INSET_PX, across the width from that item to the right edge.
  */
 export function layoutTimed<T>(entries: TimedItem<T>[], day: Date): TimedLayout<T>[] {
   const dayStart = startOfDay(day)
   const dayEnd = addDays(dayStart, 1)
+  const toPx = (t: number) => ((t - dayStart.getTime()) / 60_000) * (HOUR_PX / 60)
   const items = entries
     .filter((e) => e.start < dayEnd && e.end > dayStart)
     .map((e) => {
       const start = Math.max(e.start.getTime(), dayStart.getTime())
       const end = Math.min(e.end.getTime(), dayEnd.getTime())
-      const top = ((start - dayStart.getTime()) / 60_000) * (HOUR_PX / 60)
-      const height = Math.max(((end - start) / 60_000) * (HOUR_PX / 60), MIN_EVENT_PX)
+      const top = toPx(start)
+      const height = Math.max(toPx(end) - top, MIN_EVENT_PX)
+      const bottom = top + height
+      const contentTop = Math.min(bottom, Math.max(top, toPx((e.contentStart ?? e.start).getTime())))
+      const body = bottom - contentTop
+      // A short chip is a single line: its title runs over its whole height.
+      const header = body < COMPACT_PX ? body : Math.min(body, e.headerPx ?? EVENT_HEADER_PX)
       return {
         item: e.item,
         top,
         height,
-        bottom: top + height,
+        bottom,
+        headerEnd: contentTop + header,
         continuesBefore: e.start < dayStart,
         continuesAfter: e.end > dayEnd,
       }
     })
     .sort((a, b) => a.top - b.top || b.bottom - a.bottom)
 
+  // Groups of items starting within each other's title area. Sorted by start, every item
+  // starts below the titles of all earlier groups, so only the last group can grow.
+  const groups: (typeof items)[] = []
+  for (const item of items) {
+    const last = groups[groups.length - 1]
+    if (last?.some((o) => item.top < o.headerEnd)) last.push(item)
+    else groups.push([item])
+  }
+
   const out: TimedLayout<T>[] = []
-  let i = 0
-  while (i < items.length) {
-    // Build a cluster of transitively overlapping items.
-    let clusterEnd = items[i]!.bottom
-    let j = i + 1
-    while (j < items.length && items[j]!.top < clusterEnd) {
-      clusterEnd = Math.max(clusterEnd, items[j]!.bottom)
-      j++
-    }
-    const cluster = items.slice(i, j)
+  const placed: { top: number; bottom: number; left: number; inset: number; depth: number }[] = []
+  for (const group of groups) {
+    // Earlier chips this group is drawn over (below their titles).
+    const under = placed.filter((p) => group.some((m) => p.top < m.bottom && p.bottom > m.top))
+    const regionLeft = under.length ? Math.min(...under.map((p) => p.left)) : 0
+    const inset = under.length ? Math.max(...under.map((p) => p.inset)) + CASCADE_INSET_PX : 0
+    const depth = under.length ? Math.max(...under.map((p) => p.depth)) + 1 : 0
+
+    // Side by side within the group: first free column, stretched over free ones to the right.
     const columns: number[] = [] // bottom of the last item in each column
-    const colOf = new Map<(typeof cluster)[number], number>()
-    for (const item of cluster) {
+    const colOf = new Map<(typeof group)[number], number>()
+    for (const item of group) {
       let col = columns.findIndex((bottom) => bottom <= item.top)
       if (col === -1) {
         col = columns.length
@@ -125,63 +172,69 @@ export function layoutTimed<T>(entries: TimedItem<T>[], day: Date): TimedLayout<
       colOf.set(item, col)
     }
     const n = columns.length
-    for (const item of cluster) {
+    for (const item of group) {
       const col = colOf.get(item)!
-      // Stretch over following columns that have nothing overlapping this item.
       let span = 1
       while (col + span < n) {
-        const blocked = cluster.some(
+        const blocked = group.some(
           (other) =>
             colOf.get(other) === col + span && other.top < item.bottom && other.bottom > item.top,
         )
         if (blocked) break
         span++
       }
+      const from = col / n
+      const last = col + span === n
+      const share = last ? span / n : Math.min((span + SIDE_OVERLAP) / n, 1 - from)
+      const left = regionLeft + from * (1 - regionLeft)
       out.push({
         item: item.item,
         top: item.top,
         height: item.height,
-        left: col / n,
-        width: span / n,
+        left,
+        width: share * (1 - regionLeft),
+        offsetPx: inset * (1 - from),
+        shrinkPx: inset * share + (last && n > 1 ? SIDE_END_GAP_PX : 0),
+        depth,
+        stack: depth * 4 + Math.min(col, 3),
         continuesBefore: item.continuesBefore,
         continuesAfter: item.continuesAfter,
         compact: item.height < COMPACT_PX,
       })
+      placed.push({ top: item.top, bottom: item.bottom, left, inset, depth })
     }
-    i = j
   }
   return out
 }
 
-export interface TaskPlacement<T> extends TimedLayout<T> {
-  /** Drawn on top of an event, indented from its left edge (Google Calendar). */
-  overEvent: boolean
+/** Layout entry of a timed event: travel time (iPhone) counts as part of it, above the start. */
+function eventEntry(instance: EventInstance): TimedItem<EventInstance> {
+  return {
+    item: instance,
+    start: instance.travel
+      ? new Date(instance.start.getTime() - instance.travel * 60_000)
+      : instance.start,
+    end: instance.end,
+    contentStart: instance.start,
+  }
 }
 
-/**
- * Places the timed tasks of one day over the already laid-out events, the way Google Calendar
- * does: events keep their width, and a task that overlaps events sits on top of them across the
- * same width (the caller indents it a little so the event stays visible). Tasks that overlap
- * each other split that width into columns, like events do.
- */
-export function layoutTasks<T extends Task>(
-  tasks: T[],
-  events: TimedPlacement[],
+/** Turns a laid-out event entry into its placement (travel part, compact by the event alone). */
+function eventPlacement(
+  { item, ...rest }: TimedLayout<EventInstance>,
   day: Date,
-): TaskPlacement<T>[] {
-  return layoutTimed(tasks.map(taskEntry), day).map((p) => {
-    const bottom = p.top + p.height
-    const under = events.filter((e) => e.top < bottom && e.top + e.height > p.top)
-    if (under.length === 0) return { ...p, overEvent: false }
-    const left = Math.min(...under.map((e) => e.left))
-    const right = Math.max(...under.map((e) => e.left + e.width))
-    return {
-      ...p,
-      left: left + p.left * (right - left),
-      width: p.width * (right - left),
-      overEvent: true,
-    }
-  })
+): TimedPlacement {
+  const dayStart = startOfDay(day)
+  const startPx = minutesSinceMidnight(item.start, day) * (HOUR_PX / 60)
+  const travelPx = item.travel && item.start > dayStart ? Math.max(0, startPx - rest.top) : 0
+  return {
+    ...rest,
+    instance: item,
+    // Travel time reaching into the previous day does not make the event continue from it.
+    continuesBefore: item.start < dayStart,
+    travelPx,
+    compact: rest.height - travelPx < COMPACT_PX,
+  }
 }
 
 /**
@@ -189,30 +242,35 @@ export function layoutTasks<T extends Task>(
  * time (iPhone) is drawn as part of the chip above the start, so it counts for overlaps too.
  */
 export function layoutDay(instances: EventInstance[], day: Date): TimedPlacement[] {
-  const dayStart = startOfDay(day)
-  return layoutTimed(
-    instances
-      .filter((i) => !isAllDayRow(i))
-      .map((instance) => ({
-        item: instance,
-        start: instance.travel
-          ? new Date(instance.start.getTime() - instance.travel * 60_000)
-          : instance.start,
-        end: instance.end,
-      })),
+  return layoutTimed(instances.filter((i) => !isAllDayRow(i)).map(eventEntry), day).map((p) =>
+    eventPlacement(p, day),
+  )
+}
+
+/**
+ * Events and timed tasks of one day, laid out together (see `layoutTimed`): a task starting
+ * next to an event's title sits beside it, one starting lower down is drawn over its body.
+ */
+export function layoutDayWithTasks<T extends Task>(
+  instances: EventInstance[],
+  tasks: T[],
+  day: Date,
+): { events: TimedPlacement[]; tasks: TimedLayout<T>[] } {
+  const isTask = new Set<unknown>(tasks)
+  const placed = layoutTimed<EventInstance | T>(
+    [
+      ...instances.filter((i) => !isAllDayRow(i)).map(eventEntry),
+      ...tasks.map((t) => ({ ...taskEntry(t), headerPx: TASK_HEADER_PX })),
+    ],
     day,
-  ).map(({ item, ...rest }) => {
-    const startPx = minutesSinceMidnight(item.start, day) * (HOUR_PX / 60)
-    const travelPx = item.travel && item.start > dayStart ? Math.max(0, startPx - rest.top) : 0
-    return {
-      ...rest,
-      instance: item,
-      // Travel time reaching into the previous day does not make the event continue from it.
-      continuesBefore: item.start < dayStart,
-      travelPx,
-      compact: rest.height - travelPx < COMPACT_PX,
-    }
-  })
+  )
+  const events: TimedPlacement[] = []
+  const taskPlacements: TimedLayout<T>[] = []
+  for (const p of placed) {
+    if (isTask.has(p.item)) taskPlacements.push(p as TimedLayout<T>)
+    else events.push(eventPlacement(p as TimedLayout<EventInstance>, day))
+  }
+  return { events, tasks: taskPlacements }
 }
 
 /**

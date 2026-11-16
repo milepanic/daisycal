@@ -103,11 +103,11 @@ describe('TimeGrid', () => {
     expect(bar.text()).toBe('Offsite')
     // Wednesday 10:00 local (08:00Z in Belgrade DST); review 90 min, minus the 2px gap.
     const wed = wrapper.find('[data-day="2026-10-14"]')
-    const chips = wed.findAll('.absolute.z-10')
+    const chips = wed.findAll('[data-testid="grid-chip"]')
     const review = chips.find((c) => c.text().includes('Design review'))!
     expect(review.attributes('style')).toContain(`top: ${px(600)}px`)
     expect(review.attributes('style')).toContain(`height: ${px(90) - 2}px`)
-    expect(review.attributes('style')).toContain('width: calc(50% - 4px)')
+    expect(review.attributes('style')).toContain('width: calc(85% - 4px)')
     const standup = chips.find((c) => c.text().includes('Daily Standup'))!
     expect(standup.attributes('style')).toContain('height: 14px')
     expect(standup.text()).toContain('10:00')
@@ -141,7 +141,7 @@ describe('TimeGrid', () => {
     wrapper.unmount()
   })
 
-  it('lays a task over an event it overlaps, slightly narrower, like Google Calendar', async () => {
+  it('never covers an event title with a task (Google Calendar)', async () => {
     const { instances, tasks } = seeded()
     // Due Wednesday 10:30, during "Design review" (10:00–11:30), after the 10-minute standup.
     const overlapping = parseTask({
@@ -154,19 +154,35 @@ describe('TimeGrid', () => {
       props: { days: eachDay(WEEK), instances, tasks: [...tasks, overlapping], colorFor },
     })
     const wed = wrapper.find('[data-day="2026-10-14"]')
-    const call = wed.find('.absolute.z-20')
-    const review = wed.findAll('.absolute.z-10').find((c) => c.text().includes('Design review'))!
-    // The task is a 30-minute block (minus the 2px gap) with its time, laid over the review and
-    // indented 8px; the review keeps its width (half: the standup sits beside it).
+    const call = wed
+      .findAll('[data-testid="grid-chip"]')
+      .find((c) => c.text().startsWith('Call Ana'))!
+    const review = wed.findAll('[data-testid="grid-chip"]').find((c) => c.text().includes('Design review'))!
+    // The task is a 30-minute block (minus the 2px gap) with its time. It starts within the
+    // review's title area, so it sits beside the review, below the 10-minute standup.
     expect(call.text()).toBe('Call Ana, 10:30')
     expect(call.classes()).toContain('ring-white')
     expect(call.attributes('style')).toContain(`top: ${px(630)}px`)
     expect(call.attributes('style')).toContain(`height: ${px(30) - 2}px`)
-    expect(call.attributes('style')).toContain('left: calc(0% + 10px)')
-    expect(call.attributes('style')).toContain('width: calc(50% - 12px)')
-    expect(review.attributes('style')).toContain('width: calc(50% - 4px)')
+    expect(call.attributes('style')).toContain('left: calc(50% + 2px)')
+    // Over the review's right part (which reaches under it), stopping a little short of the edge.
+    expect(call.attributes('style')).toContain('width: calc(50% - 8px)')
+    expect(review.attributes('style')).toContain('width: calc(85% - 4px)')
+    // Starting below the review's title instead (11:00), it is drawn over the review, indented.
+    const later = parseTask({
+      url: `${MY_TASKS.url}later.ics`,
+      collectionUrl: MY_TASKS.url,
+      etag: '"1"',
+      data: todoIcs('later', 'Later', 'DUE:20261014T090000Z\r\n'),
+    })
+    await wrapper.setProps({ tasks: [...tasks, later] })
+    const over = wed
+      .findAll('[data-testid="grid-chip"]')
+      .find((c) => c.text().startsWith('Later'))!
+    expect(over.attributes('style')).toContain('left: calc(0% + 10px)')
+    expect(over.attributes('style')).toContain('width: calc(100% - 12px)')
     // A task with nothing under it is a plain full-width chip.
-    const slides = wed.findAll('.absolute.z-10').find((c) => c.text().startsWith('Prepare slides'))!
+    const slides = wed.findAll('[data-testid="grid-chip"]').find((c) => c.text().startsWith('Prepare slides'))!
     expect(slides.attributes('style')).toContain('width: calc(100% - 4px)')
     wrapper.unmount()
   })

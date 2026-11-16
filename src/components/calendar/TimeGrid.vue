@@ -21,9 +21,8 @@ import {
   TASK_SLOT_MIN,
   type TimedPlacement,
   isAllDayRow,
-  layoutDay,
+  layoutDayWithTasks,
   layoutSpans,
-  layoutTasks,
   minutesSinceMidnight,
   slotFromOffset,
 } from '@/lib/layout'
@@ -100,8 +99,6 @@ const DRAG_THRESHOLD_PX = 6
 const CHIP_GAP_PX = 2
 /** A timed task is a TASK_SLOT_MIN block, laid out with the events (Google Calendar). */
 const TASK_CHIP_PX = TASK_SLOT_MIN * PX_PER_MIN - CHIP_GAP_PX
-/** A task over an event starts this far in, so the event stays visible on its left. */
-const TASK_INSET_PX = 8
 
 /** What a day column shows: events, and timed tasks drawn over them when they overlap. */
 type GridItem = { kind: 'event'; instance: EventInstance } | { kind: 'task'; task: Task }
@@ -168,10 +165,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onWeatherEscape, tru
 /** Some shown day has a forecast: every day header then keeps a weather row. */
 const weatherOn = computed(() => columns.value.some((c) => props.weatherFor?.(c.key)))
 
-/** A grid chip: an event, or a task (laid over the events it overlaps, Google Calendar style). */
+/** A grid chip: an event or a task, laid out together (see `layoutTimed`). */
 interface GridPlacement extends Omit<TimedPlacement, 'instance'> {
   item: GridItem
-  overEvent: boolean
 }
 
 function placementsFor(day: Date, dayStart: Date, dayEnd: Date): GridPlacement[] {
@@ -183,25 +179,23 @@ function placementsFor(day: Date, dayStart: Date, dayEnd: Date): GridPlacement[]
           eventKey(i) === eventKey(d.instance) ? { ...i, travel: d.travelMin } : i,
         )
       : props.instances
-  const events = layoutDay(instances, day)
   // Likewise a task whose bottom edge is being dragged.
   const dayTasks = props.tasks.filter(
     (t) => t.due && !t.dueAllDay && t.due >= dayStart && t.due < dayEnd,
   )
-  const tasks = layoutTasks(
+  const { events, tasks } = layoutDayWithTasks(
+    instances,
     d?.kind === 'taskResize'
       ? dayTasks.map((t) =>
           t.objectUrl === d.task.objectUrl ? { ...t, duration: d.endMin - d.startMin } : t,
         )
       : dayTasks,
-    events,
     day,
   )
   return [
     ...events.map(({ instance, ...p }) => ({
       ...p,
       item: { kind: 'event', instance } as GridItem,
-      overEvent: false,
     })),
     ...tasks.map(({ item, ...p }) => ({
       ...p,
@@ -979,14 +973,14 @@ function onGridKeydown(e: KeyboardEvent) {
             >
               <button
                 type="button"
-                class="flex h-full w-full items-center gap-x-1.5 truncate rounded-sm px-1.5 text-left text-xs text-gray-700 hover:bg-gray-100"
+                class="flex h-full w-full items-center gap-x-1.5 truncate rounded-sm px-2 text-left text-xs text-gray-700 hover:bg-gray-100"
                 :class="pendingAnchor ? 'bg-gray-100' : ''"
                 :aria-expanded="pendingAnchor ? 'true' : 'false'"
                 aria-haspopup="dialog"
                 data-testid="pending-tasks"
                 @click.stop="togglePending"
               >
-                <AppIcon name="tasks" class="size-3.5 shrink-0 text-red-500" />
+                <AppIcon name="tasks" class="-m-0.5 size-4 shrink-0 text-red-500" />
                 <span class="truncate"
                   >{{ pendingCount }} pending {{ pendingCount === 1 ? 'task' : 'tasks' }}</span
                 >
@@ -1040,12 +1034,8 @@ function onGridKeydown(e: KeyboardEvent) {
             :key="itemKey(p.item)"
             class="absolute transition-opacity duration-150"
             :class="[
-              selectedKey === itemKey(p.item)
-                ? 'z-30'
-                : p.overEvent
-                  ? 'z-20 rounded-sm ring-1 ring-white'
-                  : 'z-10',
-              p.left > 0 && !p.overEvent ? 'ring-1 ring-white' : '',
+              // A chip next to or over another one gets a white edge to set it apart.
+              p.left > 0 || p.depth > 0 ? 'rounded-sm ring-1 ring-white' : '',
               draggingKey === (p.item.kind === 'event' ? itemKey(p.item) : p.item.task.objectUrl)
                 ? 'opacity-40'
                 : '',
@@ -1053,10 +1043,13 @@ function onGridKeydown(e: KeyboardEvent) {
             :style="{
               top: `${p.top}px`,
               height: `${p.continuesAfter ? p.height : p.height - CHIP_GAP_PX}px`,
-              left: `calc(${p.left * 100}% + ${2 + (p.overEvent ? TASK_INSET_PX : 0)}px)`,
-              width: `calc(${p.width * 100}% - ${4 + (p.overEvent ? TASK_INSET_PX : 0)}px)`,
+              left: `calc(${p.left * 100}% + ${2 + p.offsetPx}px)`,
+              width: `calc(${p.width * 100}% - ${4 + p.shrinkPx}px)`,
+              // Later cascade levels and columns over earlier ones; the selected chip on top.
+              zIndex: selectedKey === itemKey(p.item) ? 30 : 10 + Math.min(p.stack, 14),
             }"
             :data-chip="p.item.kind === 'event' ? itemKey(p.item) : undefined"
+            data-testid="grid-chip"
             @pointerdown="
               p.item.kind === 'event'
                 ? onChipPointerDown(p.item.instance, c.day, $event)
@@ -1091,6 +1084,7 @@ function onGridKeydown(e: KeyboardEvent) {
                 :selected="selectedKey === itemKey(p.item)"
                 :continues-before="p.continuesBefore"
                 :continues-after="p.continuesAfter"
+                :small="p.width < 1"
                 class="cursor-grab active:cursor-grabbing"
                 :class="p.travelPx > 0 ? 'absolute inset-x-0 bottom-0 !h-auto rounded-t-none' : ''"
                 :style="p.travelPx > 0 ? { top: `${p.travelPx}px` } : undefined"
@@ -1110,6 +1104,7 @@ function onGridKeydown(e: KeyboardEvent) {
                 :selected="selectedKey === itemKey(p.item)"
                 :tall="(p.item.task.duration ?? TASK_SLOT_MIN) > TASK_SLOT_MIN"
                 show-time
+                :small="p.width < 1"
                 class="h-full cursor-grab active:cursor-grabbing"
                 :data-task-chip="p.item.task.objectUrl"
                 @select="onSelectTask"
@@ -1231,7 +1226,7 @@ function onGridKeydown(e: KeyboardEvent) {
                the time itself is the pill in the hour gutter. -->
           <div
             v-if="c.isToday"
-            class="pointer-events-none absolute inset-x-0 z-10 flex -translate-y-1/2 items-center"
+            class="pointer-events-none absolute inset-x-0 z-25 flex -translate-y-1/2 items-center"
             :style="{ top: `${nowTop}px` }"
             data-testid="now-line"
           >
